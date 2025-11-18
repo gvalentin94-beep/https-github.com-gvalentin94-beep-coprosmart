@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
-import type { Me, Task, User, LedgerEntry, TaskCategory, TaskScope, Rating } from './types';
+import type { Me, Task, User, LedgerEntry, TaskCategory, TaskScope, Rating, Bid } from './types';
 import { useAuth, fakeApi } from './services/api';
 import { Button, Card, CardContent, CardHeader, CardTitle, Label, Input, Textarea, Select, Badge } from './components/ui';
 import { LoginCard } from './components/LoginCard';
@@ -10,14 +10,10 @@ import { COUNCIL_MIN_APPROVALS, CATEGORIES, PlusIcon, ROLES } from './constants'
 // --- Governance Component ---
 function Governance() {
   return (
-    // FIX: Wrapped Card content instead of using a self-closing tag.
     <Card>
-      {/* FIX: Wrapped CardHeader content instead of using a self-closing tag. */}
       <CardHeader>
-        {/* FIX: Wrapped CardTitle content instead of using a self-closing tag. */}
         <CardTitle>⚖️ Règles de fonctionnement</CardTitle>
       </CardHeader>
-      {/* FIX: Wrapped CardContent content instead of using a self-closing tag. */}
       <CardContent className="text-sm space-y-3 text-slate-700">
         <p><b>Validation</b>: Une tâche devient visible pour les enchères après <b>{COUNCIL_MIN_APPROVALS} approbations</b> du Conseil syndical.</p>
         <p><b>Suppression</b>: Un membre du CS ne peut pas supprimer une tâche en offres ouvertes. Seul l'admin peut tout supprimer.</p>
@@ -38,11 +34,8 @@ function Ledger() {
   if (!entries.length) return <EmptyState text="Aucune écriture pour l'instant." />;
 
   return (
-    // FIX: Wrapped Card content instead of using a self-closing tag.
     <Card>
-      {/* FIX: Wrapped CardHeader and CardTitle content instead of using self-closing tags. */}
       <CardHeader><CardTitle>📒 Journal des écritures</CardTitle></CardHeader>
-      {/* FIX: Wrapped CardContent content instead of using a self-closing tag. */}
       <CardContent>
         <ul className="space-y-2">
           {entries.map((e, i) => (
@@ -84,7 +77,6 @@ function Section({ title, count, children }: SectionProps) {
     <section className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-xl font-bold text-slate-800 tracking-tight">{title}</h3>
-        {/* FIX: Wrapped Badge content instead of using a self-closing tag. */}
         <Badge variant="secondary" className="text-base px-3">{count}</Badge>
       </div>
       {children}
@@ -105,7 +97,6 @@ function CreateTaskForm({ onCreate }: CreateTaskFormProps) {
     const [location, setLocation] = useState("");
     const [startingPrice, setStartingPrice] = useState("20");
     const [warrantyDays, setWarrantyDays] = useState("30");
-    const [plannedDate, setPlannedDate] = useState("");
 
     const reset = () => {
         setTitle("");
@@ -115,7 +106,6 @@ function CreateTaskForm({ onCreate }: CreateTaskFormProps) {
         setLocation("");
         setStartingPrice("20");
         setWarrantyDays("30");
-        setPlannedDate("");
     };
 
     const handleCreate = () => {
@@ -127,7 +117,6 @@ function CreateTaskForm({ onCreate }: CreateTaskFormProps) {
             title, category, scope, details, location, 
             startingPrice: Number(startingPrice),
             warrantyDays: Number(warrantyDays),
-            plannedDate: plannedDate || null,
         });
         reset();
         setOpen(false);
@@ -139,21 +128,20 @@ function CreateTaskForm({ onCreate }: CreateTaskFormProps) {
                 <PlusIcon className="h-4 w-4" /> {open ? "Fermer" : "Proposer une tâche"}
             </Button>
             {open && (
-                // FIX: Wrapped Card content instead of using a self-closing tag.
                 <Card className="mt-4">
-                    {/* FIX: Wrapped CardHeader and CardTitle content instead of using self-closing tags. */}
                     <CardHeader><CardTitle>Nouvelle tâche pour la copropriété</CardTitle></CardHeader>
-                    {/* FIX: Wrapped CardContent content instead of using a self-closing tag. */}
                     <CardContent className="space-y-4">
                         <div className="grid md:grid-cols-2 gap-4">
                             <div className="space-y-1.5"><Label>Titre de la tâche</Label><Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Changer ampoule entrée B" /></div>
-                            {/* FIX: Replaced 'as any' with a specific type for better type safety. */}
                             <div className="space-y-1.5"><Label>Catégorie</Label><Select value={category} onChange={e => setCategory(e.target.value as TaskCategory)}>{CATEGORIES.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}</Select></div>
                         </div>
                         <div className="space-y-1.5"><Label>Détails</Label><Textarea value={details} onChange={(e) => setDetails(e.target.value)} placeholder="Ampoule E27, échelle nécessaire..." /></div>
                         <div className="grid md:grid-cols-2 gap-4">
                             <div className="space-y-1.5"><Label>Emplacement</Label><Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Hall, entrée B, 1er étage" /></div>
                             <div className="space-y-1.5"><Label>Prix de départ (€)</Label><Input type="number" min="0" value={startingPrice} onChange={(e) => setStartingPrice(e.target.value)} /></div>
+                        </div>
+                         <div className="grid md:grid-cols-2 gap-4">
+                            <div className="space-y-1.5"><Label>Garantie (jours)</Label><Input type="number" min="0" value={warrantyDays} onChange={(e) => setWarrantyDays(e.target.value)} /></div>
                         </div>
                         <div className="flex justify-end gap-2 pt-2">
                             <Button variant="ghost" onClick={() => setOpen(false)}>Annuler</Button>
@@ -182,17 +170,12 @@ function ValidationQueue({ me, tasks, onApprove, onReject, onDelete }: Validatio
     return (
         <div className="space-y-4">
             {pending.map(t => (
-                // FIX: Wrapped Card content instead of using a self-closing tag. This also resolves the 'key' prop error.
                 <Card key={t.id}>
-                    {/* FIX: Wrapped CardHeader content instead of using a self-closing tag. */}
                     <CardHeader>
-                        {/* FIX: Wrapped CardTitle content instead of using a self-closing tag. */}
                         <CardTitle className="flex justify-between items-center text-base">{t.title}
-                          {/* FIX: Wrapped Badge content instead of using a self-closing tag. */}
                           <Badge>{t.approvals?.length || 0}/{COUNCIL_MIN_APPROVALS} approb.</Badge>
                         </CardTitle>
                     </CardHeader>
-                    {/* FIX: Wrapped CardContent content instead of using a self-closing tag. */}
                     <CardContent className="space-y-3">
                         <p className="text-sm text-slate-600">{t.details}</p>
                         <div className="flex gap-2 flex-wrap">
@@ -259,7 +242,7 @@ function Dashboard({ me }: DashboardProps) {
       if(!canDeleteTask(task)) return alert("Action non autorisée.");
       if(window.confirm("Supprimer?")) await save(tasks.filter(t => t.id !== task.id));
   };
-  const bid = async (id: string, newBid: {amount: number; note: string}) => {
+  const bid = async (id: string, newBid: Omit<Bid, 'by' | 'at'>) => {
       const task = tasks.find(t => t.id === id);
       if(!task) return;
       const bids = [...task.bids, { ...newBid, by: me.email, at: new Date().toISOString() }];
@@ -280,7 +263,6 @@ function Dashboard({ me }: DashboardProps) {
       }
   };
   const rateTask = async (id: string, rating: Omit<Rating, 'at'|'byHash'>) => {
-    // FIX: Replaced deprecated 'unescape' function for robust UTF-8 to base64 encoding.
     const byHash = btoa(encodeURIComponent(me.email).replace(/%([0-9A-F]{2})/g, (_match, p1) => String.fromCharCode(parseInt(p1, 16)))).slice(0, 10);
     const task = tasks.find(t => t.id === id);
     if (!task) return;
@@ -304,7 +286,6 @@ function Dashboard({ me }: DashboardProps) {
 
   const TaskList = ({ taskItems }: { taskItems: Task[] }) => (
     <div className="grid md:grid-cols-2 gap-4">
-        {/* FIX: Correctly passing key to TaskCard. The original error was likely due to cascading type issues from other components. */}
         {taskItems.map(t => (
             <TaskCard key={t.id} task={t} me={me} onBid={(b) => bid(t.id, b)} onAward={() => awardLowest(t.id)} onComplete={() => completeTask(t.id)} onRate={(r) => rateTask(t.id, r)} onPayApartment={() => payApartment(t.id)} onDelete={() => deleteTask(t)} canDelete={canDeleteTask(t)} />
         ))}
@@ -324,33 +305,28 @@ function Dashboard({ me }: DashboardProps) {
       <CreateTaskForm onCreate={create} />
 
       {(me.role === 'council' || me.role === 'admin') && tasksByStatus.pending.length > 0 && (
-        // FIX: Section component now correctly wraps its children.
         <Section title="À valider" count={tasksByStatus.pending.length}>
           <ValidationQueue me={me} tasks={tasks} onApprove={approve} onReject={reject} onDelete={deleteTask} />
         </Section>
       )}
 
       {me.role === 'owner' && tasksByStatus.myPending.length > 0 && (
-        // FIX: Section component now correctly wraps its children.
         <Section title="Mes demandes en attente" count={tasksByStatus.myPending.length}>
           <TaskList taskItems={tasksByStatus.myPending} />
         </Section>
       )}
 
-      {/* FIX: Section component now correctly wraps its children. */}
       <Section title="Offres ouvertes" count={tasksByStatus.open.length}>
-        {tasksByStatus.open.length ? <TaskList taskItems={tasksByStatus.open} /> : <EmptyState text="Aucune tâche ouverte." />}
+        {tasksByStatus.open.length ? <TaskList taskItems={tasksBySstatus.open} /> : <EmptyState text="Aucune tâche ouverte." />}
       </Section>
 
-      {/* FIX: Section component now correctly wraps its children. */}
       <Section title="Tâches attribuées" count={tasksByStatus.awarded.length}>
         {tasksByStatus.awarded.length ? <TaskList taskItems={tasksByStatus.awarded} /> : <EmptyState text="Aucune tâche attribuée." />}
       </Section>
       
-      {/* FIX: Section component now correctly wraps its children. */}
       <Section title="Tâches terminées" count={tasksByStatus.completed.length}>
         {tasksByStatus.completed.length ? <TaskList taskItems={tasksByStatus.completed} /> : <EmptyState text="Aucune tâche terminée." />}
-      </Section>
+      </section>
     </div>
   );
 }

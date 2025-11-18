@@ -24,6 +24,7 @@ export interface Bid {
   amount: number;
   note: string;
   at: string;
+  plannedExecutionDate: string;
 }
 
 export interface Approval {
@@ -52,7 +53,6 @@ export interface Task {
   location: string;
   startingPrice: number;
   warrantyDays: number;
-  plannedDate: string | null;
   status: TaskStatus;
   createdBy: string;
   createdAt: string;

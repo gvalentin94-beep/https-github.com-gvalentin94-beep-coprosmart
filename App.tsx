@@ -345,7 +345,7 @@ function Dashboard({ me }: DashboardProps) {
       {/* FIX: Section component now correctly wraps its children. */}
       <Section title="Tâches attribuées" count={tasksByStatus.awarded.length}>
         {tasksByStatus.awarded.length ? <TaskList taskItems={tasksByStatus.awarded} /> : <EmptyState text="Aucune tâche attribuée." />}
-      </section>
+      </Section>
       
       {/* FIX: Section component now correctly wraps its children. */}
       <Section title="Tâches terminées" count={tasksByStatus.completed.length}>

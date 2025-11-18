@@ -18,10 +18,48 @@ function Governance() {
         <p><b>Validation</b>: Une tâche devient visible pour les enchères après <b>{COUNCIL_MIN_APPROVALS} approbations</b> du Conseil syndical.</p>
         <p><b>Suppression</b>: Un membre du CS ne peut pas supprimer une tâche en offres ouvertes. Seul l'admin peut tout supprimer.</p>
         <p><b>Enchères inversées</b>: Le montant de départ ne peut que diminuer.</p>
+         <p><b>Attribution</b>: La tâche est attribuée automatiquement au moins-disant 48h après la première offre, ou manuellement par le créateur.</p>
       </CardContent>
     </Card>
   );
 }
+
+// --- Terms of Service Component ---
+function TermsOfService() {
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>📜 Conditions Générales d'Utilisation de CoproSmart</CardTitle>
+            </CardHeader>
+            <CardContent className="prose prose-sm max-w-none text-slate-700 space-y-4">
+                <h4 className="font-bold">Préambule : L'esprit CoproSmart</h4>
+                <p>CoproSmart est une plateforme conçue pour encourager l'initiative et la participation de chaque copropriétaire à l'entretien de notre résidence. Elle repose sur la confiance, la transparence et la volonté de faire des économies ensemble. En utilisant ce service, vous acceptez de participer activement et de bonne foi à la vie de la copropriété.</p>
+
+                <h4 className="font-bold pt-2 border-t">Article 1 : Proposer une tâche</h4>
+                <p>Chaque copropriétaire peut proposer une tâche nécessaire à l'entretien (changer une ampoule, évacuer un encombrant, etc.). La proposition doit être claire, détaillée et inclure un prix de départ juste.</p>
+
+                <h4 className="font-bold pt-2 border-t">Article 2 : Validation par le Conseil Syndical</h4>
+                <p>Pour garantir sa pertinence, chaque tâche doit être approuvée par au moins <b>deux membres du Conseil Syndical</b> avant d'être ouverte aux offres.</p>
+
+                <h4 className="font-bold pt-2 border-t">Article 3 : Le système d'enchères</h4>
+                <p>Le principe est une enchère inversée : le premier qui se positionne doit proposer un prix inférieur au prix de départ. Les suivants doivent proposer un prix inférieur à l'offre la plus basse. <b>En faisant une offre, vous vous engagez à réaliser la tâche à la date que vous proposez</b> (dans les 30 jours suivants).</p>
+                
+                <h4 className="font-bold pt-2 border-t">Article 4 : Règle d'attribution automatique</h4>
+                <p>Pour dynamiser le processus, un <b>compte à rebours de 48 heures</b> se déclenche dès la première offre. À l'issue de ce délai, la tâche est automatiquement attribuée au copropriétaire ayant fait l'offre la plus basse.</p>
+                
+                <h4 className="font-bold pt-2 border-t">Article 5 : Règle de participation stratégique</h4>
+                <p>Pour garantir l'équité, chaque copropriétaire ne peut faire qu'<b>une seule offre</b> par tâche. <b>Exception</b> : pour récompenser la réactivité, le tout premier copropriétaire à faire une offre a le droit de faire une <b>seconde offre</b> pour s'ajuster.</p>
+                
+                <h4 className="font-bold pt-2 border-t">Article 6 : Règle de paiement et de rémunération</h4>
+                <p>Le montant pour lequel vous remportez une tâche ne vous est pas versé directement. Il sera <b>déduit du montant de vos prochains appels de charges</b>. C'est une manière simple de réduire vos dépenses tout en contribuant à la vie de l'immeuble.</p>
+
+                <h4 className="font-bold pt-2 border-t">Article 7 : Garantie et notation</h4>
+                <p>L'intervention est garantie pour la durée spécifiée. Après la réalisation, les autres copropriétaires sont invités à noter anonymement la qualité du travail.</p>
+            </CardContent>
+        </Card>
+    );
+}
+
 
 // --- Ledger Component ---
 function Ledger() {
@@ -212,10 +250,38 @@ function Dashboard({ me }: DashboardProps) {
     await fakeApi.writeTasks(next);
   };
   
+   // Auto-award tasks whose bidding time has expired
+    useEffect(() => {
+        const interval = setInterval(() => {
+            const now = new Date();
+            let changed = false;
+            const updatedTasks = tasks.map(t => {
+                if (t.status === 'open' && t.biddingStartedAt && t.bids.length > 0) {
+                    const endTime = new Date(t.biddingStartedAt).getTime() + 48 * 60 * 60 * 1000;
+                    if (now.getTime() > endTime) {
+                        const lowestBid = t.bids.reduce((min, b) => b.amount < min.amount ? b : min, t.bids[0]);
+                        changed = true;
+                        console.log(`Task ${t.id} awarded automatically to ${lowestBid.by}`);
+                        return { ...t, status: 'awarded', awardedTo: lowestBid.by, awardedAmount: lowestBid.amount };
+                    }
+                }
+                return t;
+            });
+            if (changed) {
+                save(updatedTasks);
+            }
+        }, 5000); // Check every 5 seconds
+        return () => clearInterval(interval);
+    }, [tasks, save]);
+
+
   const canDeleteTask = (task: Task) => me.role === 'admin' || (me.role === 'council' && task.status !== 'open');
 
   const create = async (data: Omit<Task, 'id' | 'status' | 'approvals' | 'rejections' | 'createdBy' | 'createdAt' | 'bids' | 'ratings'>) => {
     const t: Task = { ...data, id: crypto.randomUUID(), status: 'pending', approvals: [], rejections: [], createdBy: me.email, createdAt: new Date().toISOString(), bids: [], ratings: [] };
+    if (me.role === 'council' || me.role === 'admin') {
+      t.approvals.push({ by: me.email, at: new Date().toISOString() });
+    }
     await save([t, ...tasks]);
   };
 
@@ -245,8 +311,24 @@ function Dashboard({ me }: DashboardProps) {
   const bid = async (id: string, newBid: Omit<Bid, 'by' | 'at'>) => {
       const task = tasks.find(t => t.id === id);
       if(!task) return;
+
+      const myBidsCount = task.bids.filter(b => b.by === me.email).length;
+      const isFirstBidder = task.bids.length > 0 && task.bids[0].by === me.email;
+      const canBid = (isFirstBidder && myBidsCount < 2) || (!isFirstBidder && myBidsCount < 1);
+
+      if (!canBid) {
+          alert("Vous avez atteint votre limite d'offres pour cette tâche.");
+          return;
+      }
+
       const bids = [...task.bids, { ...newBid, by: me.email, at: new Date().toISOString() }];
-      await updateTask(id, { bids });
+      const updates: Partial<Task> = { bids };
+
+      if (task.bids.length === 0) {
+        updates.biddingStartedAt = new Date().toISOString();
+      }
+
+      await updateTask(id, updates);
   };
   const awardLowest = async (id: string) => {
     const task = tasks.find(t => t.id === id);
@@ -317,7 +399,7 @@ function Dashboard({ me }: DashboardProps) {
       )}
 
       <Section title="Offres ouvertes" count={tasksByStatus.open.length}>
-        {tasksByStatus.open.length ? <TaskList taskItems={tasksBySstatus.open} /> : <EmptyState text="Aucune tâche ouverte." />}
+        {tasksByStatus.open.length ? <TaskList taskItems={tasksByStatus.open} /> : <EmptyState text="Aucune tâche ouverte." />}
       </Section>
 
       <Section title="Tâches attribuées" count={tasksByStatus.awarded.length}>
@@ -326,7 +408,7 @@ function Dashboard({ me }: DashboardProps) {
       
       <Section title="Tâches terminées" count={tasksByStatus.completed.length}>
         {tasksByStatus.completed.length ? <TaskList taskItems={tasksByStatus.completed} /> : <EmptyState text="Aucune tâche terminée." />}
-      </section>
+      </Section>
     </div>
   );
 }
@@ -359,12 +441,14 @@ export default function App() {
                     <h2 className="font-bold text-lg mb-2 px-2">🏢 CoproSmart</h2>
                     <Button variant={tab === "dashboard" ? "secondary" : "ghost"} onClick={() => setTab("dashboard")} className="justify-start">📋 Tâches</Button>
                     <Button variant={tab === "ledger" ? "secondary" : "ghost"} onClick={() => setTab("ledger")} className="justify-start">📒 Écritures</Button>
-                    <Button variant={tab === "about" ? "secondary" : "ghost"} onClick={() => setTab("about")} className="justify-start">ℹ️ À propos</Button>
+                    <Button variant={tab === "cgu" ? "secondary" : "ghost"} onClick={() => setTab("cgu")} className="justify-start">📜 CGU</Button>
+                    <Button variant={tab === "about" ? "secondary" : "ghost"} onClick={() => setTab("about")} className="justify-start">⚖️ Règles</Button>
                 </nav>
             </aside>
             <main className="md:col-span-3">
                 {tab === "dashboard" && <Dashboard me={me} />}
                 {tab === "ledger" && <Ledger />}
+                {tab === "cgu" && <TermsOfService />}
                 {tab === "about" && <Governance />}
             </main>
         </div>

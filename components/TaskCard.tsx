@@ -136,6 +136,40 @@ function RatingBox({ onSubmit }: RatingBoxProps) {
     );
 }
 
+function Countdown({ startedAt }: { startedAt: string }) {
+    const [timeLeft, setTimeLeft] = useState("");
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            const endTime = new Date(startedAt).getTime() + 48 * 60 * 60 * 1000;
+            const now = new Date().getTime();
+            const distance = endTime - now;
+
+            if (distance < 0) {
+                setTimeLeft("Terminé");
+                clearInterval(interval);
+                return;
+            }
+
+            const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+            setTimeLeft(`${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`);
+        }, 1000);
+
+        return () => clearInterval(interval);
+    }, [startedAt]);
+
+    if (!timeLeft || timeLeft === "Terminé") return null;
+
+    return (
+        <div className="bg-indigo-50 text-indigo-800 p-2 rounded-lg text-sm font-medium text-center">
+            ⏳ Attribution dans : <b className="font-mono">{timeLeft}</b>
+        </div>
+    );
+}
+
+
 // --- Main TaskCard Component ---
 
 interface TaskCardProps {
@@ -161,6 +195,28 @@ export function TaskCard({ task, me, onBid, onAward, onComplete, onRate, onPayAp
 
     const colorClasses = statusClasses[statusConfig.color] || { border: 'border-slate-400', text: 'text-slate-500' };
     const borderColor = `border-l-4 ${colorClasses.border}`;
+    
+    const myBidsCount = task.bids.filter(b => b.by === me.email).length;
+    const isFirstBidder = task.bids.length > 0 && task.bids[0].by === me.email;
+    const canBid =
+        (isFirstBidder && myBidsCount < 2) ||
+        (!isFirstBidder && myBidsCount < 1);
+
+    const BidArea = () => {
+        if (task.status !== 'open' || me?.role !== 'owner' || me.email === task.createdBy) {
+            return null;
+        }
+
+        if (canBid) {
+            return <BidBox task={task} onBid={onBid} />;
+        }
+        
+        return (
+            <div className="bg-slate-100 text-slate-600 p-3 rounded-lg text-sm text-center">
+                {isFirstBidder ? "Vous avez utilisé vos 2 offres." : "Vous avez déjà fait une offre."}
+            </div>
+        );
+    }
 
     return (
         <Card className={borderColor}>
@@ -172,7 +228,7 @@ export function TaskCard({ task, me, onBid, onAward, onComplete, onRate, onPayAp
                             <CardTitle className="text-base md:text-lg">{task.title}</CardTitle>
                         </div>
                         <p className="text-xs text-slate-500">
-                            Proposée par <span className="font-medium text-slate-600">{task.createdBy}</span>
+                            Proposée par <span className="font-medium text-slate-600">{task.createdBy}</span> le {new Date(task.createdAt).toLocaleDateString()}
                         </p>
                     </div>
                      <div className="flex items-center gap-2">
@@ -190,13 +246,15 @@ export function TaskCard({ task, me, onBid, onAward, onComplete, onRate, onPayAp
                     <div className="flex items-center gap-2"><span className="text-slate-400">{task.scope === 'copro' ? '🏢' : '🏠'}</span><span>{task.scope === 'copro' ? 'Charges communes' : 'Privatif'}</span></div>
                 </div>
                 
+                {task.biddingStartedAt && task.status === 'open' && <Countdown startedAt={task.biddingStartedAt} />}
+
                 {task.awardedTo && (
                     <div className="bg-sky-50 text-sky-800 p-3 rounded-lg text-sm">
                         🤝 Attribuée à <b>{task.awardedTo}</b> pour <b>{task.awardedAmount}€</b>
                     </div>
                 )}
 
-                {task.status === 'open' && me?.role === 'owner' && me.email !== task.createdBy && <BidBox task={task} onBid={onBid} />}
+                <BidArea />
 
                 {task.status === 'open' && task.bids?.length > 0 && (
                     <div className="space-y-2">

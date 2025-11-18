@@ -63,6 +63,7 @@ export interface Task {
   awardedTo?: string;
   awardedAmount?: number;
   completionAt?: string;
+  biddingStartedAt?: string;
 }
 
 export interface LedgerEntry {

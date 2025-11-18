@@ -1,10 +1,35 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
-import type { Me, Task, User, LedgerEntry, TaskCategory, TaskScope, Rating, Bid } from './types';
+import type { Me, Task, User, LedgerEntry, TaskCategory, TaskScope, Rating, Bid, RegisteredUser } from './types';
 import { useAuth, fakeApi } from './services/api';
 import { Button, Card, CardContent, CardHeader, CardTitle, Label, Input, Textarea, Select, Badge } from './components/ui';
 import { LoginCard } from './components/LoginCard';
 import { TaskCard } from './components/TaskCard';
 import { COUNCIL_MIN_APPROVALS, CATEGORIES, PlusIcon, ROLES, LOCATIONS } from './constants';
+
+// --- Toast Notification System for Simulated Emails ---
+interface Toast {
+  id: string;
+  to: string;
+  subject: string;
+}
+
+function ToastContainer({ toasts }: { toasts: Toast[] }) {
+  if (toasts.length === 0) return null;
+  return (
+    <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full">
+      {toasts.map(t => (
+        <div key={t.id} className="bg-slate-800 border-l-4 border-indigo-500 text-white p-3 rounded shadow-xl flex flex-col animate-in slide-in-from-right">
+          <div className="flex items-center gap-2 text-xs text-indigo-300 uppercase font-bold tracking-wider">
+            ✉️ Email simulé
+          </div>
+          <div className="text-xs text-slate-400 mt-1">À: {t.to}</div>
+          <div className="font-medium text-sm mt-0.5">{t.subject}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 // --- Governance Component ---
 function Governance() {
@@ -13,11 +38,12 @@ function Governance() {
       <CardHeader>
         <CardTitle>⚖️ Règles de fonctionnement</CardTitle>
       </CardHeader>
-      <CardContent className="text-sm space-y-3 text-slate-700">
+      <CardContent className="text-sm space-y-3 text-slate-300">
+        <p><b>Inscription</b>: Tout nouveau compte doit être validé par un membre du Conseil Syndical avant de pouvoir accéder à l'application.</p>
         <p><b>Validation</b>: Une tâche devient visible pour les enchères après <b>{COUNCIL_MIN_APPROVALS} approbations</b> du Conseil syndical.</p>
         <p><b>Suppression</b>: Un membre du CS ne peut pas supprimer une tâche en offres ouvertes. Seul l'admin peut tout supprimer.</p>
-        <p><b>Enchères inversées</b>: Le montant de départ ne peut que diminuer.</p>
-         <p><b>Attribution</b>: La tâche est attribuée automatiquement au moins-disant 48h après la première offre, ou manuellement par le créateur.</p>
+        <p><b>Enchères inversées</b>: Le montant de départ ne peut que diminuer, par palier de 1€ (pas de centimes).</p>
+         <p><b>Attribution</b>: La tâche est attribuée automatiquement au moins-disant <b>24h</b> après la première offre, ou manuellement par le créateur.</p>
       </CardContent>
     </Card>
   );
@@ -30,29 +56,29 @@ function TermsOfService() {
             <CardHeader>
                 <CardTitle>📜 Conditions Générales d'Utilisation de CoproSmart</CardTitle>
             </CardHeader>
-            <CardContent className="prose prose-sm max-w-none text-slate-700 space-y-4">
+            <CardContent className="prose prose-sm max-w-none text-slate-300 prose-headings:text-white space-y-4">
                 <h4 className="font-bold">Préambule : L'esprit CoproSmart</h4>
                 <p>CoproSmart est une plateforme conçue pour encourager l'initiative et la participation de chaque copropriétaire à l'entretien de notre résidence. Elle repose sur la confiance, la transparence et la volonté de faire des économies ensemble. En utilisant ce service, vous acceptez de participer activement et de bonne foi à la vie de la copropriété.</p>
 
-                <h4 className="font-bold pt-2 border-t">Article 1 : Proposer une tâche</h4>
+                <h4 className="font-bold pt-2 border-t border-slate-700">Article 1 : Proposer une tâche</h4>
                 <p>Chaque copropriétaire peut proposer une tâche nécessaire à l'entretien (changer une ampoule, évacuer un encombrant, etc.). La proposition doit être claire, détaillée et inclure un prix de départ juste.</p>
 
-                <h4 className="font-bold pt-2 border-t">Article 2 : Validation par le Conseil Syndical</h4>
+                <h4 className="font-bold pt-2 border-t border-slate-700">Article 2 : Validation par le Conseil Syndical</h4>
                 <p>Pour garantir sa pertinence, chaque tâche doit être approuvée par au moins <b>deux membres du Conseil Syndical</b> avant d'être ouverte aux offres.</p>
 
-                <h4 className="font-bold pt-2 border-t">Article 3 : Le système d'enchères</h4>
+                <h4 className="font-bold pt-2 border-t border-slate-700">Article 3 : Le système d'enchères</h4>
                 <p>Le principe est une enchère inversée : le premier qui se positionne doit proposer un prix inférieur au prix de départ. Les suivants doivent proposer un prix inférieur à l'offre la plus basse. <b>En faisant une offre, vous vous engagez à réaliser la tâche à la date que vous proposez</b> (dans les 30 jours suivants).</p>
                 
-                <h4 className="font-bold pt-2 border-t">Article 4 : Règle d'attribution automatique</h4>
-                <p>Pour dynamiser le processus, un <b>compte à rebours de 48 heures</b> se déclenche dès la première offre. À l'issue de ce délai, la tâche est automatiquement attribuée au copropriétaire ayant fait l'offre la plus basse.</p>
+                <h4 className="font-bold pt-2 border-t border-slate-700">Article 4 : Règle d'attribution automatique</h4>
+                <p>Pour dynamiser le processus, un <b>compte à rebours de 24 heures</b> se déclenche dès la première offre. À l'issue de ce délai, la tâche est automatiquement attribuée au copropriétaire ayant fait l'offre la plus basse.</p>
                 
-                <h4 className="font-bold pt-2 border-t">Article 5 : Règle de participation stratégique</h4>
+                <h4 className="font-bold pt-2 border-t border-slate-700">Article 5 : Règle de participation stratégique</h4>
                 <p>Pour garantir l'équité, chaque copropriétaire ne peut faire qu'<b>une seule offre</b> par tâche. <b>Exception</b> : pour récompenser la réactivité, le tout premier copropriétaire à faire une offre a le droit de faire une <b>seconde offre</b> pour s'ajuster.</p>
                 
-                <h4 className="font-bold pt-2 border-t">Article 6 : Règle de paiement et de rémunération</h4>
+                <h4 className="font-bold pt-2 border-t border-slate-700">Article 6 : Règle de paiement et de rémunération</h4>
                 <p>Le montant pour lequel vous remportez une tâche ne vous est pas versé directement. Il sera <b>déduit du montant de vos prochains appels de charges</b>. C'est une manière simple de réduire vos dépenses tout en contribuant à la vie de l'immeuble.</p>
 
-                <h4 className="font-bold pt-2 border-t">Article 7 : Garantie et notation</h4>
+                <h4 className="font-bold pt-2 border-t border-slate-700">Article 7 : Garantie et notation</h4>
                 <p>L'intervention est garantie pour la durée spécifiée. Après la réalisation, les autres copropriétaires sont invités à noter anonymement la qualité du travail.</p>
             </CardContent>
         </Card>
@@ -76,12 +102,12 @@ function Ledger() {
       <CardContent>
         <ul className="space-y-2">
           {entries.map((e, i) => (
-            <li key={i} className="flex items-center justify-between gap-2 text-sm p-2 rounded-lg bg-slate-50">
+            <li key={i} className="flex items-center justify-between gap-2 text-sm p-2 rounded-lg bg-slate-700/50 border border-slate-600">
               <span>
-                <span className="font-mono text-xs bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded">#{e.taskId.slice(0, 6)}</span>
-                <span className="ml-2">{e.payer} → {e.payee}</span>
+                <span className="font-mono text-xs bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded">#{e.taskId.slice(0, 6)}</span>
+                <span className="ml-2 text-slate-200">{e.payer} → {e.payee}</span>
               </span>
-              <span className="font-semibold text-slate-800">{e.amount} €</span>
+              <span className="font-semibold text-white">{e.amount} €</span>
             </li>
           ))}
         </ul>
@@ -97,7 +123,7 @@ interface EmptyStateProps {
 
 function EmptyState({ text }: EmptyStateProps) {
   return (
-    <div className="border-2 border-dashed border-slate-200 rounded-xl bg-slate-50/60 text-center py-10 px-4">
+    <div className="border-2 border-dashed border-slate-700 rounded-xl bg-slate-800/50 text-center py-10 px-4">
       <p className="text-sm text-slate-500">{text}</p>
     </div>
   );
@@ -113,7 +139,7 @@ function Section({ title, count, children }: SectionProps) {
   return (
     <section className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-xl font-bold text-slate-800 tracking-tight">{title}</h3>
+        <h3 className="text-xl font-bold text-white tracking-tight">{title}</h3>
         <Badge variant="secondary" className="text-base px-3">{count}</Badge>
       </div>
       {children}
@@ -127,6 +153,9 @@ interface CreateTaskFormProps {
 }
 function CreateTaskForm({ onCreate }: CreateTaskFormProps) {
     const [open, setOpen] = useState(false);
+    const [previewMode, setPreviewMode] = useState(false);
+    
+    // Form States
     const [title, setTitle] = useState("");
     const [category, setCategory] = useState<TaskCategory>("ampoule");
     const [scope, setScope] = useState<TaskScope>("copro");
@@ -143,56 +172,155 @@ function CreateTaskForm({ onCreate }: CreateTaskFormProps) {
         setLocation("");
         setStartingPrice("20");
         setWarrantyDays("30");
+        setPreviewMode(false);
     };
 
-    const handleCreate = () => {
+    const handlePreview = () => {
         if (!title.trim() || !location.trim() || !startingPrice || Number(startingPrice) <= 0) {
             alert("Titre, emplacement et prix de départ positif sont des champs obligatoires.");
             return;
         }
+        setPreviewMode(true);
+    };
+
+    const handleSubmit = () => {
         onCreate({
             title, category, scope, details, location, 
-            startingPrice: Number(startingPrice),
+            startingPrice: Math.floor(Number(startingPrice)),
             warrantyDays: Number(warrantyDays),
         });
         reset();
         setOpen(false);
     };
 
-    return (
-        <div className="mb-4">
-            <Button onClick={() => setOpen(v => !v)}>
-                <PlusIcon className="h-4 w-4" /> {open ? "Fermer" : "Proposer une tâche"}
-            </Button>
-            {open && (
-                <Card className="mt-4">
-                    <CardHeader><CardTitle>Nouvelle tâche pour la copropriété</CardTitle></CardHeader>
+    if (!open) {
+        return (
+            <div className="mb-4">
+                <Button onClick={() => setOpen(true)}>
+                    <PlusIcon className="h-4 w-4" /> Proposer une tâche
+                </Button>
+            </div>
+        );
+    }
+
+    // Preview Modal (Overlay)
+    if (previewMode) {
+        return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm p-4">
+                <Card className="w-full max-w-lg bg-slate-800 border-slate-700">
+                    <CardHeader>
+                        <CardTitle>🔍 Vérifiez votre proposition</CardTitle>
+                    </CardHeader>
                     <CardContent className="space-y-4">
-                        <div className="grid md:grid-cols-2 gap-4">
-                            <div className="space-y-1.5"><Label>Titre de la tâche (obligatoire)</Label><Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Changer ampoule entrée B" /></div>
-                            <div className="space-y-1.5"><Label>Catégorie</Label><Select value={category} onChange={e => setCategory(e.target.value as TaskCategory)}>{CATEGORIES.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}</Select></div>
+                        <div className="space-y-2 text-sm text-slate-300">
+                            <p><strong className="text-white">Titre :</strong> {title}</p>
+                            <p><strong className="text-white">Emplacement :</strong> {location}</p>
+                            <p><strong className="text-white">Catégorie :</strong> {CATEGORIES.find(c => c.id === category)?.label}</p>
+                            <p><strong className="text-white">Prix de départ :</strong> {startingPrice} €</p>
+                            <p><strong className="text-white">Détails :</strong> {details || "Aucun détail"}</p>
+                            <p><strong className="text-white">Garantie :</strong> {warrantyDays} jours</p>
                         </div>
-                        <div className="space-y-1.5"><Label>Détails</Label><Textarea value={details} onChange={(e) => setDetails(e.target.value)} placeholder="Ampoule E27, échelle nécessaire..." /></div>
-                        <div className="grid md:grid-cols-2 gap-4">
-                            <div className="space-y-1.5">
-                                <Label>Emplacement (obligatoire)</Label>
-                                <Select value={location} onChange={(e) => setLocation(e.target.value)}>
-                                    <option value="" disabled>Choisir un emplacement...</option>
-                                    {LOCATIONS.map(loc => <option key={loc} value={loc}>{loc}</option>)}
-                                </Select>
-                            </div>
-                            <div className="space-y-1.5"><Label>Prix de départ (€) (obligatoire)</Label><Input type="number" min="0" value={startingPrice} onChange={(e) => setStartingPrice(e.target.value)} /></div>
-                        </div>
-                         <div className="grid md:grid-cols-2 gap-4">
-                            <div className="space-y-1.5"><Label>Garantie (jours)</Label><Input type="number" min="0" value={warrantyDays} onChange={(e) => setWarrantyDays(e.target.value)} /></div>
-                        </div>
-                        <div className="flex justify-end gap-2 pt-2">
-                            <Button variant="ghost" onClick={() => setOpen(false)}>Annuler</Button>
-                            <Button onClick={handleCreate}>Créer la tâche</Button>
+                        <div className="flex gap-3 justify-end pt-4 border-t border-slate-700">
+                            <Button variant="outline" onClick={() => setPreviewMode(false)}>✏️ Modifier</Button>
+                            <Button onClick={handleSubmit}>✅ Confirmer et soumettre</Button>
                         </div>
                     </CardContent>
                 </Card>
-            )}
+            </div>
+        );
+    }
+
+    // Standard Form
+    return (
+        <div className="mb-4">
+            <Button variant="ghost" onClick={() => setOpen(false)} className="mb-2">Fermer</Button>
+            <Card>
+                <CardHeader><CardTitle>Nouvelle tâche pour la copropriété</CardTitle></CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="grid md:grid-cols-2 gap-4">
+                        <div className="space-y-1.5"><Label>Titre de la tâche (obligatoire)</Label><Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Changer ampoule entrée B" /></div>
+                        <div className="space-y-1.5"><Label>Catégorie</Label><Select value={category} onChange={e => setCategory(e.target.value as TaskCategory)}>{CATEGORIES.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}</Select></div>
+                    </div>
+                    <div className="space-y-1.5"><Label>Détails</Label><Textarea value={details} onChange={(e) => setDetails(e.target.value)} placeholder="Ampoule E27, échelle nécessaire..." /></div>
+                    <div className="grid md:grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                            <Label>Emplacement (obligatoire)</Label>
+                            <Select value={location} onChange={(e) => setLocation(e.target.value)}>
+                                <option value="" disabled>Choisir un emplacement...</option>
+                                {LOCATIONS.map(loc => <option key={loc} value={loc}>{loc}</option>)}
+                            </Select>
+                        </div>
+                        <div className="space-y-1.5"><Label>Prix de départ (€) (obligatoire, entier)</Label><Input type="number" min="0" step="1" value={startingPrice} onChange={(e) => setStartingPrice(e.target.value)} /></div>
+                    </div>
+                     <div className="grid md:grid-cols-2 gap-4">
+                        <div className="space-y-1.5"><Label>Garantie (jours)</Label><Input type="number" min="0" value={warrantyDays} onChange={(e) => setWarrantyDays(e.target.value)} /></div>
+                    </div>
+                    <div className="flex justify-end gap-2 pt-2">
+                        <Button variant="ghost" onClick={() => setOpen(false)}>Annuler</Button>
+                        <Button onClick={handlePreview}>Prévisualiser la tâche</Button>
+                    </div>
+                </CardContent>
+            </Card>
+        </div>
+    );
+}
+
+// --- UserValidationQueue Component ---
+interface UserValidationQueueProps {
+    notify: (to: string, subject: string) => void;
+}
+function UserValidationQueue({ notify }: UserValidationQueueProps) {
+    const [pendingUsers, setPendingUsers] = useState<RegisteredUser[]>([]);
+
+    const fetchPending = useCallback(async () => {
+        const users = await fakeApi.getPendingUsers();
+        setPendingUsers(users);
+    }, []);
+
+    useEffect(() => {
+        fetchPending();
+        // Poll for new users
+        const interval = setInterval(fetchPending, 5000);
+        return () => clearInterval(interval);
+    }, [fetchPending]);
+
+    const handleApprove = async (email: string) => {
+        await fakeApi.approveUser(email);
+        notify(email, "Votre compte CoproSmart a été validé !");
+        fetchPending();
+    };
+
+    const handleReject = async (email: string) => {
+        if(window.confirm(`Rejeter l'inscription de ${email} ?`)) {
+             await fakeApi.rejectUser(email);
+             fetchPending();
+        }
+    };
+
+    if (pendingUsers.length === 0) return null;
+
+    return (
+        <div className="mb-8 animate-in slide-in-from-top duration-500">
+             <Section title="Utilisateurs en attente" count={pendingUsers.length}>
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    {pendingUsers.map(u => (
+                        <Card key={u.id} className="border-amber-500/50">
+                            <CardHeader>
+                                <CardTitle className="text-base flex items-center gap-2">
+                                    👤 {u.email}
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <p className="text-sm text-slate-400 mb-4">Rôle demandé : <Badge variant="outline">{ROLES.find(r => r.id === u.role)?.label}</Badge></p>
+                                <div className="flex gap-2">
+                                    <Button size="sm" onClick={() => handleApprove(u.email)} className="w-full bg-emerald-600 hover:bg-emerald-500">Valider</Button>
+                                    <Button size="sm" variant="destructive" onClick={() => handleReject(u.email)} className="w-full">Refuser</Button>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    ))}
+                </div>
+             </Section>
         </div>
     );
 }
@@ -207,7 +335,7 @@ interface ValidationQueueProps {
 }
 function ValidationQueue({ me, tasks, onApprove, onReject, onDelete }: ValidationQueueProps) {
     const pending = tasks.filter(t => t.status === 'pending');
-    if (me.role !== 'council' && me.role !== 'admin') return <EmptyState text="Espace réservé au Conseil syndical." />;
+    if (me.role !== 'council' && me.role !== 'admin') return null;
     if (!pending.length) return <EmptyState text="Aucune demande à valider." />;
 
     return (
@@ -220,7 +348,7 @@ function ValidationQueue({ me, tasks, onApprove, onReject, onDelete }: Validatio
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-3">
-                        <p className="text-sm text-slate-600">{t.details}</p>
+                        <p className="text-sm text-slate-400">{t.details}</p>
                         <div className="flex gap-2 flex-wrap">
                             <Button size="sm" onClick={() => onApprove(t)} disabled={(t.approvals || []).some(a => a.by === me.email)}>✅ Approuver</Button>
                             <Button size="sm" variant="outline" onClick={() => onReject(t)}>❌ Rejeter</Button>
@@ -237,8 +365,9 @@ function ValidationQueue({ me, tasks, onApprove, onReject, onDelete }: Validatio
 // --- Dashboard Component ---
 interface DashboardProps {
   me: Me;
+  notify: (to: string, subject: string) => void;
 }
-function Dashboard({ me }: DashboardProps) {
+function Dashboard({ me, notify }: DashboardProps) {
   const [tasks, setTasks] = useState<Task[]>([]);
 
   const fetchTasks = useCallback(async () => {
@@ -255,20 +384,24 @@ function Dashboard({ me }: DashboardProps) {
     await fakeApi.writeTasks(next);
   };
   
-   // Auto-award tasks whose bidding time has expired
+   // Auto-award tasks whose bidding time has expired (24h)
     useEffect(() => {
         const interval = setInterval(() => {
             const now = new Date();
             let changed = false;
             const updatedTasks = tasks.map(t => {
                 if (t.status === 'open' && t.biddingStartedAt && t.bids.length > 0) {
-                    const endTime = new Date(t.biddingStartedAt).getTime() + 48 * 60 * 60 * 1000;
+                    // Changed from 48 to 24 hours
+                    const endTime = new Date(t.biddingStartedAt).getTime() + 24 * 60 * 60 * 1000;
                     if (now.getTime() > endTime) {
                         const lowestBid = t.bids.reduce((min, b) => b.amount < min.amount ? b : min, t.bids[0]);
                         changed = true;
                         console.log(`Task ${t.id} awarded automatically to ${lowestBid.by}`);
-                        // FIX: Add 'as const' to prevent TypeScript from widening the 'status' property to a generic 'string'.
-                        // This ensures the returned object is correctly typed as 'Task'.
+                        
+                        // Notify Winner and Council
+                        notify(lowestBid.by, `Félicitations ! Vous avez remporté la tâche "${t.title}"`);
+                        notify("Conseil Syndical", `Tâche "${t.title}" attribuée à ${lowestBid.by}`);
+
                         return { ...t, status: 'awarded' as const, awardedTo: lowestBid.by, awardedAmount: lowestBid.amount };
                     }
                 }
@@ -279,7 +412,7 @@ function Dashboard({ me }: DashboardProps) {
             }
         }, 5000); // Check every 5 seconds
         return () => clearInterval(interval);
-    }, [tasks, save]);
+    }, [tasks, save, notify]);
 
 
   const canDeleteTask = (task: Task) => me.role === 'admin' || (me.role === 'council' && task.status !== 'open');
@@ -305,7 +438,13 @@ function Dashboard({ me }: DashboardProps) {
   const approve = async (task: Task) => {
     if (me.role !== 'council' && me.role !== 'admin') return;
     const approvals = [...(task.approvals || []), { by: me.email, at: new Date().toISOString() }];
-    const status = approvals.length >= COUNCIL_MIN_APPROVALS ? 'open' : 'pending';
+    const isNowOpen = approvals.length >= COUNCIL_MIN_APPROVALS;
+    const status = isNowOpen ? 'open' : 'pending';
+    
+    if (isNowOpen) {
+        notify("Copropriétaires & CS", `Nouvelle offre disponible : "${task.title}"`);
+    }
+
     await updateTask(task.id, { approvals, status });
   };
   
@@ -333,6 +472,11 @@ function Dashboard({ me }: DashboardProps) {
 
       if (task.bids.length === 0) {
         updates.biddingStartedAt = new Date().toISOString();
+        // Notify on first bid
+        notify("Copropriétaires & CS", `Quelqu'un s'est positionné sur "${task.title}"`);
+      } else {
+        // Notify on new bid
+        notify("Copropriétaires & CS", `Nouvelle enchère placée sur "${task.title}"`);
       }
 
       await updateTask(id, updates);
@@ -341,11 +485,18 @@ function Dashboard({ me }: DashboardProps) {
     const task = tasks.find(t => t.id === id);
     if (!task || !task.bids.length) return;
     const low = task.bids.reduce((m, b) => (b.amount < m.amount ? b : m));
+    
+    notify(low.by, `Félicitations ! Vous avez remporté la tâche "${task.title}"`);
+    notify("Conseil Syndical", `Tâche "${task.title}" attribuée manuellement à ${low.by}`);
+
     await updateTask(id, { status: 'awarded', awardedTo: low.by, awardedAmount: low.amount });
   };
   const completeTask = async (id: string) => {
       const task = tasks.find(t => t.id === id);
       if (!task) return;
+      
+      notify("Conseil Syndical", `Intervention "${task.title}" terminée. Merci de noter.`);
+      
       await updateTask(id, { status: 'completed', completionAt: new Date().toISOString() });
       if (task.scope === 'copro') {
         await addLedger({ taskId: task.id, type: 'charge_credit', payer: 'Copropriété', payee: task.awardedTo!, amount: task.awardedAmount! });
@@ -383,18 +534,23 @@ function Dashboard({ me }: DashboardProps) {
 
   return (
     <div className="space-y-10">
-      <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-slate-700 pb-6">
         <div>
-          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Tableau de bord</h1>
-          <p className="text-slate-500 mt-1">Connecté: <b>{me.email}</b> ({ROLES.find(r=>r.id === me.role)?.label})</p>
+          <h1 className="text-3xl font-extrabold text-white tracking-tight">Tableau de bord</h1>
+          <p className="text-slate-400 mt-1">Connecté: <b className="text-slate-200">{me.email}</b> ({ROLES.find(r=>r.id === me.role)?.label})</p>
         </div>
         <Button variant="outline" size="sm" onClick={async () => { await fakeApi.logout(); window.location.reload(); }}>🚪 Déconnexion</Button>
       </header>
       
       <CreateTaskForm onCreate={create} />
 
+      {/* NEW: User Validation Queue for CS/Admin */}
+      {(me.role === 'council' || me.role === 'admin') && (
+          <UserValidationQueue notify={notify} />
+      )}
+
       {(me.role === 'council' || me.role === 'admin') && tasksByStatus.pending.length > 0 && (
-        <Section title="À valider" count={tasksByStatus.pending.length}>
+        <Section title="Tâches à valider" count={tasksByStatus.pending.length}>
           <ValidationQueue me={me} tasks={tasks} onApprove={approve} onReject={reject} onDelete={deleteTask} />
         </Section>
       )}
@@ -410,7 +566,6 @@ function Dashboard({ me }: DashboardProps) {
       </Section>
 
       <Section title="Tâches attribuées" count={tasksByStatus.awarded.length}>
-        {/* FIX: Corrected typo from tasksBySstatus to tasksByStatus */}
         {tasksByStatus.awarded.length ? <TaskList taskItems={tasksByStatus.awarded} /> : <EmptyState text="Aucune tâche attribuée." />}
       </Section>
       
@@ -425,13 +580,22 @@ function Dashboard({ me }: DashboardProps) {
 export default function App() {
   const { user, setUser } = useAuth();
   const [tab, setTab] = useState("dashboard");
+  const [toasts, setToasts] = useState<Toast[]>([]);
+
+  const notify = (to: string, subject: string) => {
+    const id = Math.random().toString(36);
+    setToasts(prev => [...prev, { id, to, subject }]);
+    setTimeout(() => {
+        setToasts(prev => prev.filter(t => t.id !== id));
+    }, 5000);
+  };
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-slate-900 text-slate-50 font-sans p-4 flex flex-col items-center justify-center">
+      <div className="min-h-screen bg-slate-950 text-slate-50 font-sans p-4 flex flex-col items-center justify-center">
         <div className="text-center space-y-4 py-8 md:py-10">
             <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-white">CoproSmart</h1>
-            <p className="text-slate-300 max-w-2xl mx-auto">Gérez les petits travaux de votre copropriété, simplement.</p>
+            <p className="text-slate-400 max-w-2xl mx-auto">Gérez les petits travaux de votre copropriété, simplement.</p>
         </div>
         <LoginCard onLogin={(u: User) => setUser(u)} />
       </div>
@@ -441,12 +605,13 @@ export default function App() {
   const me = { email: user.email, role: user.role };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans">
+    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans">
+      <ToastContainer toasts={toasts} />
       <div className="max-w-6xl mx-auto px-4 py-8 md:py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <aside className="md:col-span-1">
                 <nav className="sticky top-8 flex flex-col gap-2">
-                    <h2 className="font-bold text-lg mb-2 px-2">🏢 CoproSmart</h2>
+                    <h2 className="font-bold text-lg mb-2 px-2 text-indigo-400">🏢 CoproSmart</h2>
                     <Button variant={tab === "dashboard" ? "secondary" : "ghost"} onClick={() => setTab("dashboard")} className="justify-start">📋 Tâches</Button>
                     <Button variant={tab === "ledger" ? "secondary" : "ghost"} onClick={() => setTab("ledger")} className="justify-start">📒 Écritures</Button>
                     <Button variant={tab === "cgu" ? "secondary" : "ghost"} onClick={() => setTab("cgu")} className="justify-start">📜 CGU</Button>
@@ -454,14 +619,14 @@ export default function App() {
                 </nav>
             </aside>
             <main className="md:col-span-3">
-                {tab === "dashboard" && <Dashboard me={me} />}
+                {tab === "dashboard" && <Dashboard me={me} notify={notify} />}
                 {tab === "ledger" && <Ledger />}
                 {tab === "cgu" && <TermsOfService />}
                 {tab === "about" && <Governance />}
             </main>
         </div>
       </div>
-      <footer className="text-center text-xs text-slate-400 py-6">Prototype CoproSmart</footer>
+      <footer className="text-center text-xs text-slate-600 py-6">Prototype CoproSmart - Simulation</footer>
     </div>
   );
 }

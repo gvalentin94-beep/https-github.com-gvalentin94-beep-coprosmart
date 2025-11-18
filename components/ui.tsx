@@ -11,11 +11,11 @@ export function Button({ children, variant = "primary", size = "md", className =
   const baseClasses = "inline-flex items-center justify-center rounded-lg text-sm font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed";
   
   const variantClasses = {
-    primary: "bg-indigo-600 text-white hover:bg-indigo-700 focus-visible:ring-indigo-500 shadow-sm",
-    outline: "border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 focus-visible:ring-indigo-500",
+    primary: "bg-indigo-600 text-white hover:bg-indigo-500 focus-visible:ring-indigo-500 shadow-sm shadow-indigo-900/20",
+    outline: "border border-slate-600 bg-transparent text-slate-200 hover:bg-slate-800 focus-visible:ring-indigo-500",
     destructive: "bg-rose-600 text-white hover:bg-rose-700 focus-visible:ring-rose-500 shadow-sm",
-    ghost: "bg-transparent text-slate-700 hover:bg-slate-100 focus-visible:ring-indigo-500",
-    secondary: "bg-slate-100 text-slate-800 hover:bg-slate-200 focus-visible:ring-indigo-500",
+    ghost: "bg-transparent text-slate-300 hover:bg-slate-800 hover:text-white focus-visible:ring-indigo-500",
+    secondary: "bg-slate-700 text-slate-100 hover:bg-slate-600 focus-visible:ring-indigo-500",
   };
 
   const sizeClasses = {
@@ -45,7 +45,7 @@ export function Card({ children, className = "", padding = 'md' }: CardProps) {
       none: "p-0",
   }[padding];
   return (
-    <div className={`border border-slate-200/80 rounded-xl bg-white shadow-lg shadow-slate-100/70 ${paddingClass} ${className}`}>
+    <div className={`border border-slate-700 rounded-xl bg-slate-800 shadow-xl text-slate-200 ${paddingClass} ${className}`}>
       {children}
     </div>
   );
@@ -57,15 +57,15 @@ interface CardChildProps {
 }
 
 export function CardHeader({ children, className = "" }: CardChildProps) {
-  return <div className={`px-5 pt-4 pb-3 border-b border-slate-100 ${className}`}>{children}</div>;
+  return <div className={`px-5 pt-4 pb-3 border-b border-slate-700 ${className}`}>{children}</div>;
 }
 
 export function CardTitle({ children, className = "" }: CardChildProps) {
-  return <h2 className={`font-bold text-lg text-slate-800 tracking-tight ${className}`}>{children}</h2>;
+  return <h2 className={`font-bold text-lg text-white tracking-tight ${className}`}>{children}</h2>;
 }
 
 export function CardDescription({ children, className = "" }: CardChildProps) {
-    return <p className={`text-sm text-slate-500 ${className}`}>{children}</p>;
+    return <p className={`text-sm text-slate-400 ${className}`}>{children}</p>;
 }
 
 export function CardContent({ children, className = "" }: CardChildProps) {
@@ -76,7 +76,7 @@ export function CardContent({ children, className = "" }: CardChildProps) {
 export function Input({ className = "", ...props }: React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input
-      className={`w-full border border-slate-300 rounded-lg px-3 py-2 text-sm shadow-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition ${className}`}
+      className={`w-full border border-slate-600 rounded-lg px-3 py-2 text-sm shadow-sm bg-slate-900 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition ${className}`}
       {...props}
     />
   );
@@ -85,7 +85,7 @@ export function Input({ className = "", ...props }: React.InputHTMLAttributes<HT
 export function Textarea({ className = "", ...props }: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
   return (
     <textarea
-      className={`w-full border border-slate-300 rounded-lg px-3 py-2 text-sm shadow-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 min-h-[80px] transition ${className}`}
+      className={`w-full border border-slate-600 rounded-lg px-3 py-2 text-sm shadow-sm bg-slate-900 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 min-h-[80px] transition ${className}`}
       {...props}
     />
   );
@@ -94,7 +94,7 @@ export function Textarea({ className = "", ...props }: React.TextareaHTMLAttribu
 export function Select({ className = "", children, ...props }: React.SelectHTMLAttributes<HTMLSelectElement>) {
   return (
     <select
-      className={`w-full border border-slate-300 rounded-lg px-3 py-2 text-sm shadow-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition ${className}`}
+      className={`w-full border border-slate-600 rounded-lg px-3 py-2 text-sm shadow-sm bg-slate-900 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition ${className}`}
       {...props}
     >
         {children}
@@ -104,7 +104,7 @@ export function Select({ className = "", children, ...props }: React.SelectHTMLA
 
 export function Label({ children, className = "", ...props }: React.LabelHTMLAttributes<HTMLLabelElement>) {
   return (
-    <label className={`text-xs font-medium text-slate-600 block ${className}`} {...props}>
+    <label className={`text-xs font-medium text-slate-400 block ${className}`} {...props}>
       {children}
     </label>
   );
@@ -119,26 +119,26 @@ interface BadgeProps {
 }
 
 export function Badge({ children, variant, className = "", color }: BadgeProps) {
-  const baseClasses = "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap";
+  const baseClasses = "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap border";
   
   let variantClasses = "";
   if (color) {
-      // FIX: Use a static map for color classes to prevent Tailwind CSS from purging them during build.
+      // Dark mode colors: darker background, lighter text
       const colorMap: { [key: string]: string } = {
-          amber: 'bg-amber-100 text-amber-800',
-          indigo: 'bg-indigo-100 text-indigo-800',
-          sky: 'bg-sky-100 text-sky-800',
-          emerald: 'bg-emerald-100 text-emerald-800',
-          rose: 'bg-rose-100 text-rose-800',
+          amber: 'bg-amber-900/30 text-amber-200 border-amber-800',
+          indigo: 'bg-indigo-900/30 text-indigo-200 border-indigo-800',
+          sky: 'bg-sky-900/30 text-sky-200 border-sky-800',
+          emerald: 'bg-emerald-900/30 text-emerald-200 border-emerald-800',
+          rose: 'bg-rose-900/30 text-rose-200 border-rose-800',
       };
-      variantClasses = colorMap[color] || "bg-slate-100 text-slate-700"; // Fallback to a default style
+      variantClasses = colorMap[color] || "bg-slate-800 text-slate-300 border-slate-700";
   } else {
       variantClasses = {
-        default: "bg-indigo-100 text-indigo-800",
-        secondary: "bg-slate-100 text-slate-700",
-        outline: "border border-slate-300 text-slate-600 bg-transparent",
-        destructive: "bg-rose-100 text-rose-800",
-        success: "bg-emerald-100 text-emerald-800",
+        default: "bg-indigo-900/50 text-indigo-100 border-indigo-700",
+        secondary: "bg-slate-800 text-slate-300 border-slate-700",
+        outline: "border-slate-600 text-slate-400 bg-transparent",
+        destructive: "bg-rose-900/50 text-rose-200 border-rose-800",
+        success: "bg-emerald-900/50 text-emerald-200 border-emerald-800",
       }[variant || 'default'];
   }
 

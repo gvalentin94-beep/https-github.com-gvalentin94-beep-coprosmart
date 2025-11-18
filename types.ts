@@ -3,6 +3,7 @@ export type UserRole = "owner" | "council" | "admin";
 export type TaskStatus = "pending" | "open" | "awarded" | "completed" | "rejected";
 export type TaskScope = "copro" | "apartment";
 export type TaskCategory = "ampoule" | "porte" | "encombrants" | "divers";
+export type UserStatus = "pending" | "active" | "rejected";
 
 export interface User {
   id: string;
@@ -12,6 +13,9 @@ export interface User {
 
 export interface RegisteredUser extends User {
   password: string;
+  status: UserStatus;
+  resetToken?: string;
+  resetTokenExpires?: number;
 }
 
 export interface Me {

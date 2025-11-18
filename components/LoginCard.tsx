@@ -45,7 +45,7 @@ export function LoginCard({ onLogin }: LoginCardProps) {
             placeholder="prenom@copro.fr"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="bg-white border-slate-300 text-slate-900 placeholder-slate-400 focus:ring-indigo-500 focus:border-indigo-500"
+            className="bg-white border-slate-300 text-black placeholder-slate-400 focus:ring-indigo-500 focus:border-indigo-500"
           />
         </div>
         <div className="space-y-1.5">
@@ -53,7 +53,7 @@ export function LoginCard({ onLogin }: LoginCardProps) {
           <Select
             value={role}
             onChange={(e) => setRole(e.target.value as UserRole)}
-            className="bg-white border-slate-300 text-slate-900 focus:ring-indigo-500 focus:border-indigo-500"
+            className="bg-white border-slate-300 text-black focus:ring-indigo-500 focus:border-indigo-500"
           >
             {ROLES.map((r) => (
               <option key={r.id} value={r.id}>

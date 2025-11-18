@@ -10,6 +10,10 @@ export interface User {
   role: UserRole;
 }
 
+export interface RegisteredUser extends User {
+  password: string;
+}
+
 export interface Me {
   email: string;
   role: UserRole;

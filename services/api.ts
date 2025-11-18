@@ -29,8 +29,8 @@ export const fakeApi = {
     localStorage.setItem(ledgerKey, JSON.stringify(entries)),
 
   // Auth & User Management
-  signUp: async (email: string, password: string, role: UserRole): Promise<void> => {
-    if (!email || !password) throw new Error("Email et mot de passe requis.");
+  signUp: async (email: string, password: string, role: UserRole, firstName: string, lastName: string): Promise<void> => {
+    if (!email || !password || !firstName || !lastName) throw new Error("Tous les champs sont requis.");
     const users = safeJsonParse<RegisteredUser[]>(usersDbKey, []);
     if (users.some(u => u.email.toLowerCase() === email.toLowerCase())) {
         throw new Error("Cet email est déjà utilisé.");
@@ -39,6 +39,8 @@ export const fakeApi = {
     const newUser: RegisteredUser = { 
         id: email, 
         email, 
+        firstName,
+        lastName,
         role, 
         password,
         status: 'pending' 
@@ -69,7 +71,13 @@ export const fakeApi = {
     }
 
     // Create a session user object *without* the password
-    const sessionUser: User = { id: foundUser.id, email: foundUser.email, role: foundUser.role };
+    const sessionUser: User = { 
+        id: foundUser.id, 
+        email: foundUser.email, 
+        role: foundUser.role,
+        firstName: foundUser.firstName || 'Prénom', // Fallback for old data
+        lastName: foundUser.lastName || 'Nom',     // Fallback for old data
+    };
     localStorage.setItem(userKey, JSON.stringify(sessionUser));
     return sessionUser;
   },
@@ -132,6 +140,21 @@ export const fakeApi = {
       // Either delete them or set to rejected. Deleting is cleaner for cleanup.
       const newUsers = users.filter(u => u.email !== email);
       localStorage.setItem(usersDbKey, JSON.stringify(newUsers));
+  },
+
+  // Directory Feature
+  getDirectory: async (): Promise<User[]> => {
+      const users = safeJsonParse<RegisteredUser[]>(usersDbKey, []);
+      // Only return active users and strip sensitive data
+      return users
+        .filter(u => u.status === 'active' || !u.status) // Include legacy active users
+        .map(u => ({
+            id: u.id,
+            email: u.email,
+            firstName: u.firstName || 'Inconnu',
+            lastName: u.lastName || '',
+            role: u.role
+        }));
   }
 };
 

@@ -116,6 +116,50 @@ function Ledger() {
   );
 }
 
+// --- Directory Component ---
+function UserDirectory() {
+    const [users, setUsers] = useState<User[]>([]);
+
+    useEffect(() => {
+        fakeApi.getDirectory().then(setUsers);
+    }, []);
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>👥 Annuaire de la Résidence</CardTitle>
+                <p className="text-sm text-slate-400">Liste des personnes inscrites sur CoproSmart pour plus de transparence.</p>
+            </CardHeader>
+            <CardContent>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left text-slate-300">
+                        <thead className="text-xs text-slate-400 uppercase bg-slate-700/50">
+                            <tr>
+                                <th className="px-4 py-3">Nom & Prénom</th>
+                                <th className="px-4 py-3">Rôle</th>
+                                <th className="px-4 py-3">Email</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {users.map(u => (
+                                <tr key={u.id} className="border-b border-slate-700 hover:bg-slate-800/50">
+                                    <td className="px-4 py-3 font-medium text-white">
+                                        {u.firstName} {u.lastName.toUpperCase()}
+                                    </td>
+                                    <td className="px-4 py-3">
+                                        <Badge variant="outline">{ROLES.find(r => r.id === u.role)?.label}</Badge>
+                                    </td>
+                                    <td className="px-4 py-3 text-slate-400">{u.email}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </CardContent>
+        </Card>
+    );
+}
+
 // --- EmptyState & Section Components ---
 interface EmptyStateProps {
   text: string;
@@ -307,10 +351,11 @@ function UserValidationQueue({ notify }: UserValidationQueueProps) {
                         <Card key={u.id} className="border-amber-500/50">
                             <CardHeader>
                                 <CardTitle className="text-base flex items-center gap-2">
-                                    👤 {u.email}
+                                    👤 {u.firstName} {u.lastName}
                                 </CardTitle>
                             </CardHeader>
                             <CardContent>
+                                <p className="text-sm text-slate-300 mb-1">{u.email}</p>
                                 <p className="text-sm text-slate-400 mb-4">Rôle demandé : <Badge variant="outline">{ROLES.find(r => r.id === u.role)?.label}</Badge></p>
                                 <div className="flex gap-2">
                                     <Button size="sm" onClick={() => handleApprove(u.email)} className="w-full bg-emerald-600 hover:bg-emerald-500">Valider</Button>
@@ -537,7 +582,7 @@ function Dashboard({ me, notify }: DashboardProps) {
       <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-slate-700 pb-6">
         <div>
           <h1 className="text-3xl font-extrabold text-white tracking-tight">Tableau de bord</h1>
-          <p className="text-slate-400 mt-1">Connecté: <b className="text-slate-200">{me.email}</b> ({ROLES.find(r=>r.id === me.role)?.label})</p>
+          <p className="text-slate-400 mt-1">Connecté: <b className="text-slate-200">{me.firstName} {me.lastName}</b> ({ROLES.find(r=>r.id === me.role)?.label})</p>
         </div>
         <Button variant="outline" size="sm" onClick={async () => { await fakeApi.logout(); window.location.reload(); }}>🚪 Déconnexion</Button>
       </header>
@@ -602,7 +647,7 @@ export default function App() {
     );
   }
 
-  const me = { email: user.email, role: user.role };
+  const me = { email: user.email, role: user.role, firstName: user.firstName, lastName: user.lastName };
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans">
@@ -616,6 +661,7 @@ export default function App() {
                     <Button variant={tab === "ledger" ? "secondary" : "ghost"} onClick={() => setTab("ledger")} className="justify-start">📒 Écritures</Button>
                     <Button variant={tab === "cgu" ? "secondary" : "ghost"} onClick={() => setTab("cgu")} className="justify-start">📜 CGU</Button>
                     <Button variant={tab === "about" ? "secondary" : "ghost"} onClick={() => setTab("about")} className="justify-start">⚖️ Règles</Button>
+                    <Button variant={tab === "directory" ? "secondary" : "ghost"} onClick={() => setTab("directory")} className="justify-start">👥 Annuaire</Button>
                 </nav>
             </aside>
             <main className="md:col-span-3">
@@ -623,6 +669,7 @@ export default function App() {
                 {tab === "ledger" && <Ledger />}
                 {tab === "cgu" && <TermsOfService />}
                 {tab === "about" && <Governance />}
+                {tab === "directory" && <UserDirectory />}
             </main>
         </div>
       </div>

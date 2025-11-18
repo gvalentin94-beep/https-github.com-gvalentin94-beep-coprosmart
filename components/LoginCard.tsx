@@ -19,6 +19,10 @@ export function LoginCard({ onLogin }: LoginCardProps) {
   const [role, setRole] = useState<UserRole>("owner");
   const [residence, setResidence] = useState("Résidence Watteau");
   
+  // Identity fields
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  
   // Reset Flow
   const [resetToken, setResetToken] = useState("");
   const [simulatedToken, setSimulatedToken] = useState("");
@@ -32,6 +36,8 @@ export function LoginCard({ onLogin }: LoginCardProps) {
     setConfirmPassword("");
     setRole("owner");
     setResidence("Résidence Watteau");
+    setFirstName("");
+    setLastName("");
     setResetToken("");
     setSimulatedToken("");
     setErr("");
@@ -54,9 +60,13 @@ export function LoginCard({ onLogin }: LoginCardProps) {
       setErr("Les mots de passe ne correspondent pas.");
       return;
     }
+    if (!firstName.trim() || !lastName.trim()) {
+        setErr("Nom et prénom sont obligatoires.");
+        return;
+    }
     try {
       setErr("");
-      await fakeApi.signUp(email.trim(), password, role);
+      await fakeApi.signUp(email.trim(), password, role, firstName.trim(), lastName.trim());
       // Do not auto-login. Show success message.
       setSuccessMsg("Compte créé ! En attente de validation par le Conseil Syndical.");
       setTimeout(() => {
@@ -170,6 +180,16 @@ export function LoginCard({ onLogin }: LoginCardProps) {
         {/* SIGN UP FORM */}
         {mode === 'signUp' && (
             <>
+                <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1.5">
+                        <Label className="text-slate-300">Prénom</Label>
+                        <Input value={firstName} onChange={(e) => setFirstName(e.target.value)} className="bg-white border-slate-300 text-black placeholder-slate-400" />
+                    </div>
+                    <div className="space-y-1.5">
+                        <Label className="text-slate-300">Nom</Label>
+                        <Input value={lastName} onChange={(e) => setLastName(e.target.value)} className="bg-white border-slate-300 text-black placeholder-slate-400" />
+                    </div>
+                </div>
                  <div className="space-y-1.5">
                     <Label className="text-slate-300">Email</Label>
                     <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="bg-white border-slate-300 text-black placeholder-slate-400" />

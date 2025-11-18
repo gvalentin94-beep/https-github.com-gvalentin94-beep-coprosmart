@@ -8,6 +8,8 @@ export type UserStatus = "pending" | "active" | "rejected";
 export interface User {
   id: string;
   email: string;
+  firstName: string;
+  lastName: string;
   role: UserRole;
 }
 
@@ -20,6 +22,8 @@ export interface RegisteredUser extends User {
 
 export interface Me {
   email: string;
+  firstName: string;
+  lastName: string;
   role: UserRole;
 }
 

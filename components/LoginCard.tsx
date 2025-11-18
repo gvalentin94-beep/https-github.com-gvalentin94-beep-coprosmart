@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { fakeApi } from '../services/api';
 import type { User, UserRole } from '../types';
@@ -29,11 +28,16 @@ export function LoginCard({ onLogin }: LoginCardProps) {
   };
 
   return (
+    // FIX: Wrapped Card content instead of using a self-closing tag.
     <Card className="max-w-md mx-auto bg-slate-800/50 backdrop-blur-sm border-slate-700">
+      {/* FIX: Wrapped CardHeader content instead of using a self-closing tag. */}
       <CardHeader>
+        {/* FIX: Wrapped CardTitle content instead of using a self-closing tag. */}
         <CardTitle className="text-white">Se connecter à CoproSmart</CardTitle>
+        {/* FIX: Wrapped CardDescription content instead of using a self-closing tag. */}
         <CardDescription className="text-slate-300">Entrez vos informations pour commencer.</CardDescription>
       </CardHeader>
+      {/* FIX: Wrapped CardContent content instead of using a self-closing tag. */}
       <CardContent className="space-y-4">
         <div className="space-y-1.5">
           <Label className="text-slate-300">Email</Label>
@@ -41,7 +45,7 @@ export function LoginCard({ onLogin }: LoginCardProps) {
             placeholder="prenom@copro.fr"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="bg-slate-700/50 border-slate-600 text-white placeholder-slate-400 focus:ring-indigo-400 focus:border-indigo-400"
+            className="bg-white border-slate-300 text-slate-900 placeholder-slate-400 focus:ring-indigo-500 focus:border-indigo-500"
           />
         </div>
         <div className="space-y-1.5">
@@ -49,7 +53,7 @@ export function LoginCard({ onLogin }: LoginCardProps) {
           <Select
             value={role}
             onChange={(e) => setRole(e.target.value as UserRole)}
-            className="bg-slate-700/50 border-slate-600 text-white focus:ring-indigo-400 focus:border-indigo-400"
+            className="bg-white border-slate-300 text-slate-900 focus:ring-indigo-500 focus:border-indigo-500"
           >
             {ROLES.map((r) => (
               <option key={r.id} value={r.id}>

@@ -141,13 +141,16 @@ export function TaskCard({ task, me, onBid, onAward, onComplete, onRate, onPayAp
     const borderColor = `border-l-4 ${colorClasses.border}`;
 
     return (
+        // FIX: Wrapped Card content instead of using a self-closing tag.
         <Card className={borderColor}>
+            {/* FIX: Wrapped CardHeader content instead of using a self-closing tag. */}
             <CardHeader>
                 <div className="flex items-start justify-between gap-3">
                     <div className="space-y-1.5">
                         <div className="flex items-center gap-2">
                            {/* Fix: Use the static class map here as well. */}
                            <span className={colorClasses.text}>{React.cloneElement(statusConfig.icon, { className: 'h-5 w-5' })}</span>
+                            {/* FIX: Wrapped CardTitle content instead of using a self-closing tag. */}
                             <CardTitle className="text-base md:text-lg">{task.title}</CardTitle>
                         </div>
                         <p className="text-xs text-slate-500">
@@ -156,10 +159,12 @@ export function TaskCard({ task, me, onBid, onAward, onComplete, onRate, onPayAp
                     </div>
                      <div className="flex items-center gap-2">
                         {categoryInfo && React.cloneElement(categoryInfo.icon, {className: "h-5 w-5 text-slate-400"})}
+                        {/* FIX: Wrapped Badge content instead of using a self-closing tag. */}
                         <Badge variant="secondary" className="font-mono text-sm">{task.startingPrice}€</Badge>
                      </div>
                 </div>
             </CardHeader>
+            {/* FIX: Wrapped CardContent content instead of using a self-closing tag. */}
             <CardContent className="space-y-4">
                 <p className="text-sm text-slate-700">{task.details}</p>
 

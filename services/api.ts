@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import type { Task, LedgerEntry, User, UserRole, RegisteredUser } from '../types';
+import type { Task, LedgerEntry, User, UserRole, RegisteredUser, UserStatus } from '../types';
 
 const storageKey = "copro_tasks_v3";
 const ledgerKey = "copro_ledger_v3";
@@ -68,6 +68,9 @@ export const fakeApi = {
     }
     if (status === 'rejected') {
         throw new Error("Demande de compte refusée.");
+    }
+    if (status === 'deleted') {
+        throw new Error("Ce compte a été désactivé.");
     }
 
     // Create a session user object *without* the password
@@ -142,19 +145,30 @@ export const fakeApi = {
       localStorage.setItem(usersDbKey, JSON.stringify(newUsers));
   },
 
-  // Directory Feature
-  getDirectory: async (): Promise<User[]> => {
+  // Directory & Admin Features
+  getDirectory: async (): Promise<RegisteredUser[]> => {
       const users = safeJsonParse<RegisteredUser[]>(usersDbKey, []);
-      // Only return active users and strip sensitive data
-      return users
-        .filter(u => u.status === 'active' || !u.status) // Include legacy active users
-        .map(u => ({
-            id: u.id,
-            email: u.email,
-            firstName: u.firstName || 'Inconnu',
-            lastName: u.lastName || '',
-            role: u.role
-        }));
+      // Return all users except pending, but include deleted so admin can restore
+      return users.filter(u => u.status !== 'pending');
+  },
+
+  updateUserStatus: async (email: string, status: UserStatus): Promise<void> => {
+      const users = safeJsonParse<RegisteredUser[]>(usersDbKey, []);
+      const idx = users.findIndex(u => u.email === email);
+      if (idx > -1) {
+          users[idx].status = status;
+          localStorage.setItem(usersDbKey, JSON.stringify(users));
+      }
+  },
+
+  deleteRating: async (taskId: string, ratingIndex: number): Promise<void> => {
+      const tasks = safeJsonParse<Task[]>(storageKey, []);
+      const taskIdx = tasks.findIndex(t => t.id === taskId);
+      if (taskIdx > -1 && tasks[taskIdx].ratings) {
+          // Remove rating at index
+          tasks[taskIdx].ratings.splice(ratingIndex, 1);
+          localStorage.setItem(storageKey, JSON.stringify(tasks));
+      }
   }
 };
 

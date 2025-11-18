@@ -117,46 +117,136 @@ function Ledger() {
 }
 
 // --- Directory Component ---
-function UserDirectory() {
-    const [users, setUsers] = useState<User[]>([]);
+interface UserDirectoryProps {
+    me: Me;
+    tasks: Task[];
+    onDataChange: () => void; // To trigger refresh if admin changes something
+}
 
-    useEffect(() => {
-        fakeApi.getDirectory().then(setUsers);
+function UserDirectory({ me, tasks, onDataChange }: UserDirectoryProps) {
+    const [users, setUsers] = useState<RegisteredUser[]>([]);
+
+    const fetchUsers = useCallback(async () => {
+        const data = await fakeApi.getDirectory();
+        setUsers(data);
     }, []);
 
+    useEffect(() => {
+        fetchUsers();
+    }, [fetchUsers, onDataChange]); // Refresh when parent data changes too
+
+    const handleDeleteUser = async (email: string) => {
+        if (window.confirm(`Voulez-vous vraiment bannir l'utilisateur ${email} ?`)) {
+            await fakeApi.updateUserStatus(email, 'deleted');
+            fetchUsers();
+        }
+    };
+
+    const handleRestoreUser = async (email: string) => {
+        if (window.confirm(`Rétablir l'utilisateur ${email} ?`)) {
+            await fakeApi.updateUserStatus(email, 'active');
+            fetchUsers();
+        }
+    };
+
+    const handleDeleteRating = async (taskId: string, ratingIndex: number) => {
+        if (window.confirm("Supprimer ce commentaire ?")) {
+            await fakeApi.deleteRating(taskId, ratingIndex);
+            onDataChange(); // This will eventually trigger fetchUsers via props/effect if needed, but main point is to refresh reviews
+        }
+    };
+
+    const getReviewsForUser = (email: string) => {
+        // Find all ratings on tasks awarded to this user
+        return tasks
+            .filter(t => t.awardedTo === email && t.ratings && t.ratings.length > 0)
+            .flatMap(t => t.ratings.map((r, idx) => ({ ...r, taskId: t.id, originalIdx: idx })));
+    };
+
+    const getAverageRating = (reviews: Rating[]) => {
+        if (reviews.length === 0) return 0;
+        return (reviews.reduce((acc, r) => acc + r.stars, 0) / reviews.length).toFixed(1);
+    };
+
+    const isAdminOrCouncil = me.role === 'admin' || me.role === 'council';
+    const isAdmin = me.role === 'admin';
+
     return (
-        <Card>
-            <CardHeader>
-                <CardTitle>👥 Annuaire de la Résidence</CardTitle>
-                <p className="text-sm text-slate-400">Liste des personnes inscrites sur CoproSmart pour plus de transparence.</p>
-            </CardHeader>
-            <CardContent>
-                <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-left text-slate-300">
-                        <thead className="text-xs text-slate-400 uppercase bg-slate-700/50">
-                            <tr>
-                                <th className="px-4 py-3">Nom & Prénom</th>
-                                <th className="px-4 py-3">Rôle</th>
-                                <th className="px-4 py-3">Email</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {users.map(u => (
-                                <tr key={u.id} className="border-b border-slate-700 hover:bg-slate-800/50">
-                                    <td className="px-4 py-3 font-medium text-white">
-                                        {u.firstName} {u.lastName.toUpperCase()}
-                                    </td>
-                                    <td className="px-4 py-3">
+        <div className="space-y-4">
+            <Section title="👥 Annuaire de la Résidence" count={users.filter(u => u.status === 'active' || (isAdmin && u.status === 'deleted')).length}>
+                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2">
+                    {users.map(u => {
+                        // Hide deleted users for normal users
+                        if (u.status === 'deleted' && !isAdmin) return null;
+                        
+                        const reviews = getReviewsForUser(u.email);
+                        const avg = getAverageRating(reviews);
+                        const isDeleted = u.status === 'deleted';
+
+                        return (
+                            <Card key={u.id} className={`${isDeleted ? 'opacity-60 border-rose-900 bg-rose-950/20' : 'border-slate-700'}`}>
+                                <CardHeader className="pb-2">
+                                    <div className="flex justify-between items-start">
+                                        <div>
+                                            <CardTitle className="text-base flex items-center gap-2">
+                                                {u.firstName} {u.lastName.toUpperCase()}
+                                                {isDeleted && <Badge variant="destructive">Banni</Badge>}
+                                            </CardTitle>
+                                            <p className="text-xs text-slate-400 mt-1">{u.email}</p>
+                                        </div>
                                         <Badge variant="outline">{ROLES.find(r => r.id === u.role)?.label}</Badge>
-                                    </td>
-                                    <td className="px-4 py-3 text-slate-400">{u.email}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                                    </div>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    {/* Ratings Summary */}
+                                    <div className="flex items-center gap-2 text-sm">
+                                        <span className="text-yellow-400 font-bold text-lg">★ {avg}</span>
+                                        <span className="text-slate-500">({reviews.length} avis)</span>
+                                    </div>
+
+                                    {/* Recent Comments */}
+                                    {reviews.length > 0 && (
+                                        <div className="bg-slate-900/50 rounded-lg p-2 space-y-2 max-h-40 overflow-y-auto text-xs">
+                                            {reviews.map((r, i) => (
+                                                <div key={i} className="border-b border-slate-800 pb-2 last:border-0 last:pb-0">
+                                                    <div className="flex justify-between items-center">
+                                                        <div className="flex text-yellow-500">{"★".repeat(r.stars)}<span className="text-slate-700">{"★".repeat(5-r.stars)}</span></div>
+                                                        {isAdminOrCouncil && (
+                                                            <button onClick={() => handleDeleteRating(r.taskId, r.originalIdx)} className="text-rose-500 hover:text-rose-400 text-[10px] uppercase font-bold">
+                                                                Supprimer
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                    <p className="text-slate-300 mt-1 italic">"{r.comment}"</p>
+                                                    <p className="text-slate-600 text-[10px] mt-1">{new Date(r.at).toLocaleDateString()}</p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {/* Admin Actions */}
+                                    {isAdminOrCouncil && (
+                                        <div className="pt-2 flex justify-end gap-2 border-t border-slate-700/50">
+                                            {!isDeleted ? (
+                                                <Button variant="destructive" size="sm" onClick={() => handleDeleteUser(u.email)}>
+                                                    🚫 Bannir
+                                                </Button>
+                                            ) : (
+                                                isAdmin && (
+                                                    <Button variant="secondary" size="sm" onClick={() => handleRestoreUser(u.email)}>
+                                                        ♻️ Rétablir le compte
+                                                    </Button>
+                                                )
+                                            )}
+                                        </div>
+                                    )}
+                                </CardContent>
+                            </Card>
+                        );
+                    })}
                 </div>
-            </CardContent>
-        </Card>
+            </Section>
+        </div>
     );
 }
 
@@ -175,7 +265,7 @@ function EmptyState({ text }: EmptyStateProps) {
 
 interface SectionProps {
   title: string;
-  count: number;
+  count?: number;
   children: React.ReactNode;
 }
 
@@ -184,7 +274,7 @@ function Section({ title, count, children }: SectionProps) {
     <section className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-xl font-bold text-white tracking-tight">{title}</h3>
-        <Badge variant="secondary" className="text-base px-3">{count}</Badge>
+        {count !== undefined && <Badge variant="secondary" className="text-base px-3">{count}</Badge>}
       </div>
       {children}
     </section>
@@ -237,6 +327,15 @@ function CreateTaskForm({ onCreate }: CreateTaskFormProps) {
         setOpen(false);
     };
 
+    const getWarrantyLabel = (days: string) => {
+        if (days === '0') return 'Sans garantie';
+        if (days === '30') return '1 mois';
+        if (days === '90') return '3 mois';
+        if (days === '180') return '6 mois';
+        if (days === '365') return '12 mois';
+        return `${days} jours`;
+    }
+
     if (!open) {
         return (
             <div className="mb-4">
@@ -259,10 +358,10 @@ function CreateTaskForm({ onCreate }: CreateTaskFormProps) {
                         <div className="space-y-2 text-sm text-slate-300">
                             <p><strong className="text-white">Titre :</strong> {title}</p>
                             <p><strong className="text-white">Emplacement :</strong> {location}</p>
-                            <p><strong className="text-white">Catégorie :</strong> {CATEGORIES.find(c => c.id === category)?.label}</p>
                             <p><strong className="text-white">Prix de départ :</strong> {startingPrice} €</p>
+                            <p><strong className="text-white">Catégorie :</strong> {CATEGORIES.find(c => c.id === category)?.label}</p>
                             <p><strong className="text-white">Détails :</strong> {details || "Aucun détail"}</p>
-                            <p><strong className="text-white">Garantie :</strong> {warrantyDays} jours</p>
+                            <p><strong className="text-white">Garantie :</strong> {getWarrantyLabel(warrantyDays)}</p>
                         </div>
                         <div className="flex gap-3 justify-end pt-4 border-t border-slate-700">
                             <Button variant="outline" onClick={() => setPreviewMode(false)}>✏️ Modifier</Button>
@@ -281,11 +380,14 @@ function CreateTaskForm({ onCreate }: CreateTaskFormProps) {
             <Card>
                 <CardHeader><CardTitle>Nouvelle tâche pour la copropriété</CardTitle></CardHeader>
                 <CardContent className="space-y-4">
-                    <div className="grid md:grid-cols-2 gap-4">
-                        <div className="space-y-1.5"><Label>Titre de la tâche (obligatoire)</Label><Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Changer ampoule entrée B" /></div>
-                        <div className="space-y-1.5"><Label>Catégorie</Label><Select value={category} onChange={e => setCategory(e.target.value as TaskCategory)}>{CATEGORIES.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}</Select></div>
+                    
+                    {/* Titre */}
+                    <div className="space-y-1.5">
+                        <Label>Titre de la tâche (obligatoire)</Label>
+                        <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Changer ampoule entrée B" />
                     </div>
-                    <div className="space-y-1.5"><Label>Détails</Label><Textarea value={details} onChange={(e) => setDetails(e.target.value)} placeholder="Ampoule E27, échelle nécessaire..." /></div>
+
+                    {/* Emplacement & Prix (Moved Up) */}
                     <div className="grid md:grid-cols-2 gap-4">
                         <div className="space-y-1.5">
                             <Label>Emplacement (obligatoire)</Label>
@@ -294,12 +396,68 @@ function CreateTaskForm({ onCreate }: CreateTaskFormProps) {
                                 {LOCATIONS.map(loc => <option key={loc} value={loc}>{loc}</option>)}
                             </Select>
                         </div>
-                        <div className="space-y-1.5"><Label>Prix de départ (€) (obligatoire, entier)</Label><Input type="number" min="0" step="1" value={startingPrice} onChange={(e) => setStartingPrice(e.target.value)} /></div>
+                        <div className="space-y-1.5">
+                            <Label>Prix de départ (€)</Label>
+                            <div className="relative">
+                                <Input 
+                                    type="number" 
+                                    min="0" 
+                                    step="1" 
+                                    value={startingPrice} 
+                                    onChange={(e) => setStartingPrice(e.target.value)} 
+                                    className="pr-8" // Padding for the € symbol
+                                />
+                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold">€</span>
+                            </div>
+                        </div>
                     </div>
-                     <div className="grid md:grid-cols-2 gap-4">
-                        <div className="space-y-1.5"><Label>Garantie (jours)</Label><Input type="number" min="0" value={warrantyDays} onChange={(e) => setWarrantyDays(e.target.value)} /></div>
+
+                    {/* Catégorie */}
+                    <div className="space-y-1.5">
+                        <Label>Catégorie</Label>
+                        <Select value={category} onChange={e => setCategory(e.target.value as TaskCategory)}>
+                            {CATEGORIES.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
+                        </Select>
                     </div>
-                    <div className="flex justify-end gap-2 pt-2">
+
+                    {/* Détails */}
+                    <div className="space-y-1.5">
+                        <Label>Détails</Label>
+                        <Textarea value={details} onChange={(e) => setDetails(e.target.value)} placeholder="Ampoule E27, échelle nécessaire..." />
+                    </div>
+                    
+                    {/* Garantie */}
+                    <div className="pt-4 border-t border-slate-700 space-y-3">
+                        <Label className="block text-center text-slate-300 text-sm mb-2">Garantie souhaitée (mois)</Label>
+                        <div className="flex flex-wrap justify-center gap-2">
+                            {[
+                                { label: 'Sans', val: '0' },
+                                { label: '1 mois', val: '30' },
+                                { label: '3 mois', val: '90' },
+                                { label: '6 mois', val: '180' },
+                                { label: '12 mois', val: '365' },
+                            ].map((opt) => (
+                                <label key={opt.val} className={`
+                                    cursor-pointer px-4 py-2 rounded-full text-sm font-medium transition-all border
+                                    ${warrantyDays === opt.val 
+                                        ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-900/50' 
+                                        : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-500 hover:text-slate-200'}
+                                `}>
+                                     <input 
+                                        type="radio" 
+                                        name="warranty" 
+                                        value={opt.val} 
+                                        checked={warrantyDays === opt.val} 
+                                        onChange={(e) => setWarrantyDays(e.target.value)} 
+                                        className="hidden"
+                                    />
+                                    {opt.label}
+                                </label>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="flex justify-end gap-2 pt-4">
                         <Button variant="ghost" onClick={() => setOpen(false)}>Annuler</Button>
                         <Button onClick={handlePreview}>Prévisualiser la tâche</Button>
                     </div>
@@ -626,6 +784,17 @@ export default function App() {
   const { user, setUser } = useAuth();
   const [tab, setTab] = useState("dashboard");
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]); // Lifted state to share with Directory
+
+  // Lift task fetching to App level so we can pass it to Directory for reviews
+  const fetchTasks = useCallback(async () => {
+    const fetchedTasks = await fakeApi.readTasks();
+    setTasks(fetchedTasks);
+  }, []);
+
+  useEffect(() => {
+    fetchTasks();
+  }, [fetchTasks]);
 
   const notify = (to: string, subject: string) => {
     const id = Math.random().toString(36);
@@ -669,7 +838,7 @@ export default function App() {
                 {tab === "ledger" && <Ledger />}
                 {tab === "cgu" && <TermsOfService />}
                 {tab === "about" && <Governance />}
-                {tab === "directory" && <UserDirectory />}
+                {tab === "directory" && <UserDirectory me={me} tasks={tasks} onDataChange={fetchTasks} />}
             </main>
         </div>
       </div>

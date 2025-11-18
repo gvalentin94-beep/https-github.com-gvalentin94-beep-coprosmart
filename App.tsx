@@ -735,14 +735,22 @@ function Dashboard({ me, notify }: DashboardProps) {
     </div>
   );
 
+  const roleLabel = ROLES.find(r => r.id === me.role)?.label.toUpperCase();
+
   return (
     <div className="space-y-10">
-      <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-slate-700 pb-6">
+      <header className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 border-b border-slate-700 pb-6">
         <div>
           <h1 className="text-3xl font-extrabold text-white tracking-tight">Tableau de bord</h1>
-          <p className="text-slate-400 mt-1">Connecté: <b className="text-slate-200">{me.firstName} {me.lastName}</b> ({ROLES.find(r=>r.id === me.role)?.label})</p>
+          <div className="mt-2">
+             <p className="text-slate-400 text-xs uppercase tracking-wider font-semibold">Connecté en tant que <span className="text-indigo-400">{roleLabel}</span></p>
+             <p className="text-2xl text-white font-medium">{me.firstName} {me.lastName}</p>
+          </div>
         </div>
-        <Button variant="outline" size="sm" onClick={async () => { await fakeApi.logout(); window.location.reload(); }}>🚪 Déconnexion</Button>
+        <div className="flex flex-col items-end gap-2">
+            <span className="text-sm text-slate-400">{me.email}</span>
+            <Button variant="outline" size="sm" onClick={async () => { await fakeApi.logout(); window.location.reload(); }}>🚪 Déconnexion</Button>
+        </div>
       </header>
       
       <CreateTaskForm onCreate={create} />

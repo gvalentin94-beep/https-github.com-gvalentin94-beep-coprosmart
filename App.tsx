@@ -147,7 +147,8 @@ function CreateTaskForm({ onCreate }: CreateTaskFormProps) {
                     <CardContent className="space-y-4">
                         <div className="grid md:grid-cols-2 gap-4">
                             <div className="space-y-1.5"><Label>Titre de la tâche</Label><Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Changer ampoule entrée B" /></div>
-                            <div className="space-y-1.5"><Label>Catégorie</Label><Select value={category} onChange={e => setCategory(e.target.value as any)}>{CATEGORIES.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}</Select></div>
+                            {/* FIX: Replaced 'as any' with a specific type for better type safety. */}
+                            <div className="space-y-1.5"><Label>Catégorie</Label><Select value={category} onChange={e => setCategory(e.target.value as TaskCategory)}>{CATEGORIES.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}</Select></div>
                         </div>
                         <div className="space-y-1.5"><Label>Détails</Label><Textarea value={details} onChange={(e) => setDetails(e.target.value)} placeholder="Ampoule E27, échelle nécessaire..." /></div>
                         <div className="grid md:grid-cols-2 gap-4">
@@ -279,7 +280,8 @@ function Dashboard({ me }: DashboardProps) {
       }
   };
   const rateTask = async (id: string, rating: Omit<Rating, 'at'|'byHash'>) => {
-    const byHash = btoa(unescape(encodeURIComponent(me.email))).slice(0, 10);
+    // FIX: Replaced deprecated 'unescape' function for robust UTF-8 to base64 encoding.
+    const byHash = btoa(encodeURIComponent(me.email).replace(/%([0-9A-F]{2})/g, (_match, p1) => String.fromCharCode(parseInt(p1, 16)))).slice(0, 10);
     const task = tasks.find(t => t.id === id);
     if (!task) return;
     const ratings = [...(task.ratings || []), { ...rating, byHash, at: new Date().toISOString() }];
@@ -343,7 +345,7 @@ function Dashboard({ me }: DashboardProps) {
       {/* FIX: Section component now correctly wraps its children. */}
       <Section title="Tâches attribuées" count={tasksByStatus.awarded.length}>
         {tasksByStatus.awarded.length ? <TaskList taskItems={tasksByStatus.awarded} /> : <EmptyState text="Aucune tâche attribuée." />}
-      </Section>
+      </section>
       
       {/* FIX: Section component now correctly wraps its children. */}
       <Section title="Tâches terminées" count={tasksByStatus.completed.length}>

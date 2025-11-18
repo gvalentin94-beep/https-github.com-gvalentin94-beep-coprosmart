@@ -1,0 +1,5 @@
+{
+  "name": "CoproSmart",
+  "description": "An application to manage small works and tasks within a condominium, featuring a reverse auction system and a validation workflow by the union council.",
+  "requestFramePermissions": []
+}

@@ -262,7 +262,9 @@ function Dashboard({ me }: DashboardProps) {
                         const lowestBid = t.bids.reduce((min, b) => b.amount < min.amount ? b : min, t.bids[0]);
                         changed = true;
                         console.log(`Task ${t.id} awarded automatically to ${lowestBid.by}`);
-                        return { ...t, status: 'awarded', awardedTo: lowestBid.by, awardedAmount: lowestBid.amount };
+                        // FIX: Add 'as const' to prevent TypeScript from widening the 'status' property to a generic 'string'.
+                        // This ensures the returned object is correctly typed as 'Task'.
+                        return { ...t, status: 'awarded' as const, awardedTo: lowestBid.by, awardedAmount: lowestBid.amount };
                     }
                 }
                 return t;

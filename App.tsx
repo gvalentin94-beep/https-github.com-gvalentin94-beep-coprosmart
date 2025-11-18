@@ -1,11 +1,10 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import type { Me, Task, User, LedgerEntry, TaskCategory, TaskScope, Rating, Bid } from './types';
 import { useAuth, fakeApi } from './services/api';
 import { Button, Card, CardContent, CardHeader, CardTitle, Label, Input, Textarea, Select, Badge } from './components/ui';
 import { LoginCard } from './components/LoginCard';
 import { TaskCard } from './components/TaskCard';
-import { COUNCIL_MIN_APPROVALS, CATEGORIES, PlusIcon, ROLES } from './constants';
+import { COUNCIL_MIN_APPROVALS, CATEGORIES, PlusIcon, ROLES, LOCATIONS } from './constants';
 
 // --- Governance Component ---
 function Governance() {
@@ -147,8 +146,8 @@ function CreateTaskForm({ onCreate }: CreateTaskFormProps) {
     };
 
     const handleCreate = () => {
-        if (!title.trim() || !startingPrice || Number(startingPrice) <= 0) {
-            alert("Titre et prix de départ positif requis.");
+        if (!title.trim() || !location.trim() || !startingPrice || Number(startingPrice) <= 0) {
+            alert("Titre, emplacement et prix de départ positif sont des champs obligatoires.");
             return;
         }
         onCreate({
@@ -170,13 +169,19 @@ function CreateTaskForm({ onCreate }: CreateTaskFormProps) {
                     <CardHeader><CardTitle>Nouvelle tâche pour la copropriété</CardTitle></CardHeader>
                     <CardContent className="space-y-4">
                         <div className="grid md:grid-cols-2 gap-4">
-                            <div className="space-y-1.5"><Label>Titre de la tâche</Label><Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Changer ampoule entrée B" /></div>
+                            <div className="space-y-1.5"><Label>Titre de la tâche (obligatoire)</Label><Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Changer ampoule entrée B" /></div>
                             <div className="space-y-1.5"><Label>Catégorie</Label><Select value={category} onChange={e => setCategory(e.target.value as TaskCategory)}>{CATEGORIES.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}</Select></div>
                         </div>
                         <div className="space-y-1.5"><Label>Détails</Label><Textarea value={details} onChange={(e) => setDetails(e.target.value)} placeholder="Ampoule E27, échelle nécessaire..." /></div>
                         <div className="grid md:grid-cols-2 gap-4">
-                            <div className="space-y-1.5"><Label>Emplacement</Label><Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Hall, entrée B, 1er étage" /></div>
-                            <div className="space-y-1.5"><Label>Prix de départ (€)</Label><Input type="number" min="0" value={startingPrice} onChange={(e) => setStartingPrice(e.target.value)} /></div>
+                            <div className="space-y-1.5">
+                                <Label>Emplacement (obligatoire)</Label>
+                                <Select value={location} onChange={(e) => setLocation(e.target.value)}>
+                                    <option value="" disabled>Choisir un emplacement...</option>
+                                    {LOCATIONS.map(loc => <option key={loc} value={loc}>{loc}</option>)}
+                                </Select>
+                            </div>
+                            <div className="space-y-1.5"><Label>Prix de départ (€) (obligatoire)</Label><Input type="number" min="0" value={startingPrice} onChange={(e) => setStartingPrice(e.target.value)} /></div>
                         </div>
                          <div className="grid md:grid-cols-2 gap-4">
                             <div className="space-y-1.5"><Label>Garantie (jours)</Label><Input type="number" min="0" value={warrantyDays} onChange={(e) => setWarrantyDays(e.target.value)} /></div>
@@ -405,6 +410,7 @@ function Dashboard({ me }: DashboardProps) {
       </Section>
 
       <Section title="Tâches attribuées" count={tasksByStatus.awarded.length}>
+        {/* FIX: Corrected typo from tasksBySstatus to tasksByStatus */}
         {tasksByStatus.awarded.length ? <TaskList taskItems={tasksByStatus.awarded} /> : <EmptyState text="Aucune tâche attribuée." />}
       </Section>
       

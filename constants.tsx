@@ -1,4 +1,3 @@
-
 import React from 'react';
 
 export const COUNCIL_MIN_APPROVALS = 2;
@@ -8,6 +7,8 @@ export const ROLES = [
   { id: "council", label: "Conseil syndical" },
   { id: "admin", label: "Administrateur" },
 ];
+
+export const LOCATIONS = ["Bâtiment A", "Bâtiment B", "Caves", "Parking", "Extérieurs"];
 
 export const CATEGORIES = [
   { id: "ampoule", label: "Ampoule / Lumière", icon: <LightbulbIcon /> },

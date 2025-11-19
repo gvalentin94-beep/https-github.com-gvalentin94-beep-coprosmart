@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
-import type { Me, Task, User, LedgerEntry, TaskCategory, TaskScope, Rating, Bid, RegisteredUser } from './types';
+import type { Me, Task, User, LedgerEntry, TaskCategory, TaskScope, Rating, Bid, RegisteredUser, UserRole } from './types';
 import { useAuth, fakeApi } from './services/api';
 import { Button, Card, CardContent, CardHeader, CardTitle, Label, Input, Textarea, Select, Badge } from './components/ui';
 import { LoginCard } from './components/LoginCard';
@@ -125,6 +125,12 @@ interface UserDirectoryProps {
 
 function UserDirectory({ me, tasks, onDataChange }: UserDirectoryProps) {
     const [users, setUsers] = useState<RegisteredUser[]>([]);
+    const [editingUser, setEditingUser] = useState<RegisteredUser | null>(null);
+    
+    // Edit Form State
+    const [editFirstName, setEditFirstName] = useState("");
+    const [editLastName, setEditLastName] = useState("");
+    const [editRole, setEditRole] = useState<UserRole>("owner");
 
     const fetchUsers = useCallback(async () => {
         const data = await fakeApi.getDirectory();
@@ -133,7 +139,7 @@ function UserDirectory({ me, tasks, onDataChange }: UserDirectoryProps) {
 
     useEffect(() => {
         fetchUsers();
-    }, [fetchUsers, onDataChange]); // Refresh when parent data changes too
+    }, [fetchUsers, onDataChange]);
 
     const handleDeleteUser = async (email: string) => {
         if (window.confirm(`Voulez-vous vraiment bannir l'utilisateur ${email} ?`)) {
@@ -152,12 +158,41 @@ function UserDirectory({ me, tasks, onDataChange }: UserDirectoryProps) {
     const handleDeleteRating = async (taskId: string, ratingIndex: number) => {
         if (window.confirm("Supprimer ce commentaire ?")) {
             await fakeApi.deleteRating(taskId, ratingIndex);
-            onDataChange(); // This will eventually trigger fetchUsers via props/effect if needed, but main point is to refresh reviews
+            onDataChange(); 
         }
     };
 
+    const handleEditClick = (u: RegisteredUser) => {
+        setEditingUser(u);
+        setEditFirstName(u.firstName);
+        setEditLastName(u.lastName);
+        setEditRole(u.role);
+    };
+
+    const handleSaveEdit = async () => {
+        if (!editingUser) return;
+        if (!editFirstName.trim() || !editLastName.trim()) {
+            alert("Nom et prénom requis");
+            return;
+        }
+        
+        await fakeApi.updateUser(editingUser.email, {
+            firstName: editFirstName,
+            lastName: editLastName,
+            role: editRole
+        });
+        
+        // If I updated myself, reload page might be safest, but local state update works for now
+        if (editingUser.email === me.email) {
+             // Force a small delay or alert to confirm
+        }
+        
+        setEditingUser(null);
+        fetchUsers();
+        onDataChange(); // To sync if me was updated in parent
+    };
+
     const getReviewsForUser = (email: string) => {
-        // Find all ratings on tasks awarded to this user
         return tasks
             .filter(t => t.awardedTo === email && t.ratings && t.ratings.length > 0)
             .flatMap(t => t.ratings.map((r, idx) => ({ ...r, taskId: t.id, originalIdx: idx })));
@@ -173,10 +208,44 @@ function UserDirectory({ me, tasks, onDataChange }: UserDirectoryProps) {
 
     return (
         <div className="space-y-4">
+            {editingUser && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm p-4">
+                    <Card className="w-full max-w-md bg-slate-800 border-slate-700">
+                        <CardHeader>
+                            <CardTitle>Modifier la fiche</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="space-y-1.5">
+                                <Label>Prénom</Label>
+                                <Input value={editFirstName} onChange={e => setEditFirstName(e.target.value)} />
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label>Nom</Label>
+                                <Input value={editLastName} onChange={e => setEditLastName(e.target.value)} />
+                            </div>
+                            
+                            {/* Only Admin/Council can change roles */}
+                            {isAdminOrCouncil && editingUser.email !== me.email && (
+                                <div className="space-y-1.5">
+                                    <Label>Rôle</Label>
+                                    <Select value={editRole} onChange={e => setEditRole(e.target.value as UserRole)}>
+                                        {ROLES.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
+                                    </Select>
+                                </div>
+                            )}
+                            
+                            <div className="flex justify-end gap-2 pt-4 border-t border-slate-700">
+                                <Button variant="ghost" onClick={() => setEditingUser(null)}>Annuler</Button>
+                                <Button onClick={handleSaveEdit}>Enregistrer</Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+            )}
+
             <Section title="👥 Annuaire de la Résidence" count={users.filter(u => u.status === 'active' || (isAdmin && u.status === 'deleted')).length}>
                 <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2">
                     {users.map(u => {
-                        // Hide deleted users for normal users
                         if (u.status === 'deleted' && !isAdmin) return null;
                         
                         const reviews = getReviewsForUser(u.email);
@@ -184,6 +253,9 @@ function UserDirectory({ me, tasks, onDataChange }: UserDirectoryProps) {
                         const isDeleted = u.status === 'deleted';
                         const firstName = u.firstName || 'Utilisateur';
                         const lastName = u.lastName ? u.lastName.toUpperCase() : '';
+
+                        // Permission check: Can edit self OR (I am Council/Admin)
+                        const canEdit = (me.email === u.email) || isAdminOrCouncil;
 
                         return (
                             <Card key={u.id} className={`${isDeleted ? 'opacity-60 border-rose-900 bg-rose-950/20' : 'border-slate-700'}`}>
@@ -196,7 +268,14 @@ function UserDirectory({ me, tasks, onDataChange }: UserDirectoryProps) {
                                             </CardTitle>
                                             <p className="text-xs text-slate-400 mt-1">{u.email}</p>
                                         </div>
-                                        <Badge variant="outline">{ROLES.find(r => r.id === u.role)?.label}</Badge>
+                                        <div className="flex flex-col items-end gap-1">
+                                            <Badge variant="outline">{ROLES.find(r => r.id === u.role)?.label}</Badge>
+                                            {!isDeleted && canEdit && (
+                                                <button onClick={() => handleEditClick(u)} className="text-xs text-indigo-400 hover:text-indigo-300 underline flex items-center gap-1">
+                                                    ✏️ Modifier
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
                                 </CardHeader>
                                 <CardContent className="space-y-4">

@@ -161,6 +161,28 @@ export const fakeApi = {
       }
   },
 
+  updateUser: async (email: string, data: Partial<Omit<RegisteredUser, 'id'|'email'|'password'>>): Promise<void> => {
+      const users = safeJsonParse<RegisteredUser[]>(usersDbKey, []);
+      const idx = users.findIndex(u => u.email === email);
+      if (idx > -1) {
+          // Merge updates
+          users[idx] = { ...users[idx], ...data };
+          localStorage.setItem(usersDbKey, JSON.stringify(users));
+
+          // If updating the currently logged-in user, update session storage too
+          const currentUser = safeJsonParse<User | null>(userKey, null);
+          if (currentUser && currentUser.email === email) {
+              const updatedSessionUser: User = {
+                  ...currentUser,
+                  firstName: users[idx].firstName,
+                  lastName: users[idx].lastName,
+                  role: users[idx].role
+              };
+              localStorage.setItem(userKey, JSON.stringify(updatedSessionUser));
+          }
+      }
+  },
+
   deleteRating: async (taskId: string, ratingIndex: number): Promise<void> => {
       const tasks = safeJsonParse<Task[]>(storageKey, []);
       const taskIdx = tasks.findIndex(t => t.id === taskId);
@@ -175,10 +197,24 @@ export const fakeApi = {
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
   useEffect(() => {
-    const userFromStorage = safeJsonParse<User | null>(userKey, null);
-    if (userFromStorage) {
-        setUser(userFromStorage);
-    }
+    const checkUser = () => {
+        const userFromStorage = safeJsonParse<User | null>(userKey, null);
+        // Simple check to see if data changed to trigger re-render
+        setUser(prev => {
+             if (JSON.stringify(prev) !== JSON.stringify(userFromStorage)) {
+                 return userFromStorage;
+             }
+             return prev;
+        });
+    };
+    
+    checkUser();
+    // Listen to storage events to sync across tabs or updates
+    window.addEventListener('storage', checkUser);
+    // Also poll briefly or create a custom event dispatch if needed, but for now re-mount or manual reload works.
+    // Actually, we can just re-run this when needed if we pass a trigger, but let's keep it simple.
+    
+    return () => window.removeEventListener('storage', checkUser);
   }, []);
   
   return { user, setUser };

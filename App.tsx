@@ -591,14 +591,12 @@ export default function App() {
   // --- Handlers ---
 
   const handleCreateTask = async (data: any) => {
-    // If Admin creates a task, it is automatically OPEN (bypasses pending)
-    // If Council/Owner creates, it is PENDING.
     const isAdmin = user.role === 'admin';
     
     const newTask: Task = {
       id: Math.random().toString(36).substr(2, 9),
       ...data,
-      status: isAdmin ? 'open' : 'pending', 
+      status: 'pending', 
       createdBy: user.email,
       createdAt: new Date().toISOString(),
       bids: [],
@@ -607,8 +605,9 @@ export default function App() {
       rejections: [],
     };
 
-    // Auto-approve if creator is council/admin (for records, even if open)
-    if (user.role === 'council' || isAdmin) {
+    // Auto-approve if creator is council (for records)
+    // Admin tasks start pending with 0 approvals to allow choice (submit to CS or force)
+    if (user.role === 'council') {
         newTask.approvals.push({ by: user.email, at: new Date().toISOString() });
     }
 
@@ -618,27 +617,31 @@ export default function App() {
     setShowCreateForm(false);
     setEditingTaskData(null);
     
-    if (isAdmin) {
-         addToast("Succès", "Tâche créée et publiée immédiatement (Admin).", "success");
-         notify('all', `Nouvelle offre disponible (Admin) : ${newTask.title}`);
-    } else {
-        addToast("Succès", "Tâche créée et envoyée pour validation.", "success");
-        notify('Conseil Syndical', `Nouvelle tâche à valider : ${newTask.title}`);
-    }
+    addToast("Succès", "Tâche créée et envoyée pour validation.", "success");
+    notify('Conseil Syndical', `Nouvelle tâche à valider : ${newTask.title}`);
   };
 
   const handleApprove = async (taskId: string) => {
       const updatedTasks = tasks.map(t => {
           if (t.id === taskId) {
-              // Check if already approved by me
-              if (t.approvals.some(a => a.by === user.email)) return t;
-              
-              const newApprovals = [...t.approvals, { by: user.email, at: new Date().toISOString() }];
+              const alreadyApproved = t.approvals.some(a => a.by === user.email);
               const isAdmin = user.role === 'admin';
 
-              // Admin approval instantly validates.
-              // OR threshold reached.
-              if (newApprovals.length >= COUNCIL_MIN_APPROVALS || isAdmin) {
+              // If Admin clicks approve, force open immediately even if already approved via creation
+              if (isAdmin) {
+                   notify('all', `Nouvelle offre disponible : ${t.title}`);
+                   // Add approval if not present just for history consistency
+                   const approvals = alreadyApproved ? t.approvals : [...t.approvals, { by: user.email, at: new Date().toISOString() }];
+                   return { ...t, approvals, status: 'open' as const };
+              }
+
+              // Standard flow
+              if (alreadyApproved) return t;
+              
+              const newApprovals = [...t.approvals, { by: user.email, at: new Date().toISOString() }];
+
+              // Threshold reached
+              if (newApprovals.length >= COUNCIL_MIN_APPROVALS) {
                   notify('all', `Nouvelle offre disponible : ${t.title}`);
                   return { ...t, approvals: newApprovals, status: 'open' as const };
               }
@@ -777,9 +780,11 @@ export default function App() {
   // --- Views ---
 
   const ValidationQueue = () => {
-      if (user.role === 'owner') return null;
+      // Now visible to everyone, but actions are restricted
       const pending = tasks.filter(t => t.status === 'pending');
       if (pending.length === 0) return null;
+      
+      const canAct = user.role === 'admin' || user.role === 'council';
 
       return (
           <div className="mb-8 space-y-4">
@@ -799,9 +804,10 @@ export default function App() {
                         onRate={()=>{}} 
                         onPayApartment={()=>{}} 
                         onDelete={() => handleDelete(t.id)}
-                        canDelete={user.role === 'admin' || t.createdBy === user.email}
-                        onApprove={() => handleApprove(t.id)}
-                        onReject={() => handleReject(t.id)}
+                        canDelete={user.role === 'admin'} // Restriction: Only Admin
+                        // Only pass approval handlers if user has rights to act
+                        onApprove={canAct ? () => handleApprove(t.id) : undefined}
+                        onReject={canAct ? () => handleReject(t.id) : undefined}
                       />
                   ))}
               </div>
@@ -828,136 +834,4 @@ export default function App() {
                         </div>
                         <div className="text-xs text-slate-400">{user.email}</div>
                     </div>
-                    <Button variant="secondary" size="sm" onClick={() => { fakeApi.logout(); setUser(null); }}>Déconnexion</Button>
-                </div>
-            </div>
-        </header>
-
-        <div className="max-w-5xl mx-auto px-4 py-6 flex flex-col md:flex-row gap-6">
-            
-            {/* Sidebar Navigation */}
-            <aside className="w-full md:w-64 shrink-0 space-y-6">
-                <nav className="space-y-1">
-                    <Button variant={view === 'dashboard' ? 'primary' : 'ghost'} onClick={() => setView('dashboard')} className="w-full justify-start">
-                        📊 Tableau de bord
-                    </Button>
-                    <Button variant={view === 'directory' ? 'secondary' : 'ghost'} onClick={() => setView('directory')} className="w-full justify-start">
-                        👥 Annuaire
-                    </Button>
-                    {(user.role === 'admin' || user.role === 'council') && (
-                        <Button variant={view === 'ledger' ? 'secondary' : 'ghost'} onClick={() => setView('ledger')} className="w-full justify-start">
-                            📒 Journal des écritures
-                        </Button>
-                    )}
-                    <Button variant={view === 'cgu' ? 'secondary' : 'ghost'} onClick={() => setView('cgu')} className="w-full justify-start">
-                        📜 CGU
-                    </Button>
-                </nav>
-
-                <div className="p-4 bg-slate-800 rounded-xl border border-slate-700">
-                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Actions rapides</h3>
-                    <Button className="w-full shadow-lg shadow-indigo-900/20" onClick={() => { setEditingTaskData(null); setShowCreateForm(true); }}>
-                        <span className="mr-2 text-lg">+</span> Nouvelle tâche
-                    </Button>
-                </div>
-            </aside>
-
-            {/* Main Content */}
-            <main className="flex-1 min-w-0">
-                {/* Modals */}
-                {showCreateForm && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
-                        <div className="w-full max-w-2xl my-8">
-                            <CreateTaskForm 
-                                onSubmit={handleCreateTask} 
-                                onCancel={() => setShowCreateForm(false)} 
-                                initialData={editingTaskData}
-                            />
-                        </div>
-                    </div>
-                )}
-
-                {editingUser && (
-                    <UserEditModal user={editingUser} me={user} onSave={handleEditUser} onCancel={() => setEditingUser(null)} />
-                )}
-
-                {view === 'dashboard' && (
-                    <div className="space-y-8 animate-in fade-in duration-500">
-                        {(user.role === 'admin' || user.role === 'council') && (
-                            <UserValidationQueue users={pendingUsers} onApprove={handleApproveUser} onReject={handleRejectUser} />
-                        )}
-                        
-                        <ValidationQueue />
-
-                        <Section title="Offres ouvertes" icon="🔥">
-                            {tasks.filter(t => t.status === 'open').map(t => (
-                                <TaskCard key={t.id} task={t} me={user} usersMap={usersMap} onBid={(b) => handleBid(t.id, b)} onAward={() => handleAward(t.id)} onComplete={() => handleComplete(t.id)} onRate={(r) => handleRate(t.id, r)} onPayApartment={() => {}} onDelete={() => handleDelete(t.id)} canDelete={user.role === 'admin' || t.createdBy === user.email} />
-                            ))}
-                            {tasks.filter(t => t.status === 'open').length === 0 && <EmptyState />}
-                        </Section>
-
-                        <Section title="Tâches attribuées" icon="🤝">
-                            {tasks.filter(t => t.status === 'awarded').map(t => (
-                                <TaskCard key={t.id} task={t} me={user} usersMap={usersMap} onBid={() => {}} onAward={() => {}} onComplete={() => handleComplete(t.id)} onRate={(r) => handleRate(t.id, r)} onPayApartment={() => {}} onDelete={() => handleDelete(t.id)} canDelete={user.role === 'admin' || t.createdBy === user.email} />
-                            ))}
-                            {tasks.filter(t => t.status === 'awarded').length === 0 && <EmptyState />}
-                        </Section>
-
-                        <Section title="Terminées" icon="✅">
-                             {tasks.filter(t => t.status === 'completed').map(t => (
-                                <TaskCard key={t.id} task={t} me={user} usersMap={usersMap} onBid={() => {}} onAward={() => {}} onComplete={() => {}} onRate={(r) => handleRate(t.id, r)} onPayApartment={() => {}} onDelete={() => handleDelete(t.id)} canDelete={user.role === 'admin'} />
-                            ))}
-                        </Section>
-                    </div>
-                )}
-
-                {view === 'ledger' && (user.role === 'admin' || user.role === 'council') && (
-                    <div className="space-y-4 animate-in slide-in-from-right-4 duration-300">
-                        <h2 className="text-2xl font-bold text-white">Journal des écritures</h2>
-                        <p className="text-slate-400 text-sm">Historique inaltérable des transactions validées.</p>
-                        <Ledger entries={ledger} tasks={tasks} usersMap={usersMap} isAdmin={user.role === 'admin'} onDelete={handleDeleteLedgerEntry} />
-                    </div>
-                )}
-
-                {view === 'directory' && (
-                    <UserDirectory me={user} users={directoryUsers} tasks={tasks} onUpdateStatus={handleUpdateUserStatus} onDeleteRating={fakeApi.deleteRating} onEditUser={setEditingUser} />
-                )}
-
-                {view === 'cgu' && (
-                    <Card className="bg-slate-800 border-slate-700 animate-in zoom-in-95 duration-300">
-                        <CardHeader>
-                            <CardTitle className="text-white">Conditions Générales d'Utilisation</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4 text-slate-300">
-                            <p><strong>1. Esprit d'initiative :</strong> CoproSmart encourage chaque copropriétaire à proposer ses services pour l'amélioration de la résidence.</p>
-                            <p><strong>2. Validation :</strong> Chaque proposition est soumise à la validation de 2 membres du Conseil Syndical.</p>
-                            <p><strong>3. Enchères :</strong> Le système favorise le meilleur prix. Si aucune offre n'est faite sous 24h, le créateur peut majorer le prix.</p>
-                            <p><strong>4. Paiement :</strong> Pour les parties communes, aucun virement n'est effectué. Les montants validés sont portés au <strong>crédit du compte de charges</strong> du copropriétaire intervenant, venant en déduction de ses appels de fonds.</p>
-                            <p><strong>5. Engagement :</strong> Toute enchère engage son auteur à réaliser la prestation selon les règles de l'art.</p>
-                        </CardContent>
-                    </Card>
-                )}
-            </main>
-        </div>
-        <div className="text-center py-4 text-slate-600 text-xs">CoproSmart v0.1.0</div>
-        <Toaster toasts={toasts} onDismiss={(id) => setToasts(prev => prev.filter(t => t.id !== id))} />
-    </div>
-  );
-}
-
-function Section({ title, icon, children }: { title: string, icon: string, children: React.ReactNode }) {
-    return (
-        <div className="space-y-3">
-            <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                <span className="text-xl">{icon}</span> {title}
-            </h3>
-            <div className="grid grid-cols-1 gap-4">
-                {children}
-            </div>
-        </div>
-    );
-}
-
-function EmptyState() {
-    return <div className="p-8 text-center border-2 border-dashed border-slate-700 rounded-xl text-slate-500">Aucune tâche dans cette section.</div>;
-}
+                    <Button variant="secondary

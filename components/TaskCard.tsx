@@ -364,7 +364,12 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                         </div>
                         {onApprove && onReject && (
                             <div className="flex gap-2">
-                                <Button size="sm" onClick={onApprove} disabled={hasApproved} className="bg-emerald-600 hover:bg-emerald-500 border-none text-white disabled:opacity-50 disabled:cursor-not-allowed">
+                                <Button 
+                                    size="sm" 
+                                    onClick={onApprove} 
+                                    disabled={hasApproved && !isAdmin} 
+                                    className="bg-emerald-600 hover:bg-emerald-500 border-none text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
                                     {isAdmin ? '⚡ Forcer la validation' : '✅ Valider'}
                                 </Button>
                                 <Button size="sm" variant="destructive" onClick={onReject}>❌ Rejeter</Button>

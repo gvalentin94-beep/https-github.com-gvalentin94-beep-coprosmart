@@ -73,6 +73,7 @@ export interface Task {
   completionAt?: string;
   biddingStartedAt?: string;
   photo?: string; // Base64 image string
+  validatedBy?: string;
 }
 
 export interface LedgerEntry {

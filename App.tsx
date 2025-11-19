@@ -63,6 +63,14 @@ function TaskPreviewModal({ taskData, onConfirm, onCancel, isSubmitting }: any) 
                             <p className="text-lg font-medium text-white">{taskData.title}</p>
                         </div>
                         <div>
+                             <h3 className="text-xs uppercase tracking-wider text-slate-500 font-bold mb-1">Catégorie</h3>
+                            <Badge variant="outline" className="text-slate-300 border-slate-600">{categoryLabel}</Badge>
+                        </div>
+                         <div>
+                            <h3 className="text-xs uppercase tracking-wider text-slate-500 font-bold mb-1">Concerne</h3>
+                            <p className="text-slate-300">{scopeLabel}</p>
+                        </div>
+                        <div>
                             <h3 className="text-xs uppercase tracking-wider text-slate-500 font-bold mb-1">Prix de départ</h3>
                             <p className="text-lg font-medium text-indigo-400">{taskData.startingPrice} €</p>
                         </div>
@@ -70,17 +78,10 @@ function TaskPreviewModal({ taskData, onConfirm, onCancel, isSubmitting }: any) 
                             <h3 className="text-xs uppercase tracking-wider text-slate-500 font-bold mb-1">Emplacement</h3>
                             <p className="text-slate-300">{locationLabel}</p>
                         </div>
-                        <div>
-                            <h3 className="text-xs uppercase tracking-wider text-slate-500 font-bold mb-1">Catégorie</h3>
-                            <Badge variant="outline" className="text-slate-300 border-slate-600">{categoryLabel}</Badge>
-                        </div>
+                       
                         <div>
                              <h3 className="text-xs uppercase tracking-wider text-slate-500 font-bold mb-1">Garantie</h3>
                              <p className="text-slate-300">{taskData.warrantyDays === 0 ? 'Sans garantie' : `${Math.round(taskData.warrantyDays / 30)} mois`}</p>
-                        </div>
-                        <div>
-                            <h3 className="text-xs uppercase tracking-wider text-slate-500 font-bold mb-1">Concerne</h3>
-                            <p className="text-slate-300">{scopeLabel}</p>
                         </div>
                     </div>
                     
@@ -166,6 +167,21 @@ function CreateTaskForm({ onSubmit, onCancel, initialData }: { onSubmit: (data: 
           <Input placeholder="Ex: Remplacer ampoule hall" value={title} onChange={(e) => setTitle(e.target.value)} />
         </div>
 
+         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+                <Label className="text-slate-400">Catégorie</Label>
+                <Select value={category} onChange={(e) => setCategory(e.target.value as TaskCategory)}>
+                    {CATEGORIES.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
+                </Select>
+            </div>
+            <div className="space-y-1.5">
+                <Label className="text-slate-400">Concerne</Label>
+                <Select value={scope} onChange={(e) => setScope(e.target.value as TaskScope)}>
+                    {SCOPES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+                </Select>
+            </div>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
              <div className="space-y-1.5">
                 <Label className="text-slate-400">Emplacement <span className="text-rose-500">*</span></Label>
@@ -212,21 +228,6 @@ function CreateTaskForm({ onSubmit, onCancel, initialData }: { onSubmit: (data: 
                     </label>
                 ))}
              </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-                <Label className="text-slate-400">Catégorie</Label>
-                <Select value={category} onChange={(e) => setCategory(e.target.value as TaskCategory)}>
-                    {CATEGORIES.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
-                </Select>
-            </div>
-            <div className="space-y-1.5">
-                <Label className="text-slate-400">Concerne</Label>
-                <Select value={scope} onChange={(e) => setScope(e.target.value as TaskScope)}>
-                    {SCOPES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
-                </Select>
-            </div>
         </div>
 
         <div className="space-y-1.5">
@@ -669,7 +670,12 @@ function Dashboard({ user, onLogout }: { user: User, onLogout: () => void }) {
     const task = tasks.find(t => t.id === taskId);
     if (!task || !task.awardedTo || !task.awardedAmount) return;
 
-    const updatedTasks = tasks.map(t => t.id === taskId ? { ...t, status: 'completed' as const, completionAt: new Date().toISOString() } : t);
+    const updatedTasks = tasks.map(t => t.id === taskId ? { 
+        ...t, 
+        status: 'completed' as const, 
+        completionAt: new Date().toISOString(),
+        validatedBy: user.email // Record who validated the task
+    } : t);
     
     // Generate Ledger Entry
     const entry: LedgerEntry = {

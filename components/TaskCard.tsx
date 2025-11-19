@@ -258,20 +258,6 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
             return null;
         }
 
-        // Specific rule: The creator cannot bid unless the task has at least 2 approvals from CS OR if someone else has bid
-        if (me.email === task.createdBy) {
-             const hasOtherBidders = task.bids.some(b => b.by !== me.email);
-             const hasEnoughApprovals = (task.approvals?.length || 0) >= COUNCIL_MIN_APPROVALS;
-
-             if (!hasOtherBidders && !hasEnoughApprovals) {
-                 return (
-                     <div className="bg-slate-900/50 border border-slate-700 text-amber-500/80 p-3 rounded-lg text-xs text-center italic">
-                         En tant que créateur, vous ne pourrez enchérir que si la tâche est validée par 2 membres du CS ou si un autre copropriétaire se positionne.
-                     </div>
-                 );
-             }
-        }
-
         if (canBid) {
             return <BidBox task={task} onBid={onBid} />;
         }
@@ -386,7 +372,13 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                 {task.status === "completed" && (
                     <div className="space-y-3">
                         <div className="bg-emerald-900/30 border border-emerald-800 text-emerald-200 p-3 rounded-lg text-sm">
-                            ✅ Intervention terminée {warrantyUntil && `(garantie jusqu'au ${warrantyUntil.toLocaleDateString()})`}
+                            <div className="font-bold flex items-center gap-2">✅ Intervention terminée</div>
+                            <div className="mt-1 space-y-0.5">
+                                {task.validatedBy && (
+                                    <div className="text-xs">Validée par : <span className="font-medium">{usersMap?.[task.validatedBy] || task.validatedBy}</span></div>
+                                )}
+                                {warrantyUntil && <div className="text-xs">Garantie jusqu'au : {warrantyUntil.toLocaleDateString()}</div>}
+                            </div>
                         </div>
                         
                         {/* Display ratings */}

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import type { Task, Me, Rating, Bid } from '../types';
+import type { Task, User, Rating, Bid } from '../types';
 import { Button, Card, CardContent, CardHeader, CardTitle, Input, Label, Badge, Textarea } from './ui';
 import { CATEGORIES, TASK_STATUS_CONFIG, COUNCIL_MIN_APPROVALS } from '../constants';
 
@@ -139,7 +139,7 @@ function RatingBox({ onSubmit }: RatingBoxProps) {
                 <Input type="number" min="1" max="5" value={stars} onChange={(e) => setStars(Number(e.target.value))} />
             </div>
             <div className="space-y-1">
-                <Label>Commentaire (anonyme)</Label>
+                <Label>Commentaire</Label>
                 <Textarea value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Intervention rapide et soignée..." />
             </div>
             <div className="flex justify-end gap-2">
@@ -189,7 +189,7 @@ function Countdown({ startedAt }: { startedAt: string }) {
 
 interface TaskCardProps {
   task: Task;
-  me: Me;
+  me: User;
   usersMap?: Record<string, string>; // Map email -> Full Name
   onBid: (bid: Omit<Bid, 'by' | 'at'>) => void;
   onAward: () => void;
@@ -243,6 +243,9 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
     
     // Resolve winner name
     const awardedToName = task.awardedTo && usersMap ? (usersMap[task.awardedTo] || task.awardedTo) : task.awardedTo;
+
+    // Check if current user has already rated this task
+    const hasRated = task.ratings?.some(r => r.byHash === me.id);
 
     const BidArea = () => {
         if (task.status !== 'open' || me?.role !== 'owner') {
@@ -312,8 +315,11 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                 {task.biddingStartedAt && task.status === 'open' && <Countdown startedAt={task.biddingStartedAt} />}
 
                 {task.awardedTo && (
-                    <div className="bg-sky-900/30 border border-sky-800 text-sky-200 p-3 rounded-lg text-sm">
-                        🤝 Attribuée à <b>{awardedToName}</b> pour <b>{task.awardedAmount}€</b>
+                    <div className="bg-sky-900/30 border border-sky-800 text-sky-200 p-3 rounded-lg text-sm flex justify-between items-center">
+                        <div>🤝 Attribuée à <b>{awardedToName}</b> pour <b>{task.awardedAmount}€</b></div>
+                        {task.awardedTo === me.email && task.status === 'awarded' && (
+                            <Badge className="bg-emerald-600 text-white animate-pulse">👉 À faire par vous</Badge>
+                        )}
                     </div>
                 )}
 
@@ -357,7 +363,22 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                         <div className="bg-emerald-900/30 border border-emerald-800 text-emerald-200 p-3 rounded-lg text-sm">
                             ✅ Intervention terminée {warrantyUntil && `(garantie jusqu'au ${warrantyUntil.toLocaleDateString()})`}
                         </div>
-                        <RatingBox onSubmit={onRate} />
+                        
+                        {/* Display existing ratings or just count? For now, we show the RatingBox if not rated. */}
+                        {task.ratings && task.ratings.length > 0 && (
+                            <div className="text-xs text-slate-400">
+                                {task.ratings.length} avis déposé(s).
+                            </div>
+                        )}
+
+                        {/* Anyone can rate if they haven't already */}
+                        {!hasRated ? (
+                             <RatingBox onSubmit={onRate} />
+                        ) : (
+                             <div className="text-xs text-slate-500 italic text-center border border-slate-700 p-2 rounded">
+                                 Vous avez déjà noté cette intervention.
+                             </div>
+                        )}
                     </div>
                 )}
                 

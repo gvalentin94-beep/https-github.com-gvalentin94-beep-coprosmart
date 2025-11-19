@@ -963,13 +963,13 @@ export default function App() {
                         </div>
                     </div>
                     
-                    {/* My Active Tasks (Awarded to me) */}
+                    {/* Work In Progress (Global View) */}
                     <div className="space-y-4">
                         <h3 className="text-lg font-bold text-white flex items-center gap-2 border-b border-slate-700 pb-2">
-                            🛠️ Mes travaux à réaliser <Badge className="ml-auto bg-sky-500 text-white">{tasks.filter(t => t.status === 'awarded' && t.awardedTo === user.email).length}</Badge>
+                            🏗️ Travaux en cours <Badge className="ml-auto bg-sky-500 text-white">{tasks.filter(t => t.status === 'awarded').length}</Badge>
                         </h3>
                          <div className="grid grid-cols-1 gap-4">
-                            {tasks.filter(t => t.status === 'awarded' && t.awardedTo === user.email).map(t => (
+                            {tasks.filter(t => t.status === 'awarded').map(t => (
                                 <TaskCard 
                                     key={t.id} 
                                     task={t} 
@@ -984,8 +984,8 @@ export default function App() {
                                     canDelete={user.role === 'admin'} // Restriction: Only Admin
                                 />
                             ))}
-                             {tasks.filter(t => t.status === 'awarded' && t.awardedTo === user.email).length === 0 && (
-                                <p className="text-slate-500 italic text-center py-4">Vous n'avez aucun travail en cours.</p>
+                             {tasks.filter(t => t.status === 'awarded').length === 0 && (
+                                <p className="text-slate-500 italic text-center py-4">Aucun travail en cours pour le moment.</p>
                             )}
                         </div>
                     </div>
@@ -995,7 +995,7 @@ export default function App() {
                         <h3 className="text-lg font-bold text-white flex items-center gap-2 border-b border-slate-700 pb-2">
                             ✅ Historique terminé
                         </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 opacity-75">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 opacity-90">
                              {tasks.filter(t => t.status === 'completed').map(t => (
                                 <TaskCard 
                                     key={t.id} 

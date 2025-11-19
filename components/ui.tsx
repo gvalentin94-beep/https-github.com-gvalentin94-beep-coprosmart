@@ -131,6 +131,7 @@ export function Badge({ children, variant, className = "", color }: BadgeProps) 
           sky: 'bg-sky-900/30 text-sky-200 border-sky-800',
           emerald: 'bg-emerald-900/30 text-emerald-200 border-emerald-800',
           rose: 'bg-rose-900/30 text-rose-200 border-rose-800',
+          fuchsia: 'bg-fuchsia-900/30 text-fuchsia-200 border-fuchsia-800',
       };
       variantClasses = colorMap[color] || "bg-slate-800 text-slate-300 border-slate-700";
   } else {

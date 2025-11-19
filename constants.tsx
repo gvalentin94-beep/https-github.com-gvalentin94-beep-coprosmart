@@ -27,6 +27,7 @@ export const TASK_STATUS_CONFIG: { [key: string]: { label: string; color: string
   pending: { label: "En validation", color: "amber", icon: <ClockIcon className="h-4 w-4" /> },
   open: { label: "Offres ouvertes", color: "indigo", icon: <ScaleIcon className="h-4 w-4" /> },
   awarded: { label: "Attribuée", color: "sky", icon: <CheckBadgeIcon className="h-4 w-4" /> },
+  verification: { label: "Vérification", color: "fuchsia", icon: <MagnifyingGlassIcon className="h-4 w-4" /> },
   completed: { label: "Terminée", color: "emerald", icon: <CheckCircleIcon className="h-4 w-4" /> },
   rejected: { label: "Rejetée", color: "rose", icon: <XCircleIcon className="h-4 w-4" /> },
 };
@@ -108,6 +109,14 @@ export function PlusIcon({ className = "h-5 w-5" }: { className?: string }) {
     return (
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+        </svg>
+    );
+}
+
+export function MagnifyingGlassIcon({ className = "h-5 w-5" }: { className?: string }) {
+    return (
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
         </svg>
     );
 }

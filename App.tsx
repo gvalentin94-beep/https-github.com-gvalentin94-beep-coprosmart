@@ -699,6 +699,32 @@ export default function App() {
     notify([t.createdBy, lowest.by, 'Conseil Syndical'], `Offre retenue pour "${t.title}"`);
   };
 
+  const handleRequestVerification = async (taskId: string) => {
+      const updatedTasks = tasks.map(t => {
+          if (t.id === taskId) {
+              return { ...t, status: 'verification' as const };
+          }
+          return t;
+      });
+      await fakeApi.writeTasks(updatedTasks);
+      setTasks(updatedTasks);
+      notify('Conseil Syndical', `Vérification demandée pour la tâche "${updatedTasks.find(t=>t.id===taskId)?.title}"`);
+      addToast("Demande envoyée", "Le Conseil Syndical a été notifié pour vérification.", "info");
+  };
+
+  const handleRejectWork = async (taskId: string) => {
+      const updatedTasks = tasks.map(t => {
+          if (t.id === taskId) {
+              return { ...t, status: 'awarded' as const };
+          }
+          return t;
+      });
+      await fakeApi.writeTasks(updatedTasks);
+      setTasks(updatedTasks);
+      const task = updatedTasks.find(t=>t.id===taskId);
+      if(task?.awardedTo) notify(task.awardedTo, `Travail refusé pour "${task.title}". Merci de corriger.`);
+  };
+
   const handleComplete = async (taskId: string) => {
     const t = tasks.find(x => x.id === taskId);
     if (!t) return;
@@ -720,7 +746,7 @@ export default function App() {
     const updatedTasks = tasks.map(x => x.id === taskId ? { ...x, status: 'completed' as const, completionAt: new Date().toISOString() } : x);
     await fakeApi.writeTasks(updatedTasks);
     setTasks(updatedTasks);
-    notify('Conseil Syndical', `Travaux terminés : "${t.title}". En attente de notation.`);
+    notify('Conseil Syndical', `Travaux validés et terminés : "${t.title}". En attente de notation.`);
   };
 
   const handleRate = async (taskId: string, ratingData: Omit<Rating, 'at' | 'byHash'>) => {
@@ -966,10 +992,10 @@ export default function App() {
                     {/* Work In Progress (Global View) */}
                     <div className="space-y-4">
                         <h3 className="text-lg font-bold text-white flex items-center gap-2 border-b border-slate-700 pb-2">
-                            🏗️ Travaux en cours <Badge className="ml-auto bg-sky-500 text-white">{tasks.filter(t => t.status === 'awarded').length}</Badge>
+                            🏗️ Travaux en cours <Badge className="ml-auto bg-sky-500 text-white">{tasks.filter(t => t.status === 'awarded' || t.status === 'verification').length}</Badge>
                         </h3>
                          <div className="grid grid-cols-1 gap-4">
-                            {tasks.filter(t => t.status === 'awarded').map(t => (
+                            {tasks.filter(t => t.status === 'awarded' || t.status === 'verification').map(t => (
                                 <TaskCard 
                                     key={t.id} 
                                     task={t} 
@@ -982,9 +1008,11 @@ export default function App() {
                                     onPayApartment={()=>{}}
                                     onDelete={() => handleDelete(t.id)}
                                     canDelete={user.role === 'admin'} // Restriction: Only Admin
+                                    onRequestVerification={() => handleRequestVerification(t.id)}
+                                    onRejectWork={() => handleRejectWork(t.id)}
                                 />
                             ))}
-                             {tasks.filter(t => t.status === 'awarded').length === 0 && (
+                             {tasks.filter(t => t.status === 'awarded' || t.status === 'verification').length === 0 && (
                                 <p className="text-slate-500 italic text-center py-4">Aucun travail en cours pour le moment.</p>
                             )}
                         </div>

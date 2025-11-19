@@ -12,6 +12,7 @@ const statusClasses: { [key: string]: { border: string; text: string } } = {
     sky: { border: 'border-sky-500/50', text: 'text-sky-400' },
     emerald: { border: 'border-emerald-500/50', text: 'text-emerald-400' },
     rose: { border: 'border-rose-500/50', text: 'text-rose-400' },
+    fuchsia: { border: 'border-fuchsia-500/50', text: 'text-fuchsia-400' },
 };
 
 interface BidBoxProps {
@@ -201,9 +202,12 @@ interface TaskCardProps {
   // Optional props for Validation Mode
   onApprove?: () => void;
   onReject?: () => void;
+  // Verification workflow
+  onRequestVerification?: () => void;
+  onRejectWork?: () => void;
 }
 
-export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRate, onPayApartment, onDelete, canDelete, onApprove, onReject }: TaskCardProps) {
+export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRate, onPayApartment, onDelete, canDelete, onApprove, onReject, onRequestVerification, onRejectWork }: TaskCardProps) {
     const statusConfig = TASK_STATUS_CONFIG[task.status];
     const categoryInfo = CATEGORIES.find(c => c.id === task.category);
     const lowestBid = task.bids?.length > 0 ? task.bids.reduce((min, b) => b.amount < min.amount ? b : min, task.bids[0]) : null;
@@ -229,6 +233,7 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
         : false;
     
     const isAdmin = me.role === 'admin';
+    const canVerify = isAdmin || me.role === 'council';
     
     // Allow award if: 
     // 1. Status is open AND bids exist
@@ -317,7 +322,7 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                 {task.awardedTo && (
                     <div className="bg-sky-900/30 border border-sky-800 text-sky-200 p-3 rounded-lg text-sm flex justify-between items-center">
                         <div>🤝 Attribuée à <b>{awardedToName}</b> pour <b>{task.awardedAmount}€</b></div>
-                        {task.awardedTo === me.email && task.status === 'awarded' && (
+                        {task.awardedTo === me.email && (task.status === 'awarded' || task.status === 'verification') && (
                             <Badge className="bg-emerald-600 text-white animate-pulse">👉 À faire par vous</Badge>
                         )}
                     </div>
@@ -351,10 +356,29 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                     </Button>
                 )}
 
-                {task.status === "awarded" && task.createdBy === me?.email && (
+                {/* WORKER ACTIONS (AWARDED) */}
+                {task.status === "awarded" && task.awardedTo === me.email && onRequestVerification && (
                     <div className="flex gap-2">
-                        <Button size="sm" onClick={onComplete}>✅ Marquer comme terminé</Button>
-                        {task.scope === "apartment" && <Button size="sm" variant="outline" onClick={onPayApartment}>💳 Payer en ligne</Button>}
+                         <Button size="sm" onClick={onRequestVerification}>🏁 J'ai fini (Demander validation)</Button>
+                    </div>
+                )}
+
+                {/* VERIFICATION FLOW (CS/ADMIN) */}
+                {task.status === "verification" && (
+                     <div className="bg-fuchsia-900/30 border border-fuchsia-800 text-fuchsia-200 p-3 rounded-lg text-sm flex flex-col gap-3">
+                        <div className="flex items-center justify-between">
+                            <span className="font-bold flex items-center gap-2">🕵️ Contrôle qualité en cours</span>
+                        </div>
+                        <p className="text-xs opacity-80">Le copropriétaire indique avoir terminé. Le Conseil Syndical doit valider pour déclencher le paiement.</p>
+                        
+                        {canVerify && onComplete && onRejectWork ? (
+                            <div className="flex gap-2 mt-1">
+                                <Button size="sm" className="bg-emerald-600 hover:bg-emerald-500 border-none text-white" onClick={onComplete}>✅ Valider le travail définitif</Button>
+                                <Button size="sm" variant="destructive" onClick={onRejectWork}>❌ Refuser (Travail incomplet)</Button>
+                            </div>
+                        ) : (
+                            <div className="text-xs italic opacity-50">En attente de validation par le CS.</div>
+                        )}
                     </div>
                 )}
                 

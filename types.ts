@@ -1,6 +1,6 @@
 
 export type UserRole = "owner" | "council" | "admin";
-export type TaskStatus = "pending" | "open" | "awarded" | "completed" | "rejected";
+export type TaskStatus = "pending" | "open" | "awarded" | "verification" | "completed" | "rejected";
 export type TaskScope = "copro" | "apartment";
 export type TaskCategory = "ampoule" | "porte" | "encombrants" | "divers";
 export type UserStatus = "pending" | "active" | "rejected" | "deleted";

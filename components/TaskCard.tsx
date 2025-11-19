@@ -104,7 +104,7 @@ function BidBox({ task, onBid }: BidBoxProps) {
                 onChange={(e) => setPlannedExecutionDate(e.target.value)}
                 min={today}
                 max={maxDateStr}
-                className="w-full sm:w-auto"
+                className="w-full sm:w-auto bg-white text-slate-900"
               />
             </div>
             <Button size="sm" onClick={handleBid} disabled={!amount || Number(amount) <= 0 || Number(amount) >= currentPrice || !plannedExecutionDate}>
@@ -230,12 +230,16 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
     
     const isAdmin = me.role === 'admin';
     
-    // Allow award if: It's my task AND bids exist AND (I am admin OR timer is finished)
+    // Allow award if: 
+    // 1. Status is open AND bids exist
+    // 2. AND ( (I am creator AND timer finished) OR (I am Admin) )
     const canManualAward = task.status === "open" && 
-                           task.createdBy === me?.email && 
                            task.bids?.length > 0 && 
                            lowestBid && 
-                           (isAdmin || !isTimerRunning);
+                           (
+                             (task.createdBy === me?.email && !isTimerRunning) || 
+                             isAdmin
+                           );
     
     // Resolve winner name
     const awardedToName = task.awardedTo && usersMap ? (usersMap[task.awardedTo] || task.awardedTo) : task.awardedTo;

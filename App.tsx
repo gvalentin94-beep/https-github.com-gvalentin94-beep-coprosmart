@@ -736,6 +736,7 @@ export default function App() {
   };
 
   const handleDelete = async (taskId: string) => {
+      if (user.role !== 'admin') return; // Strict Security Check
       if(!confirm("Supprimer cette tâche ?")) return;
       const newTasks = tasks.filter(t => t.id !== taskId);
       await fakeApi.writeTasks(newTasks);
@@ -834,4 +835,223 @@ export default function App() {
                         </div>
                         <div className="text-xs text-slate-400">{user.email}</div>
                     </div>
-                    <Button variant="secondary
+                    <Button variant="secondary" size="sm" onClick={() => { fakeApi.logout(); setUser(null); }}>Déconnexion</Button>
+                </div>
+            </div>
+        </header>
+
+        <main className="max-w-5xl mx-auto px-4 py-8">
+            
+            {/* Navigation Tabs */}
+            <nav className="flex flex-wrap gap-2 mb-8 border-b border-slate-700 pb-4">
+                <Button variant={view === 'dashboard' ? 'primary' : 'ghost'} onClick={() => setView('dashboard')}>📋 Tableau de bord</Button>
+                {(user.role === 'admin' || user.role === 'council') && (
+                    <Button variant={view === 'ledger' ? 'primary' : 'ghost'} onClick={() => setView('ledger')}>📒 Écritures</Button>
+                )}
+                <Button variant={view === 'directory' ? 'primary' : 'ghost'} onClick={() => setView('directory')}>👥 Annuaire</Button>
+                <Button variant={view === 'cgu' ? 'primary' : 'ghost'} onClick={() => setView('cgu')}>⚖️ CGU</Button>
+            </nav>
+
+            <Toaster toasts={toasts} onDismiss={(id) => setToasts(prev => prev.filter(t => t.id !== id))} />
+
+            {/* CGU VIEW */}
+            {view === 'cgu' && (
+                 <div className="space-y-6 animate-in fade-in duration-500">
+                    <h2 className="text-2xl font-bold text-white">Conditions Générales d'Utilisation (CGU)</h2>
+                    <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 space-y-4 text-slate-300">
+                        <section>
+                            <h3 className="text-lg font-bold text-white mb-2">1. Philosophie & Initiative</h3>
+                            <p>CoproSmart encourage l'initiative individuelle. Chaque copropriétaire est libre de proposer des améliorations ou des réparations pour la résidence. L'objectif est de réduire les coûts et d'accélérer les petits travaux grâce aux talents internes.</p>
+                        </section>
+                         <section>
+                            <h3 className="text-lg font-bold text-white mb-2">2. Validation & Enchères</h3>
+                            <p>Toute tâche proposée doit être validée par 2 membres du Conseil Syndical avant d'être ouverte aux offres. Une fois ouverte, un système d'enchères inversées permet d'obtenir le meilleur prix. L'attribution est automatique après 24h si des offres existent.</p>
+                        </section>
+                        <section>
+                            <h3 className="text-lg font-bold text-white mb-2">3. Paiement & Déduction de charges</h3>
+                            <p>Pour les travaux sur les parties communes, <b>aucun virement bancaire n'est effectué</b>. Le montant validé est inscrit au "Journal des écritures" et sera <b>déduit de votre prochain appel de charges</b> par le syndic.</p>
+                            <p>Pour les travaux privatifs, le règlement se fait de la main à la main entre voisins.</p>
+                        </section>
+                         <section>
+                            <h3 className="text-lg font-bold text-white mb-2">4. Responsabilité</h3>
+                            <p>Le copropriétaire intervenant s'engage à réaliser la tâche avec soin et dans les délais annoncés. Une garantie de bonne exécution (définie lors de la création de la tâche) s'applique.</p>
+                        </section>
+                    </div>
+                </div>
+            )}
+
+            {/* LEDGER VIEW */}
+            {view === 'ledger' && (user.role === 'admin' || user.role === 'council') && (
+                 <div className="space-y-6 animate-in fade-in duration-500">
+                     <div className="flex justify-between items-center">
+                        <h2 className="text-2xl font-bold text-white">Journal des Écritures</h2>
+                        <div className="text-sm text-slate-400">Total mouvements: <span className="text-white font-bold">{ledger.length}</span></div>
+                     </div>
+                     <p className="text-slate-400 text-sm">Ce journal fait foi pour la déduction des montants sur les appels de charges trimestriels.</p>
+                     <Ledger entries={ledger} tasks={tasks} usersMap={usersMap} onDelete={handleDeleteLedgerEntry} isAdmin={user.role === 'admin'} />
+                </div>
+            )}
+
+            {/* DIRECTORY VIEW */}
+            {view === 'directory' && (
+                <div className="animate-in fade-in duration-500">
+                    <UserDirectory 
+                        me={user} 
+                        users={directoryUsers} 
+                        tasks={tasks}
+                        onUpdateStatus={handleUpdateUserStatus} 
+                        onEditUser={setEditingUser}
+                    />
+                </div>
+            )}
+
+            {/* DASHBOARD VIEW */}
+            {view === 'dashboard' && (
+                <div className="space-y-8 animate-in fade-in duration-500">
+                    
+                    {/* Pending Users (Admin/CS Only) */}
+                    {(user.role === 'admin' || user.role === 'council') && (
+                        <UserValidationQueue users={pendingUsers} onApprove={handleApproveUser} onReject={handleRejectUser} />
+                    )}
+
+                    {/* Validation Queue */}
+                    <ValidationQueue />
+
+                    {/* Actions Bar */}
+                    {!showCreateForm && (
+                        <div className="flex justify-between items-center bg-gradient-to-r from-indigo-900/20 to-purple-900/20 p-6 rounded-2xl border border-indigo-500/20">
+                            <div>
+                                <h2 className="text-2xl font-bold text-white">Bonjour, {user.firstName} !</h2>
+                                <p className="text-slate-400">Il y a <span className="text-indigo-400 font-bold">{tasks.filter(t => t.status === 'open').length}</span> appels d'offres en cours.</p>
+                            </div>
+                            <Button size="lg" onClick={() => setShowCreateForm(true)} className="shadow-lg shadow-indigo-500/20">
+                                <span className="text-lg mr-1">+</span> Nouvelle demande
+                            </Button>
+                        </div>
+                    )}
+
+                    {showCreateForm && (
+                        <div className="animate-in slide-in-from-top-4 duration-300">
+                            <CreateTaskForm onSubmit={handleCreateTask} onCancel={() => setShowCreateForm(false)} initialData={editingTaskData} />
+                        </div>
+                    )}
+
+                    {/* Open Tasks */}
+                    <div className="space-y-4">
+                        <h3 className="text-lg font-bold text-white flex items-center gap-2 border-b border-slate-700 pb-2">
+                            🚀 Offres ouvertes <Badge className="ml-auto bg-indigo-500 text-white">{tasks.filter(t => t.status === 'open').length}</Badge>
+                        </h3>
+                        <div className="grid grid-cols-1 gap-4">
+                            {tasks.filter(t => t.status === 'open').map(t => (
+                                <TaskCard 
+                                    key={t.id} 
+                                    task={t} 
+                                    me={user} 
+                                    usersMap={usersMap}
+                                    onBid={(b) => handleBid(t.id, b)} 
+                                    onAward={() => handleAward(t.id)}
+                                    onComplete={() => handleComplete(t.id)}
+                                    onRate={(r) => handleRate(t.id, r)}
+                                    onPayApartment={() => {}}
+                                    onDelete={() => handleDelete(t.id)}
+                                    canDelete={user.role === 'admin'} // Restriction: Only Admin
+                                />
+                            ))}
+                            {tasks.filter(t => t.status === 'open').length === 0 && (
+                                <p className="text-slate-500 italic text-center py-8">Aucune offre ouverte pour le moment.</p>
+                            )}
+                        </div>
+                    </div>
+                    
+                    {/* My Active Tasks (Awarded to me) */}
+                    <div className="space-y-4">
+                        <h3 className="text-lg font-bold text-white flex items-center gap-2 border-b border-slate-700 pb-2">
+                            🛠️ Mes travaux à réaliser <Badge className="ml-auto bg-sky-500 text-white">{tasks.filter(t => t.status === 'awarded' && t.awardedTo === user.email).length}</Badge>
+                        </h3>
+                         <div className="grid grid-cols-1 gap-4">
+                            {tasks.filter(t => t.status === 'awarded' && t.awardedTo === user.email).map(t => (
+                                <TaskCard 
+                                    key={t.id} 
+                                    task={t} 
+                                    me={user} 
+                                    usersMap={usersMap}
+                                    onBid={()=>{}} 
+                                    onAward={()=>{}} 
+                                    onComplete={() => handleComplete(t.id)}
+                                    onRate={()=>{}} 
+                                    onPayApartment={()=>{}}
+                                    onDelete={() => handleDelete(t.id)}
+                                    canDelete={user.role === 'admin'} // Restriction: Only Admin
+                                />
+                            ))}
+                             {tasks.filter(t => t.status === 'awarded' && t.awardedTo === user.email).length === 0 && (
+                                <p className="text-slate-500 italic text-center py-4">Vous n'avez aucun travail en cours.</p>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Completed Tasks (History) */}
+                    <div className="space-y-4">
+                        <h3 className="text-lg font-bold text-white flex items-center gap-2 border-b border-slate-700 pb-2">
+                            ✅ Historique terminé
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 opacity-75">
+                             {tasks.filter(t => t.status === 'completed').map(t => (
+                                <TaskCard 
+                                    key={t.id} 
+                                    task={t} 
+                                    me={user} 
+                                    usersMap={usersMap}
+                                    onBid={()=>{}} 
+                                    onAward={()=>{}} 
+                                    onComplete={()=>{}} 
+                                    onRate={(r) => handleRate(t.id, r)} 
+                                    onPayApartment={()=>{}}
+                                    onDelete={() => handleDelete(t.id)}
+                                    canDelete={user.role === 'admin'} // Restriction: Only Admin
+                                />
+                            ))}
+                        </div>
+                    </div>
+
+                     {/* Rejected Tasks (Collapsible or Bottom) */}
+                     {tasks.filter(t => t.status === 'rejected').length > 0 && (
+                        <div className="space-y-4 pt-8 border-t border-slate-800">
+                            <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider">Refusées</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 opacity-50 grayscale hover:grayscale-0 transition-all">
+                                {tasks.filter(t => t.status === 'rejected').map(t => (
+                                    <TaskCard 
+                                        key={t.id} 
+                                        task={t} 
+                                        me={user} 
+                                        usersMap={usersMap}
+                                        onBid={()=>{}} 
+                                        onAward={()=>{}} 
+                                        onComplete={()=>{}} 
+                                        onRate={()=>{}} 
+                                        onPayApartment={()=>{}}
+                                        onDelete={() => handleDelete(t.id)}
+                                        canDelete={user.role === 'admin'} // Restriction: Only Admin
+                                    />
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                </div>
+            )}
+
+            {/* Edit User Modal */}
+            {editingUser && (
+                <UserEditModal 
+                    user={editingUser} 
+                    me={user}
+                    onSave={handleEditUser} 
+                    onCancel={() => setEditingUser(null)} 
+                />
+            )}
+
+        </main>
+    </div>
+  );
+}

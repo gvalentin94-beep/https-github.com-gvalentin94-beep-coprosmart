@@ -276,6 +276,13 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                 </div>
             </CardHeader>
             <CardContent className="space-y-4">
+                
+                {task.photo && (
+                    <div className="w-full h-48 rounded-lg overflow-hidden border border-slate-700 mb-4 bg-slate-900/50">
+                        <img src={task.photo} alt="Photo de la tâche" className="w-full h-full object-cover" />
+                    </div>
+                )}
+
                 <p className="text-sm text-slate-300">{task.details}</p>
 
                 <div className="grid grid-cols-2 gap-2 text-xs text-slate-400 border-t border-b border-slate-700 py-3">
@@ -315,7 +322,9 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                 )}
 
                 {canManualAward && lowestBid && (
-                    <Button size="sm" onClick={onAward}>✅ Attribuer au plus bas ({lowestBid.amount} €)</Button>
+                    <Button size="sm" onClick={onAward}>
+                        {isAdmin && isTimerRunning ? `⚡ Attribuer maintenant (Admin) (${lowestBid.amount} €)` : `✅ Attribuer au plus bas (${lowestBid.amount} €)`}
+                    </Button>
                 )}
 
                 {task.status === "awarded" && task.createdBy === me?.email && (

@@ -19,7 +19,7 @@ export const CATEGORIES = [
 
 export const SCOPES = [
   { id: "copro", label: "Parties communes (crédit charges)" },
-  { id: "apartment", label: "Appartement (paiement en ligne)" },
+  { id: "apartment", label: "Partie privative (paiement de la main à la main)" },
 ];
 
 export const TASK_STATUS_CONFIG: { [key: string]: { label: string; color: string; icon: React.ReactElement<{ className?: string }> } } = {

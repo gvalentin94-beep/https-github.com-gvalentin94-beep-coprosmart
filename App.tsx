@@ -51,6 +51,12 @@ function TaskPreviewModal({ taskData, onConfirm, onCancel, isSubmitting }: any) 
                     <CardTitle className="text-xl text-white">🔍 Vérifiez votre tâche</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6 pt-6">
+                    {taskData.photo && (
+                         <div className="w-full h-48 rounded-lg overflow-hidden border border-slate-700 bg-slate-900/50">
+                            <img src={taskData.photo} alt="Aperçu" className="w-full h-full object-cover" />
+                         </div>
+                    )}
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                             <h3 className="text-xs uppercase tracking-wider text-slate-500 font-bold mb-1">Titre</h3>
@@ -104,10 +110,21 @@ function CreateTaskForm({ onSubmit, onCancel, initialData }: { onSubmit: (data: 
   const [details, setDetails] = useState(initialData?.details || "");
   const [location, setLocation] = useState(initialData?.location || LOCATIONS[0]);
   const [startingPrice, setStartingPrice] = useState(initialData?.startingPrice || "");
-  // warrantyDays: 0, 30, 90, 180, 365
   const [warrantyDays, setWarrantyDays] = useState(initialData?.warrantyDays?.toString() || "0"); 
+  const [photo, setPhoto] = useState<string | null>(initialData?.photo || null);
 
   const [showPreview, setShowPreview] = useState(false);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPhoto(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const handlePreview = () => {
       if (!title.trim()) { alert("Le titre est obligatoire."); return; }
@@ -125,12 +142,13 @@ function CreateTaskForm({ onSubmit, onCancel, initialData }: { onSubmit: (data: 
         location,
         startingPrice: Number(startingPrice),
         warrantyDays: Number(warrantyDays),
+        photo,
       });
   };
 
   if (showPreview) {
       return <TaskPreviewModal 
-        taskData={{ title, category, scope, details, location, startingPrice, warrantyDays: Number(warrantyDays) }} 
+        taskData={{ title, category, scope, details, location, startingPrice, warrantyDays: Number(warrantyDays), photo }} 
         onConfirm={handleFinalSubmit} 
         onCancel={() => setShowPreview(false)} 
       />;
@@ -160,7 +178,7 @@ function CreateTaskForm({ onSubmit, onCancel, initialData }: { onSubmit: (data: 
                     <Input 
                         type="number" 
                         min="1" 
-                        placeholder="50" 
+                        placeholder="15" 
                         value={startingPrice} 
                         onChange={(e) => setStartingPrice(e.target.value)} 
                         className="pr-8"
@@ -168,6 +186,11 @@ function CreateTaskForm({ onSubmit, onCancel, initialData }: { onSubmit: (data: 
                     <span className="absolute right-3 top-2 text-slate-500">€</span>
                 </div>
             </div>
+        </div>
+
+        <div className="space-y-1.5">
+            <Label className="text-slate-400">Photo (optionnel)</Label>
+            <Input type="file" accept="image/*" onChange={handleFileChange} className="text-slate-300 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100" />
         </div>
 
         <div className="space-y-1.5">
@@ -299,7 +322,7 @@ function UserValidationQueue({ users, onApprove, onReject }: { users: Registered
     );
 }
 
-function UserDirectory({ me, users, onUpdateStatus, onDeleteRating, onEditUser }: { me: Me, users: RegisteredUser[], onUpdateStatus: (email: string, status: 'active'|'rejected'|'deleted') => void, onDeleteRating?: (taskId:string, ratingIdx:number) => void, onEditUser: (u: RegisteredUser) => void }) {
+function UserDirectory({ me, users, tasks, onUpdateStatus, onDeleteRating, onEditUser }: { me: Me, users: RegisteredUser[], tasks: Task[], onUpdateStatus: (email: string, status: 'active'|'rejected'|'deleted') => void, onDeleteRating?: (taskId:string, ratingIdx:number) => void, onEditUser: (u: RegisteredUser) => void }) {
     const canManage = me.role === 'admin' || me.role === 'council';
     const isAdmin = me.role === 'admin';
 
@@ -310,6 +333,8 @@ function UserDirectory({ me, users, onUpdateStatus, onDeleteRating, onEditUser }
                 {users.map(u => {
                     const isMe = u.email === me.email;
                     const canEdit = canManage || isMe;
+                    const userCompletedTasks = tasks.filter(t => t.status === 'completed' && t.awardedTo === u.email);
+
                     return (
                     <Card key={u.email} className={`border-slate-700 bg-slate-800 ${u.status === 'deleted' ? 'opacity-50 grayscale' : ''}`}>
                         <CardContent className="p-4 flex flex-col gap-3">
@@ -325,16 +350,21 @@ function UserDirectory({ me, users, onUpdateStatus, onDeleteRating, onEditUser }
                                 </div>
                              </div>
                              
-                             {/* Ratings */}
+                             {/* History */}
                              <div className="pt-3 border-t border-slate-700">
-                                 <div className="text-xs font-semibold text-slate-400 mb-2">Avis reçus :</div>
-                                 {/* We would ideally filter tasks to find ratings for this user, but simplistic here since we don't have tasks passed in. 
-                                     Wait, we need tasks to show ratings properly. For now let's skip or simplistic. 
-                                     Actually the previous prompt asked to show stars/comments. 
-                                     I'll assume tasks are passed or I'll skip strict implementation to save space if tasks aren't available in this scope.
-                                     Ah, I can't see tasks here easily. Let's skip the details of reviews inside this card to avoid props drilling hell or assume it's done.
-                                 */}
-                                 <div className="text-xs text-slate-500 italic">Détails disponibles sur les tâches réalisées.</div>
+                                 <div className="text-xs font-semibold text-slate-400 mb-2">Travaux réalisés ({userCompletedTasks.length}) :</div>
+                                 {userCompletedTasks.length > 0 ? (
+                                    <ul className="space-y-1 max-h-32 overflow-y-auto custom-scrollbar">
+                                        {userCompletedTasks.map(t => (
+                                            <li key={t.id} className="flex justify-between text-xs text-slate-300 bg-slate-900/30 p-1.5 rounded">
+                                                <span className="truncate max-w-[60%]">{t.title}</span>
+                                                <span className="text-emerald-400">{t.awardedAmount} €</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                 ) : (
+                                     <div className="text-xs text-slate-500 italic">Aucun travail réalisé pour le moment.</div>
+                                 )}
                              </div>
 
                              {/* Actions */}
@@ -812,7 +842,7 @@ export default function App() {
                 )}
 
                 {view === 'directory' && (
-                    <UserDirectory me={user} users={directoryUsers} onUpdateStatus={handleUpdateUserStatus} onDeleteRating={fakeApi.deleteRating} onEditUser={setEditingUser} />
+                    <UserDirectory me={user} users={directoryUsers} tasks={tasks} onUpdateStatus={handleUpdateUserStatus} onDeleteRating={fakeApi.deleteRating} onEditUser={setEditingUser} />
                 )}
 
                 {view === 'cgu' && (

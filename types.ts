@@ -72,6 +72,7 @@ export interface Task {
   awardedAmount?: number;
   completionAt?: string;
   biddingStartedAt?: string;
+  photo?: string; // Base64 image string
 }
 
 export interface LedgerEntry {

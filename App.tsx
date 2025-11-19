@@ -79,7 +79,7 @@ function TaskPreviewModal({ taskData, onConfirm, onCancel, isSubmitting }: any) 
                              <p className="text-slate-300">{taskData.warrantyDays === 0 ? 'Sans garantie' : `${Math.round(taskData.warrantyDays / 30)} mois`}</p>
                         </div>
                         <div>
-                            <h3 className="text-xs uppercase tracking-wider text-slate-500 font-bold mb-1">Type</h3>
+                            <h3 className="text-xs uppercase tracking-wider text-slate-500 font-bold mb-1">Concerne</h3>
                             <p className="text-slate-300">{scopeLabel}</p>
                         </div>
                     </div>
@@ -219,7 +219,7 @@ function CreateTaskForm({ onSubmit, onCancel, initialData }: { onSubmit: (data: 
                 </Select>
             </div>
             <div className="space-y-1.5">
-                <Label className="text-slate-400">Type</Label>
+                <Label className="text-slate-400">Concerne</Label>
                 <Select value={scope} onChange={(e) => setScope(e.target.value as TaskScope)}>
                     {SCOPES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
                 </Select>

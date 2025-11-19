@@ -712,13 +712,13 @@ export default function App() {
                 </div>
                 <div className="flex items-center gap-4">
                     <div className="text-right hidden sm:block">
-                        <div className="text-xs text-slate-400 mb-0.5">{user.email}</div>
-                        <div className="text-sm font-bold text-white leading-none">
+                        <div className="text-sm font-bold text-white leading-none mb-0.5">
                             <span className="text-[10px] uppercase tracking-wider text-indigo-400 font-bold mr-1.5 align-middle">
                                 {user.role === 'admin' ? 'ADMINISTRATEUR' : user.role === 'council' ? 'CONSEIL SYNDICAL' : 'COPROPRIÉTAIRE'}
                             </span>
-                            {user.firstName} {user.lastName}
+                            {user.firstName} {user.lastName.toUpperCase()}
                         </div>
+                        <div className="text-xs text-slate-400">{user.email}</div>
                     </div>
                     <Button variant="secondary" size="sm" onClick={() => { fakeApi.logout(); setUser(null); }}>Déconnexion</Button>
                 </div>

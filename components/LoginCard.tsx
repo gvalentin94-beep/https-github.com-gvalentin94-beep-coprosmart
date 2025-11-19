@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { fakeApi } from '../services/api';
 import type { User, UserRole } from '../types';
@@ -243,7 +244,8 @@ export function LoginCard({ onLogin }: LoginCardProps) {
                         value={role} 
                         onChange={(e) => setRole(e.target.value as UserRole)} 
                     >
-                        {ROLES.map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
+                        {/* Filter out 'admin' so new users cannot sign up as admin */}
+                        {ROLES.filter(r => r.id !== 'admin').map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
                     </Select>
                 </div>
                 {err && <p className="text-sm text-rose-400">{err}</p>}

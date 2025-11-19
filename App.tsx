@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import type { Me, Task, User, LedgerEntry, TaskCategory, TaskScope, Rating, Bid, RegisteredUser, UserRole } from './types';
 import { useAuth, fakeApi } from './services/api';
@@ -239,7 +240,7 @@ function CreateTaskForm({ onSubmit, onCancel, initialData }: { onSubmit: (data: 
   );
 }
 
-function Ledger({ entries, tasks, usersMap }: { entries: LedgerEntry[], tasks: Task[], usersMap: Record<string, string> }) {
+function Ledger({ entries, tasks, usersMap, onDelete, isAdmin }: { entries: LedgerEntry[], tasks: Task[], usersMap: Record<string, string>, onDelete: (i:number) => void, isAdmin: boolean }) {
   if (entries.length === 0) {
       return <div className="text-slate-400 italic p-4 bg-slate-800 rounded-lg border border-slate-700">Aucune écriture comptable.</div>;
   }
@@ -255,6 +256,7 @@ function Ledger({ entries, tasks, usersMap }: { entries: LedgerEntry[], tasks: T
             <th className="px-4 py-3">Payeur</th>
             <th className="px-4 py-3">Bénéficiaire</th>
             <th className="px-4 py-3 text-right">Montant</th>
+            {isAdmin && <th className="px-4 py-3 text-right">Actions</th>}
           </tr>
         </thead>
         <tbody>
@@ -284,6 +286,11 @@ function Ledger({ entries, tasks, usersMap }: { entries: LedgerEntry[], tasks: T
               <td className="px-4 py-3">{payerName}</td>
               <td className="px-4 py-3">{payeeName}</td>
               <td className="px-4 py-3 text-right font-mono text-emerald-400 font-bold">{e.amount} €</td>
+              {isAdmin && (
+                  <td className="px-4 py-3 text-right">
+                      <Button variant="destructive" size="sm" className="h-6 w-6 p-0 flex items-center justify-center" onClick={() => onDelete(i)} title="Supprimer la ligne">🗑️</Button>
+                  </td>
+              )}
             </tr>
           )})}
         </tbody>
@@ -715,6 +722,13 @@ export default function App() {
       setTasks(newTasks);
   };
 
+  const handleDeleteLedgerEntry = async (index: number) => {
+      if(!confirm("Supprimer cette ligne comptable ?")) return;
+      await fakeApi.deleteLedgerEntry(index);
+      refresh();
+      addToast("Succès", "Ligne comptable supprimée.", "success");
+  };
+
   // User Management Handlers
   const handleApproveUser = async (email: string) => {
       await fakeApi.approveUser(email);
@@ -867,7 +881,7 @@ export default function App() {
 
                         <Section title="Tâches attribuées" icon="🤝">
                             {tasks.filter(t => t.status === 'awarded').map(t => (
-                                <TaskCard key={t.id} task={t} me={user} usersMap={usersMap} onBid={() => {}} onAward={() => {}} onComplete={() => handleComplete(t.id)} onRate={(r) => handleRate(t.id, r)} onPayApartment={() => {}} onDelete={() => handleDelete(t.id)} canDelete={user.role === 'admin'} />
+                                <TaskCard key={t.id} task={t} me={user} usersMap={usersMap} onBid={() => {}} onAward={() => {}} onComplete={() => handleComplete(t.id)} onRate={(r) => handleRate(t.id, r)} onPayApartment={() => {}} onDelete={() => handleDelete(t.id)} canDelete={user.role === 'admin' || t.createdBy === user.email} />
                             ))}
                             {tasks.filter(t => t.status === 'awarded').length === 0 && <EmptyState />}
                         </Section>
@@ -884,7 +898,7 @@ export default function App() {
                     <div className="space-y-4 animate-in slide-in-from-right-4 duration-300">
                         <h2 className="text-2xl font-bold text-white">Journal des écritures</h2>
                         <p className="text-slate-400 text-sm">Historique inaltérable des transactions validées.</p>
-                        <Ledger entries={ledger} tasks={tasks} usersMap={usersMap} />
+                        <Ledger entries={ledger} tasks={tasks} usersMap={usersMap} isAdmin={user.role === 'admin'} onDelete={handleDeleteLedgerEntry} />
                     </div>
                 )}
 

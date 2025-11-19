@@ -27,6 +27,13 @@ export const fakeApi = {
   readLedger: async (): Promise<LedgerEntry[]> => safeJsonParse<LedgerEntry[]>(ledgerKey, []),
   writeLedger: async (entries: LedgerEntry[]): Promise<void> =>
     localStorage.setItem(ledgerKey, JSON.stringify(entries)),
+  deleteLedgerEntry: async (index: number): Promise<void> => {
+      const entries = safeJsonParse<LedgerEntry[]>(ledgerKey, []);
+      if (index >= 0 && index < entries.length) {
+          entries.splice(index, 1);
+          localStorage.setItem(ledgerKey, JSON.stringify(entries));
+      }
+  },
 
   // Auth & User Management
   signUp: async (email: string, password: string, role: UserRole, firstName: string, lastName: string): Promise<void> => {

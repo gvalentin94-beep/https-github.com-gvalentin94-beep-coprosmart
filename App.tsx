@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import type { Me, Task, User, LedgerEntry, TaskCategory, TaskScope, Rating, Bid, RegisteredUser, UserRole } from './types';
 import { useAuth, fakeApi } from './services/api';
@@ -522,7 +521,7 @@ function CreateTaskForm({ onCreate }: CreateTaskFormProps) {
                                     cursor-pointer px-4 py-2 rounded-full text-sm font-medium transition-all border
                                     ${warrantyDays === opt.val 
                                         ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-900/50' 
-                                        : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-500 hover:text-slate-200'}
+                                        : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'}
                                 `}>
                                      <input 
                                         type="radio" 

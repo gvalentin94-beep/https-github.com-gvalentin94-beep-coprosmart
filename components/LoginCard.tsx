@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { fakeApi } from '../services/api';
 import type { User, UserRole } from '../types';
@@ -133,9 +132,6 @@ export function LoginCard({ onLogin }: LoginCardProps) {
       desc = "Entrez le code reçu et votre nouveau mot de passe.";
   }
 
-  // Force style for visibility in forms
-  const forceLightStyle = { color: 'black', backgroundColor: 'white' };
-
   return (
     <Card className="w-full max-w-md mx-auto bg-slate-800/50 backdrop-blur-sm border-slate-700">
       <CardHeader>
@@ -168,7 +164,6 @@ export function LoginCard({ onLogin }: LoginCardProps) {
                         placeholder="prenom@copro.fr" 
                         value={email} 
                         onChange={(e) => setEmail(e.target.value)} 
-                        style={forceLightStyle}
                     />
                 </div>
                 <div className="space-y-1.5">
@@ -180,7 +175,6 @@ export function LoginCard({ onLogin }: LoginCardProps) {
                         type="password" 
                         value={password} 
                         onChange={(e) => setPassword(e.target.value)} 
-                        style={forceLightStyle}
                     />
                 </div>
                 {err && <p className="text-sm text-rose-400">{err}</p>}
@@ -200,7 +194,6 @@ export function LoginCard({ onLogin }: LoginCardProps) {
                         <Input 
                             value={firstName} 
                             onChange={(e) => setFirstName(e.target.value)} 
-                            style={forceLightStyle}
                         />
                     </div>
                     <div className="space-y-1.5">
@@ -208,7 +201,6 @@ export function LoginCard({ onLogin }: LoginCardProps) {
                         <Input 
                             value={lastName} 
                             onChange={(e) => setLastName(e.target.value)} 
-                            style={forceLightStyle}
                         />
                     </div>
                 </div>
@@ -218,7 +210,6 @@ export function LoginCard({ onLogin }: LoginCardProps) {
                         type="email" 
                         value={email} 
                         onChange={(e) => setEmail(e.target.value)} 
-                        style={forceLightStyle}
                     />
                 </div>
                 <div className="space-y-1.5">
@@ -227,7 +218,6 @@ export function LoginCard({ onLogin }: LoginCardProps) {
                         type="password" 
                         value={password} 
                         onChange={(e) => setPassword(e.target.value)} 
-                        style={forceLightStyle}
                     />
                 </div>
                 <div className="space-y-1.5">
@@ -236,7 +226,6 @@ export function LoginCard({ onLogin }: LoginCardProps) {
                         type="password" 
                         value={confirmPassword} 
                         onChange={(e) => setConfirmPassword(e.target.value)} 
-                        style={forceLightStyle}
                     />
                 </div>
                 <div className="space-y-1.5">
@@ -244,7 +233,6 @@ export function LoginCard({ onLogin }: LoginCardProps) {
                   <Select
                     value={residence}
                     onChange={(e) => setResidence(e.target.value)}
-                    style={forceLightStyle}
                   >
                     <option value="Résidence Watteau">Résidence Watteau</option>
                   </Select>
@@ -254,7 +242,6 @@ export function LoginCard({ onLogin }: LoginCardProps) {
                     <Select 
                         value={role} 
                         onChange={(e) => setRole(e.target.value as UserRole)} 
-                        style={forceLightStyle}
                     >
                         {ROLES.map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
                     </Select>
@@ -276,7 +263,6 @@ export function LoginCard({ onLogin }: LoginCardProps) {
                         type="email" 
                         value={email} 
                         onChange={(e) => setEmail(e.target.value)} 
-                        style={forceLightStyle}
                     />
                 </div>
                 {err && <p className="text-sm text-rose-400">{err}</p>}
@@ -294,7 +280,6 @@ export function LoginCard({ onLogin }: LoginCardProps) {
                         type="text" 
                         value={resetToken} 
                         onChange={(e) => setResetToken(e.target.value)} 
-                        style={forceLightStyle}
                     />
                 </div>
                 <div className="space-y-1.5">
@@ -303,7 +288,6 @@ export function LoginCard({ onLogin }: LoginCardProps) {
                         type="password" 
                         value={password} 
                         onChange={(e) => setPassword(e.target.value)} 
-                        style={forceLightStyle}
                     />
                 </div>
                 <div className="space-y-1.5">
@@ -312,7 +296,6 @@ export function LoginCard({ onLogin }: LoginCardProps) {
                         type="password" 
                         value={confirmPassword} 
                         onChange={(e) => setConfirmPassword(e.target.value)} 
-                        style={forceLightStyle}
                     />
                 </div>
                 {err && <p className="text-sm text-rose-400">{err}</p>}

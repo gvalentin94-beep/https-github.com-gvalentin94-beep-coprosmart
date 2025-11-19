@@ -170,7 +170,7 @@ function Countdown({ startedAt }: { startedAt: string }) {
 
     return (
         <div className="bg-indigo-900/30 border border-indigo-800 text-indigo-200 p-2 rounded-lg text-sm font-medium text-center">
-            ⏳ Attribution dans : <b className="font-mono text-white">{timeLeft}</b>
+            ⏳ Attribution automatique dans : <b className="font-mono text-white">{timeLeft}</b>
         </div>
     );
 }
@@ -212,6 +212,20 @@ export function TaskCard({ task, me, onBid, onAward, onComplete, onRate, onPayAp
         (!isFirstBidder && myBidsCount < 1);
 
     const hasApproved = task.approvals?.some(a => a.by === me.email);
+
+    // Check if timer is still running for manual award restriction
+    const isTimerRunning = task.biddingStartedAt 
+        ? (new Date().getTime() < new Date(task.biddingStartedAt).getTime() + 24 * 60 * 60 * 1000)
+        : false;
+    
+    const isAdmin = me.role === 'admin';
+    
+    // Allow award if: It's my task AND bids exist AND (I am admin OR timer is finished)
+    const canManualAward = task.status === "open" && 
+                           task.createdBy === me?.email && 
+                           task.bids?.length > 0 && 
+                           lowestBid && 
+                           (isAdmin || !isTimerRunning);
 
     const BidArea = () => {
         if (task.status !== 'open' || me?.role !== 'owner' || me.email === task.createdBy) {
@@ -284,7 +298,7 @@ export function TaskCard({ task, me, onBid, onAward, onComplete, onRate, onPayAp
                     </div>
                 )}
 
-                {task.status === "open" && task.createdBy === me?.email && task.bids?.length > 0 && lowestBid && (
+                {canManualAward && lowestBid && (
                     <Button size="sm" onClick={onAward}>✅ Attribuer au plus bas ({lowestBid.amount} €)</Button>
                 )}
 

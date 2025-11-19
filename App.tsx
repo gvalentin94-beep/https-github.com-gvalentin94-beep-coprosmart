@@ -167,6 +167,7 @@ function CreateTaskForm({ onSubmit, onCancel, initialData }: { onSubmit: (data: 
           <Input placeholder="Ex: Remplacer ampoule hall" value={title} onChange={(e) => setTitle(e.target.value)} />
         </div>
 
+        {/* Category and Scope immediately after Title */}
          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">
                 <Label className="text-slate-400">Catégorie</Label>
@@ -182,6 +183,7 @@ function CreateTaskForm({ onSubmit, onCancel, initialData }: { onSubmit: (data: 
             </div>
         </div>
 
+        {/* Location and Price */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
              <div className="space-y-1.5">
                 <Label className="text-slate-400">Emplacement <span className="text-rose-500">*</span></Label>

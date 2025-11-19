@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
-import type { Me, Task, User, LedgerEntry, TaskCategory, TaskScope, Rating, Bid, RegisteredUser, UserRole } from './types';
+import type { Task, User, LedgerEntry, TaskCategory, TaskScope, Rating, Bid, RegisteredUser, UserRole } from './types';
 import { useAuth, fakeApi } from './services/api';
 import { Button, Card, CardContent, CardHeader, CardTitle, Label, Input, Textarea, Select, Badge } from './components/ui';
 import { TaskCard } from './components/TaskCard';
@@ -331,757 +331,718 @@ function UserValidationQueue({ users, onApprove, onReject }: { users: Registered
     );
 }
 
-function UserDirectory({ me, users, tasks, onUpdateStatus, onDeleteRating, onEditUser }: { me: Me, users: RegisteredUser[], tasks: Task[], onUpdateStatus: (email: string, status: 'active'|'rejected'|'deleted') => void, onDeleteRating?: (taskId:string, ratingIdx:number) => void, onEditUser: (u: RegisteredUser) => void }) {
-    const canManage = me.role === 'admin' || me.role === 'council';
-    const isAdmin = me.role === 'admin';
+// --- User Directory Component ---
 
-    return (
-        <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-white">Annuaire de la Copropriété</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {users.map(u => {
-                    const isMe = u.email === me.email;
-                    const canEdit = canManage || isMe;
-                    const userCompletedTasks = tasks.filter(t => t.status === 'completed' && t.awardedTo === u.email);
+function UserDirectory({ users, tasks, onUpdateUser, onDeleteUser, onRestoreUser, onDeleteRating, currentUser }: { 
+    users: RegisteredUser[], 
+    tasks: Task[],
+    onUpdateUser: (email: string, data: any) => void,
+    onDeleteUser: (email: string) => void, 
+    onRestoreUser: (email: string) => void,
+    onDeleteRating: (taskId: string, index: number) => void,
+    currentUser: User 
+}) {
+    const [editUser, setEditUser] = useState<RegisteredUser | null>(null);
+    const [formData, setFormData] = useState({ firstName: '', lastName: '', role: 'owner' });
 
-                    return (
-                    <Card key={u.email} className={`border-slate-700 bg-slate-800 ${u.status === 'deleted' ? 'opacity-50 grayscale' : ''}`}>
-                        <CardContent className="p-4 flex flex-col gap-3">
-                             <div className="flex justify-between items-start">
-                                <div>
-                                    <h3 className="font-bold text-lg text-white">{u.firstName} {u.lastName}</h3>
-                                    <p className="text-sm text-indigo-400">{ROLES.find(r => r.id === u.role)?.label}</p>
-                                    <p className="text-xs text-slate-500 mt-1">{u.email}</p>
-                                    {u.status === 'deleted' && <Badge variant="destructive" className="mt-1">Banni</Badge>}
-                                </div>
-                                <div className="text-2xl rounded-full bg-slate-700 p-2 w-12 h-12 flex items-center justify-center">
-                                    {u.role === 'admin' ? '👮' : u.role === 'council' ? '🏛️' : '👤'}
-                                </div>
-                             </div>
-                             
-                             {/* History */}
-                             <div className="pt-3 border-t border-slate-700">
-                                 <div className="text-xs font-semibold text-slate-400 mb-2">Travaux réalisés ({userCompletedTasks.length}) :</div>
-                                 {userCompletedTasks.length > 0 ? (
-                                    <ul className="space-y-1 max-h-32 overflow-y-auto custom-scrollbar">
-                                        {userCompletedTasks.map(t => (
-                                            <li key={t.id} className="flex justify-between text-xs text-slate-300 bg-slate-900/30 p-1.5 rounded">
-                                                <span className="truncate max-w-[60%]">{t.title}</span>
-                                                <span className="text-emerald-400">{t.awardedAmount} €</span>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                 ) : (
-                                     <div className="text-xs text-slate-500 italic">Aucun travail réalisé pour le moment.</div>
-                                 )}
-                             </div>
+    const canManage = currentUser.role === 'admin' || currentUser.role === 'council';
+    const isAdmin = currentUser.role === 'admin';
 
-                             {/* Actions */}
-                             <div className="flex flex-wrap gap-2 mt-auto pt-2">
-                                {canEdit && (
-                                    <Button size="sm" variant="outline" className="flex-1" onClick={() => onEditUser(u)}>✏️ Modifier</Button>
-                                )}
-                                {canManage && !isMe && u.role !== 'admin' && (
-                                    <>
-                                        {u.status === 'active' ? (
-                                            <Button size="sm" variant="destructive" onClick={() => onUpdateStatus(u.email, 'deleted')}>Bannir</Button>
-                                        ) : isAdmin && u.status === 'deleted' ? (
-                                            <Button size="sm" className="bg-emerald-600" onClick={() => onUpdateStatus(u.email, 'active')}>Rétablir</Button>
-                                        ) : null}
-                                    </>
-                                )}
-                             </div>
-                        </CardContent>
-                    </Card>
-                )})}
-            </div>
-        </div>
-    );
-}
-
-function UserEditModal({ user, me, onSave, onCancel }: { user: RegisteredUser, me: Me, onSave: (data: any) => void, onCancel: () => void }) {
-    const [firstName, setFirstName] = useState(user.firstName);
-    const [lastName, setLastName] = useState(user.lastName);
-    const [role, setRole] = useState<UserRole>(user.role);
-
-    const canEditRole = me.role === 'admin' || me.role === 'council';
+    const handleEditClick = (u: RegisteredUser) => {
+        setEditUser(u);
+        setFormData({ firstName: u.firstName, lastName: u.lastName, role: u.role });
+    };
 
     const handleSave = () => {
-        onSave({ firstName, lastName, role: canEditRole ? role : user.role });
+        if (editUser) {
+            onUpdateUser(editUser.email, formData);
+            setEditUser(null);
+        }
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-            <Card className="w-full max-w-md bg-slate-900 border-slate-700">
-                <CardHeader>
-                    <CardTitle className="text-white">Modifier le profil</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <div className="space-y-1.5">
-                        <Label className="text-slate-400">Prénom</Label>
-                        <Input value={firstName} onChange={e => setFirstName(e.target.value)} />
-                    </div>
-                    <div className="space-y-1.5">
-                        <Label className="text-slate-400">Nom</Label>
-                        <Input value={lastName} onChange={e => setLastName(e.target.value)} />
-                    </div>
-                    {canEditRole && user.role !== 'admin' && (
-                        <div className="space-y-1.5">
-                            <Label className="text-slate-400">Rôle</Label>
-                            <Select value={role} onChange={e => setRole(e.target.value as UserRole)}>
-                                {ROLES.filter(r => r.id !== 'admin').map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
-                            </Select>
-                        </div>
-                    )}
-                    <div className="flex gap-2 pt-2">
-                        <Button variant="secondary" className="flex-1" onClick={onCancel}>Annuler</Button>
-                        <Button className="flex-1" onClick={handleSave}>Enregistrer</Button>
-                    </div>
-                </CardContent>
-            </Card>
+        <div className="space-y-6">
+            {editUser && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+                    <Card className="w-full max-w-md bg-slate-800 border-slate-700">
+                        <CardHeader><CardTitle>Modifier le profil</CardTitle></CardHeader>
+                        <CardContent className="space-y-3">
+                            <div><Label>Prénom</Label><Input value={formData.firstName} onChange={e => setFormData({...formData, firstName: e.target.value})} /></div>
+                            <div><Label>Nom</Label><Input value={formData.lastName} onChange={e => setFormData({...formData, lastName: e.target.value})} /></div>
+                            {canManage && (
+                                <div>
+                                    <Label>Rôle</Label>
+                                    <Select value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})}>
+                                        {ROLES.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
+                                    </Select>
+                                </div>
+                            )}
+                            <div className="flex justify-end gap-2 mt-4">
+                                <Button variant="ghost" onClick={() => setEditUser(null)}>Annuler</Button>
+                                <Button onClick={handleSave}>Enregistrer</Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {users.map(u => {
+                    const isDeleted = u.status === 'deleted';
+                    // Get completed tasks for this user
+                    const userHistory = tasks.filter(t => t.awardedTo === u.email && t.status === 'completed');
+                    
+                    return (
+                        <Card key={u.email} className={`bg-slate-800 border-slate-700 ${isDeleted ? 'opacity-50 grayscale' : ''}`}>
+                            <CardContent className="flex flex-col h-full justify-between">
+                                <div>
+                                    <div className="flex justify-between items-start mb-2">
+                                        <div>
+                                            <div className="font-bold text-lg text-white flex items-center gap-2">
+                                                {u.firstName} {u.lastName?.toUpperCase() || ''}
+                                                {isDeleted && <Badge variant="destructive">Banni</Badge>}
+                                            </div>
+                                            <div className="text-sm text-slate-400">{u.email}</div>
+                                        </div>
+                                        <Badge className={u.role === 'admin' ? 'bg-rose-900/50 text-rose-200' : u.role === 'council' ? 'bg-amber-900/50 text-amber-200' : 'bg-slate-700 text-slate-300'}>
+                                            {ROLES.find(r => r.id === u.role)?.label}
+                                        </Badge>
+                                    </div>
+                                    
+                                    {/* Work History */}
+                                    <div className="mt-4 space-y-2">
+                                        <Label>Historique des travaux réalisés ({userHistory.length})</Label>
+                                        {userHistory.length > 0 ? (
+                                            <div className="max-h-40 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+                                                {userHistory.map(t => (
+                                                    <div key={t.id} className="bg-slate-900/50 p-2 rounded text-xs border border-slate-700">
+                                                        <div className="flex justify-between font-medium text-slate-300">
+                                                            <span>{t.title}</span>
+                                                            <span className="text-emerald-400">{t.awardedAmount} €</span>
+                                                        </div>
+                                                        <div className="text-slate-500">{new Date(t.completionAt || '').toLocaleDateString()}</div>
+                                                        
+                                                        {/* Ratings display */}
+                                                        {t.ratings && t.ratings.length > 0 && (
+                                                            <div className="mt-1 pt-1 border-t border-slate-700/50">
+                                                                {t.ratings.map((r, idx) => (
+                                                                    <div key={idx} className="flex justify-between items-start gap-1 mb-1 group">
+                                                                        <div>
+                                                                             <span className="text-amber-500 tracking-tighter">{'⭐'.repeat(r.stars)}</span>
+                                                                             <span className="text-slate-400 italic ml-1">"{r.comment}"</span>
+                                                                        </div>
+                                                                        {canManage && (
+                                                                             <button 
+                                                                                onClick={() => onDeleteRating(t.id, idx)}
+                                                                                className="text-rose-500 hover:text-rose-400 opacity-0 group-hover:opacity-100"
+                                                                                title="Supprimer ce commentaire"
+                                                                             >✕</button>
+                                                                        )}
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <div className="text-xs text-slate-500 italic">Aucun travail réalisé.</div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-slate-700">
+                                    {(u.email === currentUser.email || canManage) && (
+                                        <Button size="sm" variant="outline" onClick={() => handleEditClick(u)}>✏️ Modifier</Button>
+                                    )}
+                                    {canManage && !isDeleted && u.role !== 'admin' && (
+                                        <Button size="sm" variant="destructive" onClick={() => onDeleteUser(u.email)}>Bannir</Button>
+                                    )}
+                                    {isAdmin && isDeleted && (
+                                        <Button size="sm" className="bg-emerald-600 text-white" onClick={() => onRestoreUser(u.email)}>Rétablir</Button>
+                                    )}
+                                </div>
+                            </CardContent>
+                        </Card>
+                    );
+                })}
+            </div>
         </div>
     );
 }
 
-// --- Main Dashboard ---
+// --- Main Dashboard Component ---
 
-export default function App() {
-  const { user, setUser } = useAuth();
-  const [view, setView] = useState<'dashboard' | 'ledger' | 'cgu' | 'directory'>('dashboard');
+function Dashboard({ user, onLogout }: { user: User, onLogout: () => void }) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [ledger, setLedger] = useState<LedgerEntry[]>([]);
-  const [showCreateForm, setShowCreateForm] = useState(false);
-  const [editingTaskData, setEditingTaskData] = useState<any>(null); // For preserving form data
+  const [isCreating, setIsCreating] = useState(false);
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const [view, setView] = useState<'home' | 'directory' | 'ledger'>('home');
   
-  // Admin/CS Data
   const [pendingUsers, setPendingUsers] = useState<RegisteredUser[]>([]);
   const [directoryUsers, setDirectoryUsers] = useState<RegisteredUser[]>([]);
+  
+  // Helper map for displaying names instead of emails
   const [usersMap, setUsersMap] = useState<Record<string, string>>({});
 
-  // Edit User Modal
-  const [editingUser, setEditingUser] = useState<RegisteredUser | null>(null);
-
-  // Notifications
-  const [toasts, setToasts] = useState<Toast[]>([]);
   const addToast = (title: string, message: string, type: 'info' | 'success' | 'warning' = 'info') => {
-      const id = Date.now();
-      setToasts(prev => [...prev, { id, title, message, type }]);
-      setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 5000);
+    const id = Date.now();
+    setToasts(prev => [...prev, { id, title, message, type }]);
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 5000);
   };
 
-  // REAL EMAIL NOTIFICATION LOGIC
-  const notify = async (recipientRole: string | string[], subject: string) => {
-      let recipients: string[] = [];
-
-      // Resolve Recipients
-      if (recipientRole === 'all') {
-          recipients = directoryUsers.map(u => u.email);
-      } else if (recipientRole === 'Conseil Syndical' || recipientRole === 'council') {
-          recipients = directoryUsers.filter(u => u.role === 'council').map(u => u.email);
-      } else if (Array.isArray(recipientRole)) {
-          // It might be a mix of roles and emails
-          for (const r of recipientRole) {
-              if (r === 'Conseil Syndical' || r === 'council') {
-                  const councilEmails = directoryUsers.filter(u => u.role === 'council').map(u => u.email);
-                  recipients.push(...councilEmails);
-              } else {
-                  recipients.push(r);
-              }
-          }
-      } else {
-          // Single email string
-          recipients = [recipientRole];
-      }
+  const notify = async (recipients: string[], subject: string, message: string) => {
+      // Visual Feedback
+      addToast(`📧 Email envoyé`, `Sujet: ${subject}`, 'info');
       
-      // Deduplicate
-      recipients = [...new Set(recipients)];
-
-      if (recipients.length === 0) return;
-
-      // 1. Visual Notification (Toast)
-      addToast(`📧 Envoi email...`, `Sujet: ${subject}`);
-
-      // 2. Real API Call
+      // Real API Call
       try {
-          const res = await fetch('/api/send-email', {
+          await fetch('/api/send-email', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                  to: recipients,
-                  subject: `[CoproSmart] ${subject}`,
-                  html: `<p>Bonjour,</p><p>${subject}</p><p>Connectez-vous sur CoproSmart pour en savoir plus.</p>`
+                  to: recipients, 
+                  subject: subject,
+                  html: `<p>${message}</p><br/><p>Cordialement,<br/>L'équipe CoproSmart</p>`
               })
           });
-          
-          if (!res.ok) {
-            console.warn("Email sending failed (expected in preview mode if no backend):", res.status);
-          }
       } catch (e) {
-          console.error("Email fetch error:", e);
-          // Fail silently in frontend to not block user flow, as preview env doesn't have the API route.
+          console.error("Failed to send email", e);
       }
   };
 
-  const refresh = useCallback(async () => {
-    const t = await fakeApi.readTasks();
-    const l = await fakeApi.readLedger();
-    setTasks(t);
-    setLedger(l);
+  const refreshData = useCallback(async () => {
+    setTasks(await fakeApi.readTasks());
+    setLedger(await fakeApi.readLedger());
     
-    // Directory and Maps
-    const dir = await fakeApi.getDirectory();
-    setDirectoryUsers(dir);
+    if (user.role === 'admin' || user.role === 'council') {
+        setPendingUsers(await fakeApi.getPendingUsers());
+    }
+    
+    // Get directory for name resolution
+    const users = await fakeApi.getDirectory();
+    setDirectoryUsers(users);
+    
     const map: Record<string, string> = {};
-    dir.forEach(u => { map[u.email] = `${u.firstName} ${u.lastName}`; });
-    // Also add myself if not in list
-    if (user) map[user.email] = `${user.firstName} ${user.lastName}`;
+    users.forEach(u => {
+        map[u.email] = `${u.firstName} ${u.lastName.toUpperCase()}`;
+    });
+    // Add self if not in list (e.g. admin sometimes)
+    if (!map[user.email]) map[user.email] = `${user.firstName} ${user.lastName.toUpperCase()}`;
+    
     setUsersMap(map);
 
-    if (user && (user.role === 'council' || user.role === 'admin')) {
-        const p = await fakeApi.getPendingUsers();
-        setPendingUsers(p);
-    }
-  }, [user]);
+  }, [user.role, user.email, user.firstName, user.lastName]);
 
   useEffect(() => {
-    refresh();
-  }, [refresh]);
+    refreshData();
+    const interval = setInterval(refreshData, 5000);
+    return () => clearInterval(interval);
+  }, [refreshData]);
 
-  // Auto-award logic (runs every 5s)
+  // Auto-award mechanism check (Cron simulation)
   useEffect(() => {
-      const interval = setInterval(() => {
-          const now = Date.now();
+      const checkAutoAward = async () => {
+          const currentTasks = await fakeApi.readTasks();
           let changed = false;
-          const updatedTasks = tasks.map(t => {
-              if (t.status === 'open' && t.biddingStartedAt) {
-                  const deadline = new Date(t.biddingStartedAt).getTime() + 24 * 60 * 60 * 1000;
-                  if (now > deadline && t.bids.length > 0) {
-                      // Auto award
-                      const lowestBid = t.bids.reduce((min, b) => b.amount < min.amount ? b : min, t.bids[0]);
-                      changed = true;
-                      notify([t.createdBy, lowestBid.by, 'Conseil Syndical'], `Tâche "${t.title}" attribuée automatiquement.`);
-                      return { ...t, status: 'awarded', awardedTo: lowestBid.by, awardedAmount: lowestBid.amount } as Task;
+          const now = new Date().getTime();
+
+          currentTasks.forEach(t => {
+              if (t.status === 'open' && t.bids.length > 0 && t.biddingStartedAt) {
+                  const endTime = new Date(t.biddingStartedAt).getTime() + 24 * 60 * 60 * 1000;
+                  if (now > endTime) {
+                       // Time is up, auto award
+                       const lowestBid = t.bids.reduce((min, b) => b.amount < min.amount ? b : min, t.bids[0]);
+                       t.status = 'awarded';
+                       t.awardedTo = lowestBid.by;
+                       t.awardedAmount = lowestBid.amount;
+                       changed = true;
+                       
+                       // Notify
+                       const winnerName = usersMap[lowestBid.by] || lowestBid.by;
+                       addToast("Attribution automatique", `Tâche "${t.title}" attribuée à ${winnerName}`);
                   }
               }
-              return t;
           });
-          
+
           if (changed) {
-              setTasks(updatedTasks);
-              fakeApi.writeTasks(updatedTasks);
+              await fakeApi.writeTasks(currentTasks);
+              setTasks(currentTasks);
           }
-      }, 5000);
-      return () => clearInterval(interval);
-  }, [tasks]);
+      };
+
+      const timer = setInterval(checkAutoAward, 10000); // Check every 10s
+      return () => clearInterval(timer);
+  }, [usersMap]);
 
 
-  if (!user) {
-    return (
-        // Replaced overflow-hidden with overflow-y-auto to allow scrolling on mobile devices (fixing login issue)
-        <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4 relative overflow-y-auto">
-            <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20"></div>
-            <div className="relative z-10 w-full">
-                <LoginCard onLogin={setUser} />
-            </div>
-            <div className="absolute bottom-4 text-slate-500 text-xs">v0.1.0</div>
-        </div>
-    );
-  }
-
-  // --- Handlers ---
-
+  // Handlers
   const handleCreateTask = async (data: any) => {
     const isAdmin = user.role === 'admin';
+    const isCouncil = user.role === 'council';
     
+    // Auto-approve logic: Admin -> Pending (needs force), Council -> 1 vote
+    const initialApprovals = (isCouncil || isAdmin) ? [{ by: user.email, at: new Date().toISOString() }] : [];
+    
+    // Note: Admin tasks are now pending by default, so they can choose to force validate later.
     const newTask: Task = {
       id: Math.random().toString(36).substr(2, 9),
       ...data,
-      status: 'pending', 
+      status: 'pending',
       createdBy: user.email,
       createdAt: new Date().toISOString(),
       bids: [],
       ratings: [],
-      approvals: [],
-      rejections: [],
+      approvals: initialApprovals,
+      rejections: []
     };
 
-    // Auto-approve if creator is council (for records)
-    // Admin tasks start pending with 0 approvals to allow choice (submit to CS or force)
-    if (user.role === 'council') {
-        newTask.approvals.push({ by: user.email, at: new Date().toISOString() });
-    }
-
-    const newTasks = [newTask, ...tasks];
-    await fakeApi.writeTasks(newTasks);
-    setTasks(newTasks);
-    setShowCreateForm(false);
-    setEditingTaskData(null);
+    const updated = [...tasks, newTask];
+    await fakeApi.writeTasks(updated);
+    setTasks(updated);
+    setIsCreating(false);
     
-    addToast("Succès", "Tâche créée et envoyée pour validation.", "success");
-    notify('Conseil Syndical', `Nouvelle tâche à valider : ${newTask.title}`);
-  };
-
-  const handleApprove = async (taskId: string) => {
-      const updatedTasks = tasks.map(t => {
-          if (t.id === taskId) {
-              const alreadyApproved = t.approvals.some(a => a.by === user.email);
-              const isAdmin = user.role === 'admin';
-
-              // If Admin clicks approve, force open immediately even if already approved via creation
-              if (isAdmin) {
-                   notify('all', `Nouvelle offre disponible : ${t.title}`);
-                   // Add approval if not present just for history consistency
-                   const approvals = alreadyApproved ? t.approvals : [...t.approvals, { by: user.email, at: new Date().toISOString() }];
-                   return { ...t, approvals, status: 'open' as const };
-              }
-
-              // Standard flow
-              if (alreadyApproved) return t;
-              
-              const newApprovals = [...t.approvals, { by: user.email, at: new Date().toISOString() }];
-
-              // Threshold reached
-              if (newApprovals.length >= COUNCIL_MIN_APPROVALS) {
-                  notify('all', `Nouvelle offre disponible : ${t.title}`);
-                  return { ...t, approvals: newApprovals, status: 'open' as const };
-              }
-              return { ...t, approvals: newApprovals };
-          }
-          return t;
-      });
-      await fakeApi.writeTasks(updatedTasks);
-      setTasks(updatedTasks);
-  };
-
-  const handleReject = async (taskId: string) => {
-      const updatedTasks = tasks.map(t => {
-          if (t.id === taskId) return { ...t, status: 'rejected' as const };
-          return t;
-      });
-      await fakeApi.writeTasks(updatedTasks);
-      setTasks(updatedTasks);
+    if (newTask.status === 'open') {
+        notify(['tous@copro.fr'], "Nouvelle tâche disponible", `Une nouvelle tâche "${newTask.title}" est disponible.`);
+    } else {
+        // Notify Council for validation
+        notify(['conseil@copro.fr'], "Nouvelle tâche à valider", `Tâche "${newTask.title}" en attente de validation.`);
+    }
+    
+    addToast("Tâche créée", "Votre demande a été enregistrée.");
   };
 
   const handleBid = async (taskId: string, bidData: Omit<Bid, 'by' | 'at'>) => {
-    const updatedTasks = tasks.map(t => {
-      if (t.id === taskId) {
-        // 48h countdown starts on first bid
-        const updates: Partial<Task> = {};
-        if (t.bids.length === 0) {
-            updates.biddingStartedAt = new Date().toISOString();
+    const updated = tasks.map(t => {
+        if (t.id === taskId) {
+            // Logic for bidding start time (first bid triggers timer)
+            const isFirstBid = t.bids.length === 0;
+            const newBiddingStartedAt = isFirstBid ? new Date().toISOString() : t.biddingStartedAt;
+            
+            return {
+                ...t,
+                biddingStartedAt: newBiddingStartedAt,
+                bids: [...t.bids, { ...bidData, by: user.email, at: new Date().toISOString() }]
+            };
         }
-        
-        notify(['Conseil Syndical', t.createdBy], `Nouvelle enchère sur "${t.title}"`);
-        notify('all', `Quelqu'un s'est positionné sur "${t.title}"`);
-
-        return { 
-            ...t, 
-            ...updates,
-            bids: [...t.bids, { ...bidData, by: user.email, at: new Date().toISOString() }] 
-        };
-      }
-      return t;
+        return t;
     });
-    await fakeApi.writeTasks(updatedTasks);
-    setTasks(updatedTasks);
-    addToast("Offre enregistrée", "Votre positionnement a été pris en compte.", "success");
+    await fakeApi.writeTasks(updated);
+    setTasks(updated);
+    
+    notify(['conseil@copro.fr', 'tous@copro.fr'], "Nouvelle enchère", `Une nouvelle offre de ${bidData.amount}€ a été faite sur une tâche.`);
+    addToast("Offre enregistrée", `Vous vous êtes positionné à ${bidData.amount} €`);
   };
 
   const handleAward = async (taskId: string) => {
-    const t = tasks.find(x => x.id === taskId);
-    if (!t || !t.bids.length) return;
-    // Lowest bid
-    const lowest = t.bids.reduce((min, b) => b.amount < min.amount ? b : min, t.bids[0]);
-    
-    const updatedTasks = tasks.map(x => x.id === taskId ? { ...x, status: 'awarded' as const, awardedTo: lowest.by, awardedAmount: lowest.amount } : x);
-    await fakeApi.writeTasks(updatedTasks);
-    setTasks(updatedTasks);
-    notify([t.createdBy, lowest.by, 'Conseil Syndical'], `Offre retenue pour "${t.title}"`);
-  };
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
 
+    const lowestBid = task.bids.reduce((min, b) => b.amount < min.amount ? b : min, task.bids[0]);
+    
+    const updated = tasks.map(t => t.id === taskId ? { ...t, status: 'awarded' as const, awardedTo: lowestBid.by, awardedAmount: lowestBid.amount } : t);
+    await fakeApi.writeTasks(updated);
+    setTasks(updated);
+    
+    notify([lowestBid.by], "Félicitations !", `Vous avez remporté la tâche "${task.title}".`);
+    addToast("Tâche attribuée", "Le copropriétaire a été notifié.");
+  };
+  
+  // Verification Workflow
   const handleRequestVerification = async (taskId: string) => {
-      const updatedTasks = tasks.map(t => {
-          if (t.id === taskId) {
-              return { ...t, status: 'verification' as const };
-          }
-          return t;
-      });
-      await fakeApi.writeTasks(updatedTasks);
-      setTasks(updatedTasks);
-      notify('Conseil Syndical', `Vérification demandée pour la tâche "${updatedTasks.find(t=>t.id===taskId)?.title}"`);
-      addToast("Demande envoyée", "Le Conseil Syndical a été notifié pour vérification.", "info");
+      const updated = tasks.map(t => t.id === taskId ? { ...t, status: 'verification' as const } : t);
+      await fakeApi.writeTasks(updated);
+      setTasks(updated);
+      notify(['conseil@copro.fr'], "Vérification demandée", `Un copropriétaire a terminé la tâche. Merci de valider.`);
+      addToast("Demande envoyée", "Le conseil syndical a été notifié.");
   };
 
   const handleRejectWork = async (taskId: string) => {
-      const updatedTasks = tasks.map(t => {
-          if (t.id === taskId) {
-              return { ...t, status: 'awarded' as const };
-          }
-          return t;
-      });
-      await fakeApi.writeTasks(updatedTasks);
-      setTasks(updatedTasks);
-      const task = updatedTasks.find(t=>t.id===taskId);
-      if(task?.awardedTo) notify(task.awardedTo, `Travail refusé pour "${task.title}". Merci de corriger.`);
+      const updated = tasks.map(t => t.id === taskId ? { ...t, status: 'awarded' as const } : t);
+      await fakeApi.writeTasks(updated);
+      setTasks(updated);
+      addToast("Travail refusé", "La tâche est retournée au copropriétaire.");
   };
 
   const handleComplete = async (taskId: string) => {
-    const t = tasks.find(x => x.id === taskId);
-    if (!t) return;
+    const task = tasks.find(t => t.id === taskId);
+    if (!task || !task.awardedTo || !task.awardedAmount) return;
+
+    const updatedTasks = tasks.map(t => t.id === taskId ? { ...t, status: 'completed' as const, completionAt: new Date().toISOString() } : t);
     
-    // Add to ledger
+    // Generate Ledger Entry
     const entry: LedgerEntry = {
-        taskId: t.id,
-        type: t.scope === 'copro' ? 'charge_credit' : 'apartment_payment',
-        payer: t.scope === 'copro' ? 'COPRO' : t.createdBy,
-        payee: t.awardedTo!,
-        amount: t.awardedAmount!,
-        at: new Date().toISOString(),
+        taskId: task.id,
+        type: task.scope === 'copro' ? 'charge_credit' : 'apartment_payment',
+        payer: task.scope === 'copro' ? 'COPRO' : task.createdBy,
+        payee: task.awardedTo,
+        amount: task.awardedAmount,
+        at: new Date().toISOString()
     };
     
-    const newLedger = [...ledger, entry];
-    await fakeApi.writeLedger(newLedger);
-    setLedger(newLedger);
-
-    const updatedTasks = tasks.map(x => x.id === taskId ? { ...x, status: 'completed' as const, completionAt: new Date().toISOString() } : x);
+    const updatedLedger = [...ledger, entry];
+    
     await fakeApi.writeTasks(updatedTasks);
+    await fakeApi.writeLedger(updatedLedger);
+    
     setTasks(updatedTasks);
-    notify('Conseil Syndical', `Travaux validés et terminés : "${t.title}". En attente de notation.`);
-  };
-
-  const handleRate = async (taskId: string, ratingData: Omit<Rating, 'at' | 'byHash'>) => {
-      const updatedTasks = tasks.map(t => {
-          if (t.id === taskId) {
-              return { ...t, ratings: [...(t.ratings || []), { ...ratingData, at: new Date().toISOString(), byHash: user.id }] };
-          }
-          return t;
-      });
-      await fakeApi.writeTasks(updatedTasks);
-      setTasks(updatedTasks);
-      addToast("Merci", "Votre avis a été enregistré.", "success");
-  };
-
-  const handleDelete = async (taskId: string) => {
-      if (user.role !== 'admin') return; // Strict Security Check
-      if(!confirm("Supprimer cette tâche ?")) return;
-      const newTasks = tasks.filter(t => t.id !== taskId);
-      await fakeApi.writeTasks(newTasks);
-      setTasks(newTasks);
+    setLedger(updatedLedger);
+    
+    notify(['conseil@copro.fr'], "Travaux terminés", `La tâche "${task.title}" est terminée et validée.`);
+    addToast("Terminé", "La tâche est close et l'écriture comptable générée.");
   };
 
   const handleDeleteLedgerEntry = async (index: number) => {
-      if(!confirm("Supprimer cette ligne comptable ?")) return;
+      if (user.role !== 'admin') return;
       await fakeApi.deleteLedgerEntry(index);
-      refresh();
-      addToast("Succès", "Ligne comptable supprimée.", "success");
+      setLedger(await fakeApi.readLedger());
+      addToast("Supprimé", "Ligne comptable supprimée.");
+  };
+
+  const handleApprove = async (taskId: string) => {
+      const isAdmin = user.role === 'admin';
+      const updated = tasks.map(t => {
+          if (t.id === taskId) {
+              const newApprovals = [...t.approvals, { by: user.email, at: new Date().toISOString() }];
+              // Admin can force validation OR check if threshold reached
+              const isApproved = isAdmin || newApprovals.length >= COUNCIL_MIN_APPROVALS;
+              
+              if (isApproved) {
+                 notify(['tous@copro.fr'], "Nouvelle tâche", `La tâche "${t.title}" est ouverte aux offres !`);
+              }
+              
+              return {
+                  ...t,
+                  approvals: newApprovals,
+                  status: (isApproved ? 'open' : 'pending') as any
+              };
+          }
+          return t;
+      });
+      await fakeApi.writeTasks(updated);
+      setTasks(updated);
+  };
+
+  const handleReject = async (taskId: string) => {
+       const updated = tasks.map(t => t.id === taskId ? { ...t, status: 'rejected' as const } : t);
+       await fakeApi.writeTasks(updated);
+       setTasks(updated);
+  };
+
+  const handleDelete = async (taskId: string) => {
+      if (user.role !== 'admin') return; // Extra safety
+      const updated = tasks.filter(t => t.id !== taskId);
+      await fakeApi.writeTasks(updated);
+      setTasks(updated);
+      addToast("Supprimé", "Tâche supprimée définitivement.");
+  };
+  
+  const handleRate = async (taskId: string, ratingData: Omit<Rating, 'at' | 'byHash'>) => {
+      const updated = tasks.map(t => {
+          if (t.id === taskId) {
+              const newRating: Rating = {
+                  ...ratingData,
+                  at: new Date().toISOString(),
+                  byHash: user.id // Simple ID tracking to prevent double rating
+              };
+              return { ...t, ratings: [...(t.ratings || []), newRating] };
+          }
+          return t;
+      });
+      await fakeApi.writeTasks(updated);
+      setTasks(updated);
+      addToast("Merci", "Votre avis a été enregistré.");
+  };
+
+  const handleDeleteRating = async (taskId: string, ratingIndex: number) => {
+      await fakeApi.deleteRating(taskId, ratingIndex);
+      refreshData();
+      addToast("Supprimé", "Commentaire supprimé.");
   };
 
   // User Management Handlers
   const handleApproveUser = async (email: string) => {
       await fakeApi.approveUser(email);
-      refresh();
-      notify(email, "Votre compte CoproSmart a été validé !");
-      addToast("Utilisateur validé", email, "success");
+      refreshData();
+      notify([email], "Compte validé", "Votre compte CoproSmart a été validé par le Conseil Syndical. Vous pouvez vous connecter.");
   };
-
   const handleRejectUser = async (email: string) => {
-      if(!confirm("Rejeter cet utilisateur ?")) return;
       await fakeApi.rejectUser(email);
-      refresh();
+      refreshData();
+  };
+  const handleUpdateUser = async (email: string, data: any) => {
+      await fakeApi.updateUser(email, data);
+      refreshData();
+      addToast("Succès", "Profil mis à jour.");
+  };
+  const handleDeleteUser = async (email: string) => {
+      await fakeApi.updateUserStatus(email, 'deleted');
+      refreshData();
+      addToast("Banni", "Utilisateur banni.");
+  };
+  const handleRestoreUser = async (email: string) => {
+      await fakeApi.updateUserStatus(email, 'active');
+      refreshData();
+      addToast("Rétabli", "Utilisateur rétabli.");
   };
 
-  const handleUpdateUserStatus = async (email: string, status: 'active'|'rejected'|'deleted') => {
-      await fakeApi.updateUserStatus(email, status);
-      refresh();
-  };
-
-  const handleEditUser = async (data: any) => {
-      if (!editingUser) return;
-      await fakeApi.updateUser(editingUser.email, data);
-      setEditingUser(null);
-      refresh();
-      addToast("Profil mis à jour", "", "success");
-  };
-
-
-  // --- Views ---
-
-  const ValidationQueue = () => {
-      // Now visible to everyone, but actions are restricted
-      const pending = tasks.filter(t => t.status === 'pending');
-      if (pending.length === 0) return null;
-      
-      const canAct = user.role === 'admin' || user.role === 'council';
-
-      return (
-          <div className="mb-8 space-y-4">
-              <h2 className="text-xl font-bold text-amber-400 flex items-center gap-2">
-                  ⚠️ Tâches en attente de validation ({pending.length})
-              </h2>
-              <div className="grid grid-cols-1 gap-4">
-                  {pending.map(t => (
-                      <TaskCard 
-                        key={t.id} 
-                        task={t} 
-                        me={user} 
-                        usersMap={usersMap}
-                        onBid={()=>{}} 
-                        onAward={()=>{}} 
-                        onComplete={()=>{}} 
-                        onRate={()=>{}} 
-                        onPayApartment={()=>{}} 
-                        onDelete={() => handleDelete(t.id)}
-                        canDelete={user.role === 'admin'} // Restriction: Only Admin
-                        // Only pass approval handlers if user has rights to act
-                        onApprove={canAct ? () => handleApprove(t.id) : undefined}
-                        onReject={canAct ? () => handleReject(t.id) : undefined}
-                      />
-                  ))}
-              </div>
-          </div>
-      );
-  };
+  // Filter Tasks
+  const pendingTasks = tasks.filter(t => t.status === 'pending');
+  const openTasks = tasks.filter(t => t.status === 'open');
+  const awardedTasks = tasks.filter(t => t.status === 'awarded' || t.status === 'verification');
+  const completedTasks = tasks.filter(t => t.status === 'completed');
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-200 font-sans pb-10">
-        {/* Header */}
-        <header className="bg-slate-800 border-b border-slate-700 sticky top-0 z-40 shadow-lg">
-            <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
-                <div className="flex items-center gap-2 md:gap-8">
-                    <button onClick={() => setView('dashboard')} className="flex items-center gap-2 hover:opacity-80 transition">
-                        <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg shadow-inner"></div>
-                        <h1 className="font-bold text-xl text-white tracking-tight hidden sm:block">CoproSmart</h1>
-                    </button>
-
-                    {/* Navigation in Header (Hidden on very small screens, or scrollable) */}
-                    <nav className="flex gap-1 overflow-x-auto no-scrollbar">
-                        <Button size="sm" variant={view === 'dashboard' ? 'primary' : 'ghost'} onClick={() => setView('dashboard')}>🏠 Accueil</Button>
-                        {(user.role === 'admin' || user.role === 'council') && (
-                            <Button size="sm" variant={view === 'ledger' ? 'primary' : 'ghost'} onClick={() => setView('ledger')}>📒 Écritures</Button>
-                        )}
-                        <Button size="sm" variant={view === 'directory' ? 'primary' : 'ghost'} onClick={() => setView('directory')}>👥 Annuaire</Button>
-                        <Button size="sm" variant={view === 'cgu' ? 'primary' : 'ghost'} onClick={() => setView('cgu')}>⚖️ CGU</Button>
-                    </nav>
-                </div>
-                <div className="flex items-center gap-4">
-                    <div className="text-right hidden lg:block">
-                        <div className="text-sm font-bold text-white leading-none mb-0.5">
-                            <span className="text-[10px] uppercase tracking-wider text-indigo-400 font-bold mr-1.5 align-middle">
-                                {user.role === 'admin' ? 'ADMINISTRATEUR' : user.role === 'council' ? 'CONSEIL SYNDICAL' : 'COPROPRIÉTAIRE'}
-                            </span>
-                            {user.firstName} {user.lastName.toUpperCase()}
-                        </div>
-                        <div className="text-xs text-slate-400">{user.email}</div>
-                    </div>
-                    <Button variant="secondary" size="sm" onClick={() => { fakeApi.logout(); setUser(null); }}>Déconnexion</Button>
+    <div className="min-h-screen bg-slate-900 text-slate-100 font-sans pb-10">
+      <Toaster toasts={toasts} onDismiss={id => setToasts(prev => prev.filter(t => t.id !== id))} />
+      
+      {/* STICKY HEADER */}
+      <div className="sticky top-0 z-40 bg-slate-900/80 backdrop-blur-md border-b border-slate-800 shadow-lg">
+          <div className="max-w-5xl mx-auto px-4 py-3 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div className="flex items-center gap-3">
+                <a href="#" onClick={(e) => { e.preventDefault(); setView('home'); }} className="text-2xl hover:opacity-80 transition-opacity">🏢</a>
+                <div>
+                    <a href="#" onClick={(e) => { e.preventDefault(); setView('home'); }} className="text-xl font-bold bg-gradient-to-r from-indigo-400 to-sky-400 bg-clip-text text-transparent block hover:opacity-80">
+                        CoproSmart
+                    </a>
+                    <span className="text-[10px] text-slate-500 uppercase tracking-widest">Gestion Collaborative</span>
                 </div>
             </div>
-        </header>
 
-        <main className="max-w-5xl mx-auto px-4 py-8">
+            {/* NAVIGATION */}
+            <div className="flex gap-2">
+                <Button variant={view === 'home' ? 'primary' : 'ghost'} size="sm" onClick={() => setView('home')}>
+                    🏠 Accueil
+                </Button>
+                <Button variant={view === 'directory' ? 'primary' : 'ghost'} size="sm" onClick={() => setView('directory')}>
+                    👥 Annuaire
+                </Button>
+                {(user.role === 'admin' || user.role === 'council') && (
+                    <Button variant={view === 'ledger' ? 'primary' : 'ghost'} size="sm" onClick={() => setView('ledger')}>
+                        📒 Écritures
+                    </Button>
+                )}
+            </div>
 
-            <Toaster toasts={toasts} onDismiss={(id) => setToasts(prev => prev.filter(t => t.id !== id))} />
-
-            {/* CGU VIEW */}
-            {view === 'cgu' && (
-                 <div className="space-y-6 animate-in fade-in duration-500">
-                    <h2 className="text-2xl font-bold text-white">Conditions Générales d'Utilisation (CGU)</h2>
-                    <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 space-y-4 text-slate-300">
-                        <section>
-                            <h3 className="text-lg font-bold text-white mb-2">1. Philosophie & Initiative</h3>
-                            <p>CoproSmart encourage l'initiative individuelle. Chaque copropriétaire est libre de proposer des améliorations ou des réparations pour la résidence. L'objectif est de réduire les coûts et d'accélérer les petits travaux grâce aux talents internes.</p>
-                        </section>
-                         <section>
-                            <h3 className="text-lg font-bold text-white mb-2">2. Validation & Enchères</h3>
-                            <p>Toute tâche proposée doit être validée par 2 membres du Conseil Syndical avant d'être ouverte aux offres. Une fois ouverte, un système d'enchères inversées permet d'obtenir le meilleur prix. L'attribution est automatique après 24h si des offres existent.</p>
-                        </section>
-                        <section>
-                            <h3 className="text-lg font-bold text-white mb-2">3. Paiement & Déduction de charges</h3>
-                            <p>Pour les travaux sur les parties communes, <b>aucun virement bancaire n'est effectué</b>. Le montant validé est inscrit au "Journal des écritures" et sera <b>déduit de votre prochain appel de charges</b> par le syndic.</p>
-                            <p>Pour les travaux privatifs, le règlement se fait de la main à la main entre voisins.</p>
-                        </section>
-                         <section>
-                            <h3 className="text-lg font-bold text-white mb-2">4. Responsabilité</h3>
-                            <p>Le copropriétaire intervenant s'engage à réaliser la tâche avec soin et dans les délais annoncés. Une garantie de bonne exécution (définie lors de la création de la tâche) s'applique.</p>
-                        </section>
-                    </div>
+            <div className="flex items-center gap-4">
+                <div className="text-right hidden sm:block">
+                    <div className="text-sm font-bold text-white">{user.firstName} {user.lastName.toUpperCase()}</div>
+                    <div className="text-xs text-slate-400">{user.email}</div>
                 </div>
-            )}
+                <Button variant="outline" size="sm" onClick={onLogout}>Déconnexion</Button>
+            </div>
+          </div>
+      </div>
 
-            {/* LEDGER VIEW */}
-            {view === 'ledger' && (user.role === 'admin' || user.role === 'council') && (
-                 <div className="space-y-6 animate-in fade-in duration-500">
-                     <div className="flex justify-between items-center">
-                        <h2 className="text-2xl font-bold text-white">Journal des Écritures</h2>
-                        <div className="text-sm text-slate-400">Total mouvements: <span className="text-white font-bold">{ledger.length}</span></div>
-                     </div>
-                     <p className="text-slate-400 text-sm">Ce journal fait foi pour la déduction des montants sur les appels de charges trimestriels.</p>
-                     <Ledger entries={ledger} tasks={tasks} usersMap={usersMap} onDelete={handleDeleteLedgerEntry} isAdmin={user.role === 'admin'} />
+      <div className="max-w-5xl mx-auto p-4 space-y-8 mt-4">
+        
+        {/* HEADER ROLE DISPLAY (Mobile friendly) */}
+        <div className="text-center sm:hidden mb-4">
+             <div className="text-sm font-bold text-white">{user.firstName} {user.lastName.toUpperCase()}</div>
+             <Badge variant="outline" className="mt-1">{ROLES.find(r => r.id === user.role)?.label}</Badge>
+        </div>
+
+        {/* VIEW: DIRECTORY */}
+        {view === 'directory' && (
+            <div className="space-y-6 animate-fade-in">
+                <div className="flex justify-between items-center">
+                    <h2 className="text-2xl font-bold text-white">Annuaire de la Copropriété</h2>
                 </div>
-            )}
-
-            {/* DIRECTORY VIEW */}
-            {view === 'directory' && (
-                <div className="animate-in fade-in duration-500">
-                    <UserDirectory 
-                        me={user} 
-                        users={directoryUsers} 
-                        tasks={tasks}
-                        onUpdateStatus={handleUpdateUserStatus} 
-                        onEditUser={setEditingUser}
-                    />
-                </div>
-            )}
-
-            {/* DASHBOARD VIEW */}
-            {view === 'dashboard' && (
-                <div className="space-y-8 animate-in fade-in duration-500">
-                    
-                    {/* Pending Users (Admin/CS Only) */}
-                    {(user.role === 'admin' || user.role === 'council') && (
-                        <UserValidationQueue users={pendingUsers} onApprove={handleApproveUser} onReject={handleRejectUser} />
-                    )}
-
-                    {/* Validation Queue */}
-                    <ValidationQueue />
-
-                    {/* Actions Bar */}
-                    {!showCreateForm && (
-                        <div className="flex justify-between items-center bg-gradient-to-r from-indigo-900/20 to-purple-900/20 p-6 rounded-2xl border border-indigo-500/20">
-                            <div>
-                                <h2 className="text-2xl font-bold text-white">Bonjour, {user.firstName} !</h2>
-                                <p className="text-slate-400">Il y a <span className="text-indigo-400 font-bold">{tasks.filter(t => t.status === 'open').length}</span> appels d'offres en cours.</p>
-                            </div>
-                            <Button size="lg" onClick={() => setShowCreateForm(true)} className="shadow-lg shadow-indigo-500/20">
-                                <span className="text-lg mr-1">+</span> Nouvelle demande
-                            </Button>
-                        </div>
-                    )}
-
-                    {showCreateForm && (
-                        <div className="animate-in slide-in-from-top-4 duration-300">
-                            <CreateTaskForm onSubmit={handleCreateTask} onCancel={() => setShowCreateForm(false)} initialData={editingTaskData} />
-                        </div>
-                    )}
-
-                    {/* Open Tasks */}
-                    <div className="space-y-4">
-                        <h3 className="text-lg font-bold text-white flex items-center gap-2 border-b border-slate-700 pb-2">
-                            🚀 Offres ouvertes <Badge className="ml-auto bg-indigo-500 text-white">{tasks.filter(t => t.status === 'open').length}</Badge>
-                        </h3>
-                        <div className="grid grid-cols-1 gap-4">
-                            {tasks.filter(t => t.status === 'open').map(t => (
-                                <TaskCard 
-                                    key={t.id} 
-                                    task={t} 
-                                    me={user} 
-                                    usersMap={usersMap}
-                                    onBid={(b) => handleBid(t.id, b)} 
-                                    onAward={() => handleAward(t.id)}
-                                    onComplete={() => handleComplete(t.id)}
-                                    onRate={(r) => handleRate(t.id, r)}
-                                    onPayApartment={() => {}}
-                                    onDelete={() => handleDelete(t.id)}
-                                    canDelete={user.role === 'admin'} // Restriction: Only Admin
-                                />
-                            ))}
-                            {tasks.filter(t => t.status === 'open').length === 0 && (
-                                <p className="text-slate-500 italic text-center py-8">Aucune offre ouverte pour le moment.</p>
-                            )}
-                        </div>
-                    </div>
-                    
-                    {/* Work In Progress (Global View) */}
-                    <div className="space-y-4">
-                        <h3 className="text-lg font-bold text-white flex items-center gap-2 border-b border-slate-700 pb-2">
-                            🏗️ Travaux en cours <Badge className="ml-auto bg-sky-500 text-white">{tasks.filter(t => t.status === 'awarded' || t.status === 'verification').length}</Badge>
-                        </h3>
-                         <div className="grid grid-cols-1 gap-4">
-                            {tasks.filter(t => t.status === 'awarded' || t.status === 'verification').map(t => (
-                                <TaskCard 
-                                    key={t.id} 
-                                    task={t} 
-                                    me={user} 
-                                    usersMap={usersMap}
-                                    onBid={()=>{}} 
-                                    onAward={()=>{}} 
-                                    onComplete={() => handleComplete(t.id)}
-                                    onRate={()=>{}} 
-                                    onPayApartment={()=>{}}
-                                    onDelete={() => handleDelete(t.id)}
-                                    canDelete={user.role === 'admin'} // Restriction: Only Admin
-                                    onRequestVerification={() => handleRequestVerification(t.id)}
-                                    onRejectWork={() => handleRejectWork(t.id)}
-                                />
-                            ))}
-                             {tasks.filter(t => t.status === 'awarded' || t.status === 'verification').length === 0 && (
-                                <p className="text-slate-500 italic text-center py-4">Aucun travail en cours pour le moment.</p>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Completed Tasks (History) */}
-                    <div className="space-y-4">
-                        <h3 className="text-lg font-bold text-white flex items-center gap-2 border-b border-slate-700 pb-2">
-                            ✅ Historique terminé
-                        </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 opacity-90">
-                             {tasks.filter(t => t.status === 'completed').map(t => (
-                                <TaskCard 
-                                    key={t.id} 
-                                    task={t} 
-                                    me={user} 
-                                    usersMap={usersMap}
-                                    onBid={()=>{}} 
-                                    onAward={()=>{}} 
-                                    onComplete={()=>{}} 
-                                    onRate={(r) => handleRate(t.id, r)} 
-                                    onPayApartment={()=>{}}
-                                    onDelete={() => handleDelete(t.id)}
-                                    canDelete={user.role === 'admin'} // Restriction: Only Admin
-                                />
-                            ))}
-                        </div>
-                    </div>
-
-                     {/* Rejected Tasks (Collapsible or Bottom) */}
-                     {tasks.filter(t => t.status === 'rejected').length > 0 && (
-                        <div className="space-y-4 pt-8 border-t border-slate-800">
-                            <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider">Refusées</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 opacity-50 grayscale hover:grayscale-0 transition-all">
-                                {tasks.filter(t => t.status === 'rejected').map(t => (
-                                    <TaskCard 
-                                        key={t.id} 
-                                        task={t} 
-                                        me={user} 
-                                        usersMap={usersMap}
-                                        onBid={()=>{}} 
-                                        onAward={()=>{}} 
-                                        onComplete={()=>{}} 
-                                        onRate={()=>{}} 
-                                        onPayApartment={()=>{}}
-                                        onDelete={() => handleDelete(t.id)}
-                                        canDelete={user.role === 'admin'} // Restriction: Only Admin
-                                    />
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                </div>
-            )}
-
-            {/* Edit User Modal */}
-            {editingUser && (
-                <UserEditModal 
-                    user={editingUser} 
-                    me={user}
-                    onSave={handleEditUser} 
-                    onCancel={() => setEditingUser(null)} 
+                <UserDirectory 
+                    users={directoryUsers} 
+                    tasks={tasks}
+                    onUpdateUser={handleUpdateUser}
+                    onDeleteUser={handleDeleteUser}
+                    onRestoreUser={handleRestoreUser}
+                    onDeleteRating={handleDeleteRating}
+                    currentUser={user}
                 />
+            </div>
+        )}
+
+        {/* VIEW: LEDGER */}
+        {view === 'ledger' && (
+            <div className="space-y-6 animate-fade-in">
+                <div className="flex justify-between items-center">
+                    <h2 className="text-2xl font-bold text-white">Journal des Écritures</h2>
+                    <Badge variant="secondary" className="text-indigo-300">Admin & CS uniquement</Badge>
+                </div>
+                <Ledger entries={ledger} tasks={tasks} usersMap={usersMap} onDelete={handleDeleteLedgerEntry} isAdmin={user.role === 'admin'} />
+            </div>
+        )}
+
+        {/* VIEW: HOME (DASHBOARD) */}
+        {view === 'home' && (
+        <>
+            {(user.role === 'admin' || user.role === 'council') && pendingUsers.length > 0 && (
+                <UserValidationQueue users={pendingUsers} onApprove={handleApproveUser} onReject={handleRejectUser} />
             )}
 
-        </main>
+            {/* Action Bar */}
+            <div className="flex justify-between items-end">
+            <div>
+                <h2 className="text-xl font-bold text-white">Tableau de bord</h2>
+                <p className="text-slate-400 text-sm">Bienvenue, {user.firstName}.</p>
+            </div>
+            <Button onClick={() => setIsCreating(true)} className="bg-gradient-to-r from-indigo-600 to-sky-600 border-none shadow-lg shadow-indigo-900/20 hover:scale-105 transition-transform">
+                + Nouvelle tâche
+            </Button>
+            </div>
+
+            {isCreating && (
+            <div className="animate-fade-in">
+                <CreateTaskForm 
+                    onSubmit={handleCreateTask} 
+                    onCancel={() => setIsCreating(false)} 
+                />
+            </div>
+            )}
+
+            {/* Pending Validation Queue (Visible to all, actionable by Admin/CS) */}
+            {pendingTasks.length > 0 && (
+                <section className="space-y-3">
+                    <div className="flex items-center gap-2">
+                        <h3 className="text-lg font-semibold text-amber-400">Tâches en attente de validation</h3>
+                        <Badge variant="outline" className="border-amber-500/50 text-amber-400">{pendingTasks.length}</Badge>
+                    </div>
+                    <div className="grid grid-cols-1 gap-4">
+                        {pendingTasks.map(task => (
+                            <TaskCard 
+                                key={task.id} 
+                                task={task} 
+                                me={user}
+                                usersMap={usersMap}
+                                onBid={() => {}}
+                                onAward={() => {}}
+                                onComplete={() => {}}
+                                onRate={() => {}}
+                                onPayApartment={() => {}}
+                                onDelete={() => handleDelete(task.id)}
+                                canDelete={user.role === 'admin'}
+                                // Validation props
+                                onApprove={user.role === 'admin' || user.role === 'council' ? () => handleApprove(task.id) : undefined}
+                                onReject={user.role === 'admin' || user.role === 'council' ? () => handleReject(task.id) : undefined}
+                            />
+                        ))}
+                    </div>
+                </section>
+            )}
+
+            {/* Ongoing Work (Public) */}
+            {awardedTasks.length > 0 && (
+            <section className="space-y-3">
+                <div className="flex items-center gap-2">
+                    <h3 className="text-lg font-semibold text-sky-400">🏗️ Travaux en cours</h3>
+                    <Badge variant="outline" className="border-sky-500/50 text-sky-400">{awardedTasks.length}</Badge>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {awardedTasks.map(task => (
+                    <TaskCard 
+                        key={task.id} 
+                        task={task} 
+                        me={user}
+                        usersMap={usersMap}
+                        onBid={() => {}} 
+                        onAward={() => {}} 
+                        onComplete={() => handleComplete(task.id)}
+                        onRate={() => {}}
+                        onPayApartment={() => {}}
+                        onDelete={() => handleDelete(task.id)}
+                        canDelete={user.role === 'admin'}
+                        onRequestVerification={() => handleRequestVerification(task.id)}
+                        onRejectWork={() => handleRejectWork(task.id)}
+                    />
+                ))}
+                </div>
+            </section>
+            )}
+
+            {/* Open Offers */}
+            <section className="space-y-3">
+            <div className="flex items-center gap-2">
+                <h3 className="text-lg font-semibold text-indigo-400">Offres ouvertes</h3>
+                <Badge variant="outline" className="border-indigo-500/50 text-indigo-400">{openTasks.length}</Badge>
+            </div>
+            {openTasks.length === 0 ? (
+                <div className="text-center py-10 border border-dashed border-slate-700 rounded-xl text-slate-500">
+                    Aucune offre en cours. Créez une tâche pour commencer !
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {openTasks.map(task => (
+                    <TaskCard 
+                        key={task.id} 
+                        task={task} 
+                        me={user}
+                        usersMap={usersMap}
+                        onBid={(bid) => handleBid(task.id, bid)}
+                        onAward={() => handleAward(task.id)}
+                        onComplete={() => {}}
+                        onRate={() => {}}
+                        onPayApartment={() => {}}
+                        onDelete={() => handleDelete(task.id)}
+                        canDelete={user.role === 'admin'}
+                    />
+                ))}
+                </div>
+            )}
+            </section>
+
+            {/* Completed History */}
+            {completedTasks.length > 0 && (
+            <section className="space-y-3">
+                <h3 className="text-lg font-semibold text-emerald-400">Historique terminé</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 opacity-80 hover:opacity-100 transition-opacity">
+                {completedTasks.slice().reverse().map(task => (
+                    <TaskCard 
+                        key={task.id} 
+                        task={task} 
+                        me={user}
+                        usersMap={usersMap}
+                        onBid={() => {}} 
+                        onAward={() => {}} 
+                        onComplete={() => {}}
+                        onRate={(r) => handleRate(task.id, r)}
+                        onDeleteRating={user.role === 'admin' || user.role === 'council' ? handleDeleteRating : undefined}
+                        onPayApartment={() => {}}
+                        onDelete={() => handleDelete(task.id)}
+                        canDelete={user.role === 'admin'}
+                    />
+                ))}
+                </div>
+            </section>
+            )}
+        </>
+        )}
+
+        {/* FOOTER */}
+        <footer className="border-t border-slate-800 pt-8 mt-12 text-center text-slate-500 text-sm">
+            <div className="mb-4">
+                <h4 className="font-bold text-slate-400 mb-2">Conditions Générales d'Utilisation (CGU)</h4>
+                <p className="max-w-2xl mx-auto text-xs leading-relaxed">
+                    CoproSmart est une plateforme collaborative. L'initiative individuelle est encouragée. 
+                    Les montants validés pour les tâches effectuées dans les parties communes sont crédités sur le compte de charges du copropriétaire concerné (déduction sur appel de fonds). 
+                    Les travaux privatifs se règlent directement entre voisins. Le Conseil Syndical valide la conformité des travaux avant paiement.
+                </p>
+            </div>
+            <p>&copy; 2024 CoproSmart - v0.1.0</p>
+        </footer>
+      </div>
     </div>
   );
+}
+
+export default function App() {
+  const { user, setUser } = useAuth();
+
+  if (!user) {
+    return (
+        <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
+            <LoginCard onLogin={setUser} />
+        </div>
+    );
+  }
+
+  return <Dashboard user={user} onLogout={() => { fakeApi.logout(); setUser(null); }} />;
 }

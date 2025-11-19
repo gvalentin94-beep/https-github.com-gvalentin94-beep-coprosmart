@@ -196,6 +196,7 @@ interface TaskCardProps {
   onAward: () => void;
   onComplete: () => void;
   onRate: (rating: Omit<Rating, 'at' | 'byHash'>) => void;
+  onDeleteRating?: (taskId: string, ratingIndex: number) => void;
   onPayApartment: () => void;
   onDelete: () => void;
   canDelete: boolean;
@@ -207,7 +208,7 @@ interface TaskCardProps {
   onRejectWork?: () => void;
 }
 
-export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRate, onPayApartment, onDelete, canDelete, onApprove, onReject, onRequestVerification, onRejectWork }: TaskCardProps) {
+export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRate, onDeleteRating, onPayApartment, onDelete, canDelete, onApprove, onReject, onRequestVerification, onRejectWork }: TaskCardProps) {
     const statusConfig = TASK_STATUS_CONFIG[task.status];
     const categoryInfo = CATEGORIES.find(c => c.id === task.category);
     const lowestBid = task.bids?.length > 0 ? task.bids.reduce((min, b) => b.amount < min.amount ? b : min, task.bids[0]) : null;
@@ -371,7 +372,6 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                         </div>
                         <p className="text-xs opacity-80">Le copropriétaire indique avoir terminé. Le Conseil Syndical doit valider pour déclencher le paiement.</p>
                         
-                        {/* Removed redundant check for onComplete as it is not optional */}
                         {canVerify && onRejectWork ? (
                             <div className="flex gap-2 mt-1">
                                 <Button size="sm" className="bg-emerald-600 hover:bg-emerald-500 border-none text-white" onClick={onComplete}>✅ Valider le travail définitif</Button>
@@ -389,11 +389,34 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                             ✅ Intervention terminée {warrantyUntil && `(garantie jusqu'au ${warrantyUntil.toLocaleDateString()})`}
                         </div>
                         
-                        {/* Display existing ratings or just count? For now, we show the RatingBox if not rated. */}
-                        {task.ratings && task.ratings.length > 0 && (
-                            <div className="text-xs text-slate-400">
-                                {task.ratings.length} avis déposé(s).
+                        {/* Display ratings */}
+                        {task.ratings && task.ratings.length > 0 ? (
+                            <div className="space-y-2 border-t border-slate-700 pt-2">
+                                <div className="text-xs font-semibold text-slate-400">Avis ({task.ratings.length})</div>
+                                {task.ratings.map((rating, i) => (
+                                    <div key={i} className="bg-slate-800/50 p-2 rounded text-sm border border-slate-700 flex justify-between items-start group">
+                                        <div>
+                                            <div className="text-amber-400 text-xs tracking-widest mb-1">
+                                                {Array(rating.stars).fill('⭐').join('')}
+                                            </div>
+                                            <p className="text-slate-300 italic">"{rating.comment}"</p>
+                                        </div>
+                                        {canVerify && onDeleteRating && (
+                                            <Button 
+                                                variant="ghost" 
+                                                size="sm" 
+                                                className="text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 p-0" 
+                                                onClick={() => onDeleteRating(task.id, i)}
+                                                title="Supprimer ce commentaire"
+                                            >
+                                                🗑️
+                                            </Button>
+                                        )}
+                                    </div>
+                                ))}
                             </div>
+                        ) : (
+                            <div className="text-xs text-slate-500 italic">Aucun avis pour le moment.</div>
                         )}
 
                         {/* Anyone can rate if they haven't already */}

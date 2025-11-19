@@ -73,10 +73,11 @@ export function CardContent({ children, className = "" }: CardChildProps) {
 }
 
 // Form Components - Updated to White Background / Dark Text
+// Modified Input to use text-base on mobile (prevents iOS zoom) and text-sm on desktop
 export function Input({ className = "", ...props }: React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input
-      className={`w-full border border-slate-300 rounded-lg px-3 py-2 text-sm shadow-sm bg-white text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition ${className}`}
+      className={`w-full border border-slate-300 rounded-lg px-3 py-2 text-base md:text-sm shadow-sm bg-white text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition ${className}`}
       {...props}
     />
   );
@@ -85,7 +86,7 @@ export function Input({ className = "", ...props }: React.InputHTMLAttributes<HT
 export function Textarea({ className = "", ...props }: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
   return (
     <textarea
-      className={`w-full border border-slate-300 rounded-lg px-3 py-2 text-sm shadow-sm bg-white text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 min-h-[80px] transition ${className}`}
+      className={`w-full border border-slate-300 rounded-lg px-3 py-2 text-base md:text-sm shadow-sm bg-white text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 min-h-[80px] transition ${className}`}
       {...props}
     />
   );
@@ -94,7 +95,7 @@ export function Textarea({ className = "", ...props }: React.TextareaHTMLAttribu
 export function Select({ className = "", children, ...props }: React.SelectHTMLAttributes<HTMLSelectElement>) {
   return (
     <select
-      className={`w-full border border-slate-300 rounded-lg px-3 py-2 text-sm shadow-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition ${className}`}
+      className={`w-full border border-slate-300 rounded-lg px-3 py-2 text-base md:text-sm shadow-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition ${className}`}
       {...props}
     >
         {children}

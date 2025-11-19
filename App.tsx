@@ -250,13 +250,13 @@ function Ledger({ entries, tasks, usersMap, onDelete, isAdmin }: { entries: Ledg
       <table className="w-full text-sm text-left text-slate-300">
         <thead className="text-xs text-slate-400 uppercase bg-slate-900/50 border-b border-slate-700">
           <tr>
-            <th className="px-4 py-3">Date</th>
-            <th className="px-4 py-3">Tâche & Créateur</th>
-            <th className="px-4 py-3">Type</th>
-            <th className="px-4 py-3">Payeur</th>
-            <th className="px-4 py-3">Bénéficiaire</th>
-            <th className="px-4 py-3 text-right">Montant</th>
-            {isAdmin && <th className="px-4 py-3 text-right">Actions</th>}
+            <th className="px-2 py-3">Date</th>
+            <th className="px-2 py-3">Tâche & Créateur</th>
+            <th className="px-2 py-3">Type</th>
+            <th className="px-2 py-3">Payeur</th>
+            <th className="px-2 py-3">Bénéficiaire</th>
+            <th className="px-2 py-3 text-right">Montant</th>
+            {isAdmin && <th className="px-2 py-3 text-right w-10"></th>}
           </tr>
         </thead>
         <tbody>
@@ -268,26 +268,26 @@ function Ledger({ entries, tasks, usersMap, onDelete, isAdmin }: { entries: Ledg
 
             return (
             <tr key={i} className="border-b border-slate-700 hover:bg-slate-700/50 transition-colors">
-              <td className="px-4 py-3 whitespace-nowrap">{new Date(e.at).toLocaleDateString()}</td>
-              <td className="px-4 py-3">
+              <td className="px-2 py-3 whitespace-nowrap">{new Date(e.at).toLocaleDateString()}</td>
+              <td className="px-2 py-3">
                    {task ? (
                        <div className="flex flex-col">
-                           <span className="font-medium text-white">{task.title}</span>
+                           <span className="font-medium text-white truncate max-w-[150px] block">{task.title}</span>
                            <span className="text-xs text-slate-500">Créée par {creatorName}</span>
                        </div>
                    ) : <span className="text-slate-500 italic">Tâche supprimée</span>}
               </td>
-              <td className="px-4 py-3">
+              <td className="px-2 py-3">
                 {e.type === 'charge_credit' ? 
                   <Badge variant="secondary" color="emerald">Crédit Charges</Badge> : 
                   <Badge variant="secondary" color="indigo">Paiement Direct</Badge>
                 }
               </td>
-              <td className="px-4 py-3">{payerName}</td>
-              <td className="px-4 py-3">{payeeName}</td>
-              <td className="px-4 py-3 text-right font-mono text-emerald-400 font-bold">{e.amount} €</td>
+              <td className="px-2 py-3">{payerName}</td>
+              <td className="px-2 py-3">{payeeName}</td>
+              <td className="px-2 py-3 text-right font-mono text-emerald-400 font-bold">{e.amount} €</td>
               {isAdmin && (
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-2 py-3 text-right">
                       <Button variant="destructive" size="sm" className="h-6 w-6 p-0 flex items-center justify-center" onClick={() => onDelete(i)} title="Supprimer la ligne">🗑️</Button>
                   </td>
               )}
@@ -574,7 +574,8 @@ export default function App() {
 
   if (!user) {
     return (
-        <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4 relative overflow-hidden">
+        // Replaced overflow-hidden with overflow-y-auto to allow scrolling on mobile devices (fixing login issue)
+        <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4 relative overflow-y-auto">
             <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20"></div>
             <div className="relative z-10 w-full">
                 <LoginCard onLogin={setUser} />

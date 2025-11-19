@@ -160,14 +160,14 @@ export function LoginCard({ onLogin }: LoginCardProps) {
             <>
                 <div className="space-y-1.5">
                     <Label className="text-slate-300">Email</Label>
-                    <Input type="email" placeholder="prenom@copro.fr" value={email} onChange={(e) => setEmail(e.target.value)} className="bg-white border-slate-300 text-black placeholder-slate-400" />
+                    <Input type="email" placeholder="prenom@copro.fr" value={email} onChange={(e) => setEmail(e.target.value)} className="!bg-white !border-slate-300 !text-slate-900 !placeholder-slate-500" />
                 </div>
                 <div className="space-y-1.5">
                     <div className="flex justify-between">
                         <Label className="text-slate-300">Mot de passe</Label>
                         <button onClick={() => switchTo('forgotPassword')} className="text-xs text-indigo-400 hover:underline">Oublié ?</button>
                     </div>
-                    <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="bg-white border-slate-300 text-black placeholder-slate-400" />
+                    <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="!bg-white !border-slate-300 !text-slate-900 !placeholder-slate-500" />
                 </div>
                 {err && <p className="text-sm text-rose-400">{err}</p>}
                 <Button className="w-full mt-2" onClick={handleLogin}>Continuer</Button>
@@ -183,38 +183,38 @@ export function LoginCard({ onLogin }: LoginCardProps) {
                 <div className="grid grid-cols-2 gap-2">
                     <div className="space-y-1.5">
                         <Label className="text-slate-300">Prénom</Label>
-                        <Input value={firstName} onChange={(e) => setFirstName(e.target.value)} className="bg-white border-slate-300 text-black placeholder-slate-400" />
+                        <Input value={firstName} onChange={(e) => setFirstName(e.target.value)} className="!bg-white !border-slate-300 !text-slate-900 !placeholder-slate-500" />
                     </div>
                     <div className="space-y-1.5">
                         <Label className="text-slate-300">Nom</Label>
-                        <Input value={lastName} onChange={(e) => setLastName(e.target.value)} className="bg-white border-slate-300 text-black placeholder-slate-400" />
+                        <Input value={lastName} onChange={(e) => setLastName(e.target.value)} className="!bg-white !border-slate-300 !text-slate-900 !placeholder-slate-500" />
                     </div>
                 </div>
                  <div className="space-y-1.5">
                     <Label className="text-slate-300">Email</Label>
-                    <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="bg-white border-slate-300 text-black placeholder-slate-400" />
+                    <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="!bg-white !border-slate-300 !text-slate-900 !placeholder-slate-500" />
                 </div>
                 <div className="space-y-1.5">
                     <Label className="text-slate-300">Mot de passe</Label>
-                    <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="bg-white border-slate-300 text-black placeholder-slate-400" />
+                    <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="!bg-white !border-slate-300 !text-slate-900 !placeholder-slate-500" />
                 </div>
                 <div className="space-y-1.5">
                     <Label className="text-slate-300">Confirmer le mot de passe</Label>
-                    <Input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="bg-white border-slate-300 text-black placeholder-slate-400" />
+                    <Input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="!bg-white !border-slate-300 !text-slate-900 !placeholder-slate-500" />
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-slate-300">Nom de la résidence</Label>
                   <Select
                     value={residence}
                     onChange={(e) => setResidence(e.target.value)}
-                    className="bg-white border-slate-300 text-black"
+                    className="!bg-white !border-slate-300 !text-slate-900"
                   >
                     <option value="Résidence Watteau">Résidence Watteau</option>
                   </Select>
                 </div>
                 <div className="space-y-1.5">
                     <Label className="text-slate-300">Rôle</Label>
-                    <Select value={role} onChange={(e) => setRole(e.target.value as UserRole)} className="bg-white border-slate-300 text-black">
+                    <Select value={role} onChange={(e) => setRole(e.target.value as UserRole)} className="!bg-white !border-slate-300 !text-slate-900">
                         {ROLES.map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
                     </Select>
                 </div>
@@ -231,7 +231,7 @@ export function LoginCard({ onLogin }: LoginCardProps) {
              <>
                 <div className="space-y-1.5">
                     <Label className="text-slate-300">Email</Label>
-                    <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="bg-white border-slate-300 text-black placeholder-slate-400" />
+                    <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="!bg-white !border-slate-300 !text-slate-900 !placeholder-slate-500" />
                 </div>
                 {err && <p className="text-sm text-rose-400">{err}</p>}
                 <Button className="w-full mt-2" onClick={handleForgotPassword}>Envoyer le code</Button>
@@ -244,15 +244,15 @@ export function LoginCard({ onLogin }: LoginCardProps) {
              <>
                 <div className="space-y-1.5">
                     <Label className="text-slate-300">Code de vérification</Label>
-                    <Input type="text" value={resetToken} onChange={(e) => setResetToken(e.target.value)} className="bg-white border-slate-300 text-black placeholder-slate-400" />
+                    <Input type="text" value={resetToken} onChange={(e) => setResetToken(e.target.value)} className="!bg-white !border-slate-300 !text-slate-900 !placeholder-slate-500" />
                 </div>
                 <div className="space-y-1.5">
                     <Label className="text-slate-300">Nouveau mot de passe</Label>
-                    <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="bg-white border-slate-300 text-black placeholder-slate-400" />
+                    <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="!bg-white !border-slate-300 !text-slate-900 !placeholder-slate-500" />
                 </div>
                 <div className="space-y-1.5">
                     <Label className="text-slate-300">Confirmer</Label>
-                    <Input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="bg-white border-slate-300 text-black placeholder-slate-400" />
+                    <Input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="!bg-white !border-slate-300 !text-slate-900 !placeholder-slate-500" />
                 </div>
                 {err && <p className="text-sm text-rose-400">{err}</p>}
                 <Button className="w-full mt-2" onClick={handleResetPassword}>Changer le mot de passe</Button>

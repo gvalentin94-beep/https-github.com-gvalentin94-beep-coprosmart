@@ -52,7 +52,8 @@ export const fakeApi = {
   login: async (email: string, password: string): Promise<User> => {
     if (!email || !password) throw new Error("Email et mot de passe requis.");
     const users = safeJsonParse<RegisteredUser[]>(usersDbKey, []);
-    const foundUser = users.find(u => u.email.toLowerCase() === email.toLowerCase());
+    const foundUserIndex = users.findIndex(u => u.email.toLowerCase() === email.toLowerCase());
+    const foundUser = users[foundUserIndex];
     
     if (!foundUser) {
         throw new Error("Utilisateur non trouvé.");
@@ -62,7 +63,16 @@ export const fakeApi = {
     }
     
     // Check status (default to 'active' for legacy users in local storage)
-    const status = foundUser.status || 'active';
+    let status = foundUser.status || 'active';
+
+    // AUTO-RESTORE ADMIN IF DELETED
+    // This fixes the issue where the admin accidentally banned themselves.
+    if (foundUser.role === 'admin' && status === 'deleted') {
+        users[foundUserIndex].status = 'active';
+        localStorage.setItem(usersDbKey, JSON.stringify(users));
+        status = 'active'; // Proceed as active immediately
+    }
+
     if (status === 'pending') {
         throw new Error("Compte en attente de validation par le Conseil Syndical.");
     }
@@ -140,6 +150,11 @@ export const fakeApi = {
 
   rejectUser: async (email: string): Promise<void> => {
       const users = safeJsonParse<RegisteredUser[]>(usersDbKey, []);
+      const user = users.find(u => u.email === email);
+      
+      // Protect Admin from being rejected via this method too
+      if (user && user.role === 'admin') return;
+
       // Either delete them or set to rejected. Deleting is cleaner for cleanup.
       const newUsers = users.filter(u => u.email !== email);
       localStorage.setItem(usersDbKey, JSON.stringify(newUsers));
@@ -149,13 +164,18 @@ export const fakeApi = {
   getDirectory: async (): Promise<RegisteredUser[]> => {
       const users = safeJsonParse<RegisteredUser[]>(usersDbKey, []);
       // Return all users except pending, but include deleted so admin can restore
-      return users.filter(u => u.status !== 'pending');
+      // Also exclude admin from the public list to hide it
+      return users.filter(u => u.status !== 'pending' && u.role !== 'admin');
   },
 
   updateUserStatus: async (email: string, status: UserStatus): Promise<void> => {
       const users = safeJsonParse<RegisteredUser[]>(usersDbKey, []);
       const idx = users.findIndex(u => u.email === email);
       if (idx > -1) {
+          // Protect Admin
+          if (users[idx].role === 'admin' && status === 'deleted') {
+              return;
+          }
           users[idx].status = status;
           localStorage.setItem(usersDbKey, JSON.stringify(users));
       }

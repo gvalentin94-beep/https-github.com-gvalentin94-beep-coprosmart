@@ -25,7 +25,15 @@ function BidBox({ task, onBid }: BidBoxProps) {
     
     const [amount, setAmount] = useState(String(Math.floor(currentPrice - 1)));
     const [note, setNote] = useState("");
-    const [plannedExecutionDate, setPlannedExecutionDate] = useState("");
+    
+    // Default date logic: Tomorrow
+    const getTomorrow = () => {
+        const d = new Date();
+        d.setDate(d.getDate() + 1);
+        return d.toISOString().split('T')[0];
+    };
+    
+    const [plannedExecutionDate, setPlannedExecutionDate] = useState(getTomorrow());
 
     useEffect(() => {
         // Default to current price - 1, ensuring it's an integer
@@ -53,7 +61,8 @@ function BidBox({ task, onBid }: BidBoxProps) {
         }
         onBid({ amount: val, note, plannedExecutionDate });
         setNote("");
-        setPlannedExecutionDate("");
+        // Reset date to tomorrow
+        setPlannedExecutionDate(getTomorrow());
     };
 
     const today = new Date().toISOString().split('T')[0];
@@ -181,6 +190,7 @@ function Countdown({ startedAt }: { startedAt: string }) {
 interface TaskCardProps {
   task: Task;
   me: Me;
+  usersMap?: Record<string, string>; // Map email -> Full Name
   onBid: (bid: Omit<Bid, 'by' | 'at'>) => void;
   onAward: () => void;
   onComplete: () => void;
@@ -193,7 +203,7 @@ interface TaskCardProps {
   onReject?: () => void;
 }
 
-export function TaskCard({ task, me, onBid, onAward, onComplete, onRate, onPayApartment, onDelete, canDelete, onApprove, onReject }: TaskCardProps) {
+export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRate, onPayApartment, onDelete, canDelete, onApprove, onReject }: TaskCardProps) {
     const statusConfig = TASK_STATUS_CONFIG[task.status];
     const categoryInfo = CATEGORIES.find(c => c.id === task.category);
     const lowestBid = task.bids?.length > 0 ? task.bids.reduce((min, b) => b.amount < min.amount ? b : min, task.bids[0]) : null;
@@ -226,6 +236,9 @@ export function TaskCard({ task, me, onBid, onAward, onComplete, onRate, onPayAp
                            task.bids?.length > 0 && 
                            lowestBid && 
                            (isAdmin || !isTimerRunning);
+    
+    // Resolve winner name
+    const awardedToName = task.awardedTo && usersMap ? (usersMap[task.awardedTo] || task.awardedTo) : task.awardedTo;
 
     const BidArea = () => {
         if (task.status !== 'open' || me?.role !== 'owner' || me.email === task.createdBy) {
@@ -253,7 +266,7 @@ export function TaskCard({ task, me, onBid, onAward, onComplete, onRate, onPayAp
                             <CardTitle className="text-base md:text-lg">{task.title}</CardTitle>
                         </div>
                         <p className="text-xs text-slate-400">
-                            Proposée par <span className="font-medium text-slate-300">{task.createdBy}</span> le {new Date(task.createdAt).toLocaleDateString()}
+                            Proposée par <span className="font-medium text-slate-300">{usersMap?.[task.createdBy] || task.createdBy}</span> le {new Date(task.createdAt).toLocaleDateString()}
                         </p>
                     </div>
                      <div className="flex items-center gap-2">
@@ -275,7 +288,7 @@ export function TaskCard({ task, me, onBid, onAward, onComplete, onRate, onPayAp
 
                 {task.awardedTo && (
                     <div className="bg-sky-900/30 border border-sky-800 text-sky-200 p-3 rounded-lg text-sm">
-                        🤝 Attribuée à <b>{task.awardedTo}</b> pour <b>{task.awardedAmount}€</b>
+                        🤝 Attribuée à <b>{awardedToName}</b> pour <b>{task.awardedAmount}€</b>
                     </div>
                 )}
 
@@ -285,15 +298,18 @@ export function TaskCard({ task, me, onBid, onAward, onComplete, onRate, onPayAp
                     <div className="space-y-2">
                         <h4 className="text-xs font-semibold text-slate-400">Offres en cours</h4>
                         <ul className="space-y-1">
-                            {task.bids.slice().sort((a,b) => a.amount - b.amount).map((b, i) => (
-                                <li key={i} className={`flex flex-col sm:flex-row justify-between items-start sm:items-center text-sm p-2 rounded-md ${i === 0 ? 'bg-indigo-900/40 border border-indigo-800 text-indigo-100' : 'bg-slate-800/50 border border-slate-700 text-slate-400'}`}>
-                                    <div>
-                                        <span className="font-semibold text-white">{b.amount} €</span> <span className="text-slate-500 text-xs">par {b.by}</span>
-                                        <div className="text-xs text-indigo-400/80 mt-1">🗓️ Prévu le: {new Date(b.plannedExecutionDate).toLocaleDateString()}</div>
-                                    </div>
-                                    <span className="text-xs text-slate-600 mt-1 sm:mt-0">{new Date(b.at).toLocaleDateString()}</span>
-                                </li>
-                            ))}
+                            {task.bids.slice().sort((a,b) => a.amount - b.amount).map((b, i) => {
+                                const bidderName = usersMap ? (usersMap[b.by] || b.by) : b.by;
+                                return (
+                                    <li key={i} className={`flex flex-col sm:flex-row justify-between items-start sm:items-center text-sm p-2 rounded-md ${i === 0 ? 'bg-indigo-900/40 border border-indigo-800 text-indigo-100' : 'bg-slate-800/50 border border-slate-700 text-slate-400'}`}>
+                                        <div>
+                                            <span className="font-semibold text-white">{b.amount} €</span> <span className="text-slate-500 text-xs">par {bidderName}</span>
+                                            <div className="text-xs text-indigo-400/80 mt-1">🗓️ Prévu le: {new Date(b.plannedExecutionDate).toLocaleDateString()}</div>
+                                        </div>
+                                        <span className="text-xs text-slate-600 mt-1 sm:mt-0">{new Date(b.at).toLocaleDateString()}</span>
+                                    </li>
+                                );
+                            })}
                         </ul>
                     </div>
                 )}

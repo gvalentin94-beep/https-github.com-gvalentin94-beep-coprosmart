@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import type { Me, Task, User, LedgerEntry, TaskCategory, TaskScope, Rating, Bid, RegisteredUser, UserRole } from './types';
 import { useAuth, fakeApi } from './services/api';
@@ -612,11 +613,12 @@ function UserValidationQueue({ notify }: UserValidationQueueProps) {
 interface ValidationQueueProps {
   me: Me;
   tasks: Task[];
+  usersMap: Record<string, string>;
   onApprove: (task: Task) => void;
   onReject: (task: Task) => void;
   onDelete: (task: Task) => void;
 }
-function ValidationQueue({ me, tasks, onApprove, onReject, onDelete }: ValidationQueueProps) {
+function ValidationQueue({ me, tasks, usersMap, onApprove, onReject, onDelete }: ValidationQueueProps) {
     const pending = tasks.filter(t => t.status === 'pending');
     if (me.role !== 'council' && me.role !== 'admin') return null;
     if (!pending.length) return <EmptyState text="Aucune demande à valider." />;
@@ -627,7 +629,8 @@ function ValidationQueue({ me, tasks, onApprove, onReject, onDelete }: Validatio
                 <TaskCard 
                     key={t.id} 
                     task={t} 
-                    me={me} 
+                    me={me}
+                    usersMap={usersMap}
                     onBid={() => {}} 
                     onAward={() => {}} 
                     onComplete={() => {}} 
@@ -651,15 +654,27 @@ interface DashboardProps {
 }
 function Dashboard({ me, notify }: DashboardProps) {
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [usersMap, setUsersMap] = useState<Record<string, string>>({});
 
   const fetchTasks = useCallback(async () => {
     const fetchedTasks = await fakeApi.readTasks();
     setTasks(fetchedTasks);
   }, []);
 
+  const fetchUsersMap = useCallback(async () => {
+      // Get all users to map email -> Full Name
+      const users = await fakeApi.getDirectory();
+      const map: Record<string, string> = {};
+      users.forEach(u => {
+          map[u.email] = `${u.firstName} ${u.lastName.toUpperCase()}`;
+      });
+      setUsersMap(map);
+  }, []);
+
   useEffect(() => {
     fetchTasks();
-  }, [fetchTasks]);
+    fetchUsersMap();
+  }, [fetchTasks, fetchUsersMap]);
 
   const save = async (next: Task[]) => {
     setTasks(next);
@@ -809,7 +824,19 @@ function Dashboard({ me, notify }: DashboardProps) {
   const TaskList = ({ taskItems }: { taskItems: Task[] }) => (
     <div className="grid md:grid-cols-2 gap-4">
         {taskItems.map(t => (
-            <TaskCard key={t.id} task={t} me={me} onBid={(b) => bid(t.id, b)} onAward={() => awardLowest(t.id)} onComplete={() => completeTask(t.id)} onRate={(r) => rateTask(t.id, r)} onPayApartment={() => payApartment(t.id)} onDelete={() => deleteTask(t)} canDelete={canDeleteTask(t)} />
+            <TaskCard 
+                key={t.id} 
+                task={t} 
+                me={me} 
+                usersMap={usersMap}
+                onBid={(b) => bid(t.id, b)} 
+                onAward={() => awardLowest(t.id)} 
+                onComplete={() => completeTask(t.id)} 
+                onRate={(r) => rateTask(t.id, r)} 
+                onPayApartment={() => payApartment(t.id)} 
+                onDelete={() => deleteTask(t)} 
+                canDelete={canDeleteTask(t)} 
+            />
         ))}
     </div>
   );
@@ -841,7 +868,7 @@ function Dashboard({ me, notify }: DashboardProps) {
 
       {(me.role === 'council' || me.role === 'admin') && tasksByStatus.pending.length > 0 && (
         <Section title="Tâches à valider" count={tasksByStatus.pending.length}>
-          <ValidationQueue me={me} tasks={tasks} onApprove={approve} onReject={reject} onDelete={deleteTask} />
+          <ValidationQueue me={me} tasks={tasks} usersMap={usersMap} onApprove={approve} onReject={reject} onDelete={deleteTask} />
         </Section>
       )}
 

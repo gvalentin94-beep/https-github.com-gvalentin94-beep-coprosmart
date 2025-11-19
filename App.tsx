@@ -847,12 +847,24 @@ export default function App() {
         {/* Header */}
         <header className="bg-slate-800 border-b border-slate-700 sticky top-0 z-40 shadow-lg">
             <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg shadow-inner"></div>
-                    <h1 className="font-bold text-xl text-white tracking-tight">CoproSmart</h1>
+                <div className="flex items-center gap-2 md:gap-8">
+                    <button onClick={() => setView('dashboard')} className="flex items-center gap-2 hover:opacity-80 transition">
+                        <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg shadow-inner"></div>
+                        <h1 className="font-bold text-xl text-white tracking-tight hidden sm:block">CoproSmart</h1>
+                    </button>
+
+                    {/* Navigation in Header (Hidden on very small screens, or scrollable) */}
+                    <nav className="flex gap-1 overflow-x-auto no-scrollbar">
+                        <Button size="sm" variant={view === 'dashboard' ? 'primary' : 'ghost'} onClick={() => setView('dashboard')}>🏠 Accueil</Button>
+                        {(user.role === 'admin' || user.role === 'council') && (
+                            <Button size="sm" variant={view === 'ledger' ? 'primary' : 'ghost'} onClick={() => setView('ledger')}>📒 Écritures</Button>
+                        )}
+                        <Button size="sm" variant={view === 'directory' ? 'primary' : 'ghost'} onClick={() => setView('directory')}>👥 Annuaire</Button>
+                        <Button size="sm" variant={view === 'cgu' ? 'primary' : 'ghost'} onClick={() => setView('cgu')}>⚖️ CGU</Button>
+                    </nav>
                 </div>
                 <div className="flex items-center gap-4">
-                    <div className="text-right hidden sm:block">
+                    <div className="text-right hidden lg:block">
                         <div className="text-sm font-bold text-white leading-none mb-0.5">
                             <span className="text-[10px] uppercase tracking-wider text-indigo-400 font-bold mr-1.5 align-middle">
                                 {user.role === 'admin' ? 'ADMINISTRATEUR' : user.role === 'council' ? 'CONSEIL SYNDICAL' : 'COPROPRIÉTAIRE'}
@@ -867,16 +879,6 @@ export default function App() {
         </header>
 
         <main className="max-w-5xl mx-auto px-4 py-8">
-            
-            {/* Navigation Tabs */}
-            <nav className="flex flex-wrap gap-2 mb-8 border-b border-slate-700 pb-4">
-                <Button variant={view === 'dashboard' ? 'primary' : 'ghost'} onClick={() => setView('dashboard')}>📋 Tableau de bord</Button>
-                {(user.role === 'admin' || user.role === 'council') && (
-                    <Button variant={view === 'ledger' ? 'primary' : 'ghost'} onClick={() => setView('ledger')}>📒 Écritures</Button>
-                )}
-                <Button variant={view === 'directory' ? 'primary' : 'ghost'} onClick={() => setView('directory')}>👥 Annuaire</Button>
-                <Button variant={view === 'cgu' ? 'primary' : 'ghost'} onClick={() => setView('cgu')}>⚖️ CGU</Button>
-            </nav>
 
             <Toaster toasts={toasts} onDismiss={(id) => setToasts(prev => prev.filter(t => t.id !== id))} />
 

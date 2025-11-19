@@ -328,8 +328,6 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                     </div>
                 )}
 
-                <BidArea />
-
                 {task.status === 'open' && task.bids?.length > 0 && (
                     <div className="space-y-2">
                         <h4 className="text-xs font-semibold text-slate-400">Offres en cours</h4>
@@ -349,6 +347,8 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                         </ul>
                     </div>
                 )}
+
+                <BidArea />
 
                 {canManualAward && lowestBid && (
                     <Button size="sm" onClick={onAward}>
@@ -371,7 +371,8 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                         </div>
                         <p className="text-xs opacity-80">Le copropriétaire indique avoir terminé. Le Conseil Syndical doit valider pour déclencher le paiement.</p>
                         
-                        {canVerify && onComplete && onRejectWork ? (
+                        {/* Removed redundant check for onComplete as it is not optional */}
+                        {canVerify && onRejectWork ? (
                             <div className="flex gap-2 mt-1">
                                 <Button size="sm" className="bg-emerald-600 hover:bg-emerald-500 border-none text-white" onClick={onComplete}>✅ Valider le travail définitif</Button>
                                 <Button size="sm" variant="destructive" onClick={onRejectWork}>❌ Refuser (Travail incomplet)</Button>

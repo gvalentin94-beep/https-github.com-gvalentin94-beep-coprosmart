@@ -241,8 +241,14 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
     const awardedToName = task.awardedTo && usersMap ? (usersMap[task.awardedTo] || task.awardedTo) : task.awardedTo;
 
     const BidArea = () => {
-        if (task.status !== 'open' || me?.role !== 'owner' || me.email === task.createdBy) {
+        if (task.status !== 'open' || me?.role !== 'owner') {
             return null;
+        }
+
+        // Specific rule: The creator cannot bid unless the task has at least 2 approvals from CS
+        // This prevents a user from creating a task and grabbing it immediately without oversight.
+        if (me.email === task.createdBy && (task.approvals?.length || 0) < COUNCIL_MIN_APPROVALS) {
+             return null;
         }
 
         if (canBid) {

@@ -4,7 +4,7 @@ import type { Me, Task, User, LedgerEntry, TaskCategory, TaskScope, Rating, Bid,
 import { useAuth, fakeApi } from './services/api';
 import { Button, Card, CardContent, CardHeader, CardTitle, Label, Input, Textarea, Select, Badge } from './components/ui';
 import { TaskCard } from './components/TaskCard';
-import { LOCATIONS, CATEGORIES, SCOPES, COUNCIL_MIN_APPROVALS, ROLES } from './constants';
+import { LOCATIONS, CATEGORIES, SCOPES, COUNCIL_MIN_APPROVALS, ROLES, MAX_TASK_PRICE } from './constants';
 import { LoginCard } from './components/LoginCard';
 
 // --- Toast Notification System ---
@@ -130,6 +130,7 @@ function CreateTaskForm({ onSubmit, onCancel, initialData }: { onSubmit: (data: 
       if (!title.trim()) { alert("Le titre est obligatoire."); return; }
       if (!location.trim()) { alert("L'emplacement est obligatoire."); return; }
       if (!startingPrice || Number(startingPrice) <= 0) { alert("Le prix de départ est obligatoire."); return; }
+      if (Number(startingPrice) > MAX_TASK_PRICE) { alert(`Le prix de départ ne peut pas dépasser ${MAX_TASK_PRICE}€.`); return; }
       setShowPreview(true);
   };
 
@@ -178,6 +179,7 @@ function CreateTaskForm({ onSubmit, onCancel, initialData }: { onSubmit: (data: 
                     <Input 
                         type="number" 
                         min="1" 
+                        max={MAX_TASK_PRICE}
                         placeholder="15" 
                         value={startingPrice} 
                         onChange={(e) => setStartingPrice(e.target.value)} 
@@ -185,6 +187,7 @@ function CreateTaskForm({ onSubmit, onCancel, initialData }: { onSubmit: (data: 
                     />
                     <span className="absolute right-3 top-2 text-slate-500">€</span>
                 </div>
+                <div className="text-xs text-slate-500">Max: {MAX_TASK_PRICE}€</div>
             </div>
         </div>
 
@@ -621,8 +624,11 @@ export default function App() {
               if (t.approvals.some(a => a.by === user.email)) return t;
               
               const newApprovals = [...t.approvals, { by: user.email, at: new Date().toISOString() }];
-              // Check if threshold reached
-              if (newApprovals.length >= COUNCIL_MIN_APPROVALS) {
+              // Check if threshold reached OR admin override (admin approval counts as instant pass if implemented, but here we stick to threshold logic unless admin action logic elsewhere)
+              // Per user request earlier: Admin approval instantly validates.
+              const isAdmin = user.role === 'admin';
+
+              if (newApprovals.length >= COUNCIL_MIN_APPROVALS || isAdmin) {
                   notify('all', `Nouvelle offre disponible : ${t.title}`);
                   return { ...t, approvals: newApprovals, status: 'open' as const };
               }

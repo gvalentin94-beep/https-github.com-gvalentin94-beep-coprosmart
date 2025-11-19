@@ -245,10 +245,18 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
             return null;
         }
 
-        // Specific rule: The creator cannot bid unless the task has at least 2 approvals from CS
-        // This prevents a user from creating a task and grabbing it immediately without oversight.
-        if (me.email === task.createdBy && (task.approvals?.length || 0) < COUNCIL_MIN_APPROVALS) {
-             return null;
+        // Specific rule: The creator cannot bid unless the task has at least 2 approvals from CS OR if someone else has bid
+        if (me.email === task.createdBy) {
+             const hasOtherBidders = task.bids.some(b => b.by !== me.email);
+             const hasEnoughApprovals = (task.approvals?.length || 0) >= COUNCIL_MIN_APPROVALS;
+
+             if (!hasOtherBidders && !hasEnoughApprovals) {
+                 return (
+                     <div className="bg-slate-900/50 border border-slate-700 text-amber-500/80 p-3 rounded-lg text-xs text-center italic">
+                         En tant que créateur, vous ne pourrez enchérir que si la tâche est validée par 2 membres du CS ou si un autre copropriétaire se positionne.
+                     </div>
+                 );
+             }
         }
 
         if (canBid) {
@@ -356,7 +364,9 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                         </div>
                         {onApprove && onReject && (
                             <div className="flex gap-2">
-                                <Button size="sm" onClick={onApprove} disabled={hasApproved} className="bg-emerald-600 hover:bg-emerald-500 border-none text-white disabled:opacity-50 disabled:cursor-not-allowed">✅ Valider</Button>
+                                <Button size="sm" onClick={onApprove} disabled={hasApproved} className="bg-emerald-600 hover:bg-emerald-500 border-none text-white disabled:opacity-50 disabled:cursor-not-allowed">
+                                    {isAdmin ? '⚡ Forcer la validation' : '✅ Valider'}
+                                </Button>
                                 <Button size="sm" variant="destructive" onClick={onReject}>❌ Rejeter</Button>
                             </div>
                         )}

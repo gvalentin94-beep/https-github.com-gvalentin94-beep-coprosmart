@@ -591,10 +591,14 @@ export default function App() {
   // --- Handlers ---
 
   const handleCreateTask = async (data: any) => {
+    // If Admin creates a task, it is automatically OPEN (bypasses pending)
+    // If Council/Owner creates, it is PENDING.
+    const isAdmin = user.role === 'admin';
+    
     const newTask: Task = {
       id: Math.random().toString(36).substr(2, 9),
       ...data,
-      status: 'pending', // Needs validation
+      status: isAdmin ? 'open' : 'pending', 
       createdBy: user.email,
       createdAt: new Date().toISOString(),
       bids: [],
@@ -603,8 +607,8 @@ export default function App() {
       rejections: [],
     };
 
-    // Auto-approve if creator is council/admin
-    if (user.role === 'council' || user.role === 'admin') {
+    // Auto-approve if creator is council/admin (for records, even if open)
+    if (user.role === 'council' || isAdmin) {
         newTask.approvals.push({ by: user.email, at: new Date().toISOString() });
     }
 
@@ -613,8 +617,14 @@ export default function App() {
     setTasks(newTasks);
     setShowCreateForm(false);
     setEditingTaskData(null);
-    addToast("Succès", "Tâche créée et envoyée pour validation.", "success");
-    notify('Conseil Syndical', `Nouvelle tâche à valider : ${newTask.title}`);
+    
+    if (isAdmin) {
+         addToast("Succès", "Tâche créée et publiée immédiatement (Admin).", "success");
+         notify('all', `Nouvelle offre disponible (Admin) : ${newTask.title}`);
+    } else {
+        addToast("Succès", "Tâche créée et envoyée pour validation.", "success");
+        notify('Conseil Syndical', `Nouvelle tâche à valider : ${newTask.title}`);
+    }
   };
 
   const handleApprove = async (taskId: string) => {
@@ -624,10 +634,10 @@ export default function App() {
               if (t.approvals.some(a => a.by === user.email)) return t;
               
               const newApprovals = [...t.approvals, { by: user.email, at: new Date().toISOString() }];
-              // Check if threshold reached OR admin override (admin approval counts as instant pass if implemented, but here we stick to threshold logic unless admin action logic elsewhere)
-              // Per user request earlier: Admin approval instantly validates.
               const isAdmin = user.role === 'admin';
 
+              // Admin approval instantly validates.
+              // OR threshold reached.
               if (newApprovals.length >= COUNCIL_MIN_APPROVALS || isAdmin) {
                   notify('all', `Nouvelle offre disponible : ${t.title}`);
                   return { ...t, approvals: newApprovals, status: 'open' as const };
@@ -789,7 +799,7 @@ export default function App() {
                         onRate={()=>{}} 
                         onPayApartment={()=>{}} 
                         onDelete={() => handleDelete(t.id)}
-                        canDelete={true}
+                        canDelete={user.role === 'admin' || t.createdBy === user.email}
                         onApprove={() => handleApprove(t.id)}
                         onReject={() => handleReject(t.id)}
                       />

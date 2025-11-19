@@ -1,7 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
 import type { Task, Me, Rating, Bid } from '../types';
 import { Button, Card, CardContent, CardHeader, CardTitle, Input, Label, Badge, Textarea } from './ui';
-import { CATEGORIES, TASK_STATUS_CONFIG } from '../constants';
+import { CATEGORIES, TASK_STATUS_CONFIG, COUNCIL_MIN_APPROVALS } from '../constants';
 
 // --- Sub-components defined in the same file to keep file count low ---
 
@@ -187,9 +188,12 @@ interface TaskCardProps {
   onPayApartment: () => void;
   onDelete: () => void;
   canDelete: boolean;
+  // Optional props for Validation Mode
+  onApprove?: () => void;
+  onReject?: () => void;
 }
 
-export function TaskCard({ task, me, onBid, onAward, onComplete, onRate, onPayApartment, onDelete, canDelete }: TaskCardProps) {
+export function TaskCard({ task, me, onBid, onAward, onComplete, onRate, onPayApartment, onDelete, canDelete, onApprove, onReject }: TaskCardProps) {
     const statusConfig = TASK_STATUS_CONFIG[task.status];
     const categoryInfo = CATEGORIES.find(c => c.id === task.category);
     const lowestBid = task.bids?.length > 0 ? task.bids.reduce((min, b) => b.amount < min.amount ? b : min, task.bids[0]) : null;
@@ -206,6 +210,8 @@ export function TaskCard({ task, me, onBid, onAward, onComplete, onRate, onPayAp
     const canBid =
         (isFirstBidder && myBidsCount < 2) ||
         (!isFirstBidder && myBidsCount < 1);
+
+    const hasApproved = task.approvals?.some(a => a.by === me.email);
 
     const BidArea = () => {
         if (task.status !== 'open' || me?.role !== 'owner' || me.email === task.createdBy) {
@@ -299,8 +305,16 @@ export function TaskCard({ task, me, onBid, onAward, onComplete, onRate, onPayAp
                 )}
                 
                 {task.status === "pending" && (
-                     <div className="bg-amber-900/30 border border-amber-800 text-amber-200 p-3 rounded-lg text-sm">
-                        ⏳ En attente de validations du Conseil syndical. (Validations: {task.approvals?.length || 0})
+                     <div className="bg-amber-900/30 border border-amber-800 text-amber-200 p-3 rounded-lg text-sm flex flex-col gap-3">
+                        <div className="flex items-center justify-between">
+                            <span>⏳ En attente de validations du Conseil syndical. ({task.approvals?.length || 0}/{COUNCIL_MIN_APPROVALS})</span>
+                        </div>
+                        {onApprove && onReject && (
+                            <div className="flex gap-2">
+                                <Button size="sm" onClick={onApprove} disabled={hasApproved} className="bg-emerald-600 hover:bg-emerald-500 border-none text-white disabled:opacity-50 disabled:cursor-not-allowed">✅ Valider</Button>
+                                <Button size="sm" variant="destructive" onClick={onReject}>❌ Rejeter</Button>
+                            </div>
+                        )}
                     </div>
                 )}
 

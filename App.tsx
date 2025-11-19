@@ -182,6 +182,8 @@ function UserDirectory({ me, tasks, onDataChange }: UserDirectoryProps) {
                         const reviews = getReviewsForUser(u.email);
                         const avg = getAverageRating(reviews);
                         const isDeleted = u.status === 'deleted';
+                        const firstName = u.firstName || 'Utilisateur';
+                        const lastName = u.lastName ? u.lastName.toUpperCase() : '';
 
                         return (
                             <Card key={u.id} className={`${isDeleted ? 'opacity-60 border-rose-900 bg-rose-950/20' : 'border-slate-700'}`}>
@@ -189,7 +191,7 @@ function UserDirectory({ me, tasks, onDataChange }: UserDirectoryProps) {
                                     <div className="flex justify-between items-start">
                                         <div>
                                             <CardTitle className="text-base flex items-center gap-2">
-                                                {u.firstName} {u.lastName.toUpperCase()}
+                                                {firstName} {lastName}
                                                 {isDeleted && <Badge variant="destructive">Banni</Badge>}
                                             </CardTitle>
                                             <p className="text-xs text-slate-400 mt-1">{u.email}</p>
@@ -542,23 +544,22 @@ function ValidationQueue({ me, tasks, onApprove, onReject, onDelete }: Validatio
     if (!pending.length) return <EmptyState text="Aucune demande à valider." />;
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-6">
             {pending.map(t => (
-                <Card key={t.id}>
-                    <CardHeader>
-                        <CardTitle className="flex justify-between items-center text-base">{t.title}
-                          <Badge>{t.approvals?.length || 0}/{COUNCIL_MIN_APPROVALS} approb.</Badge>
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                        <p className="text-sm text-slate-400">{t.details}</p>
-                        <div className="flex gap-2 flex-wrap">
-                            <Button size="sm" onClick={() => onApprove(t)} disabled={(t.approvals || []).some(a => a.by === me.email)}>✅ Approuver</Button>
-                            <Button size="sm" variant="outline" onClick={() => onReject(t)}>❌ Rejeter</Button>
-                            <Button size="sm" variant="destructive" onClick={() => onDelete(t)}>🗑️ Supprimer</Button>
-                        </div>
-                    </CardContent>
-                </Card>
+                <TaskCard 
+                    key={t.id} 
+                    task={t} 
+                    me={me} 
+                    onBid={() => {}} 
+                    onAward={() => {}} 
+                    onComplete={() => {}} 
+                    onRate={() => {}} 
+                    onPayApartment={() => {}}
+                    onDelete={() => onDelete(t)}
+                    canDelete={true}
+                    onApprove={() => onApprove(t)}
+                    onReject={() => onReject(t)}
+                />
             ))}
         </div>
     );
@@ -850,7 +851,7 @@ export default function App() {
             </main>
         </div>
       </div>
-      <footer className="text-center text-xs text-slate-600 py-6">Prototype CoproSmart - Simulation</footer>
+      <footer className="text-center text-xs text-slate-600 py-6">CoproSmart v0.1.0 - Gestion de copropriété simplifiée</footer>
     </div>
   );
 }

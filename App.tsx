@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import type { Me, Task, User, LedgerEntry, TaskCategory, TaskScope, Rating, Bid, RegisteredUser, UserRole } from './types';
 import { useAuth, fakeApi } from './services/api';
@@ -460,9 +459,57 @@ export default function App() {
       setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 5000);
   };
 
-  const notify = (recipientRole: string | string[], subject: string) => {
-      const to = Array.isArray(recipientRole) ? recipientRole.join(', ') : (recipientRole === 'all' ? 'Tous les copropriétaires' : recipientRole);
-      addToast(`📧 Simulation Email`, `À: ${to}\nSujet: ${subject}`);
+  // REAL EMAIL NOTIFICATION LOGIC
+  const notify = async (recipientRole: string | string[], subject: string) => {
+      let recipients: string[] = [];
+
+      // Resolve Recipients
+      if (recipientRole === 'all') {
+          recipients = directoryUsers.map(u => u.email);
+      } else if (recipientRole === 'Conseil Syndical' || recipientRole === 'council') {
+          recipients = directoryUsers.filter(u => u.role === 'council').map(u => u.email);
+      } else if (Array.isArray(recipientRole)) {
+          // It might be a mix of roles and emails
+          for (const r of recipientRole) {
+              if (r === 'Conseil Syndical' || r === 'council') {
+                  const councilEmails = directoryUsers.filter(u => u.role === 'council').map(u => u.email);
+                  recipients.push(...councilEmails);
+              } else {
+                  recipients.push(r);
+              }
+          }
+      } else {
+          // Single email string
+          recipients = [recipientRole];
+      }
+      
+      // Deduplicate
+      recipients = [...new Set(recipients)];
+
+      if (recipients.length === 0) return;
+
+      // 1. Visual Notification (Toast)
+      addToast(`📧 Envoi email...`, `Sujet: ${subject}`);
+
+      // 2. Real API Call
+      try {
+          const res = await fetch('/api/send-email', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                  to: recipients,
+                  subject: `[CoproSmart] ${subject}`,
+                  html: `<p>Bonjour,</p><p>${subject}</p><p>Connectez-vous sur CoproSmart pour en savoir plus.</p>`
+              })
+          });
+          
+          if (!res.ok) {
+            console.warn("Email sending failed (expected in preview mode if no backend):", res.status);
+          }
+      } catch (e) {
+          console.error("Email fetch error:", e);
+          // Fail silently in frontend to not block user flow, as preview env doesn't have the API route.
+      }
   };
 
   const refresh = useCallback(async () => {

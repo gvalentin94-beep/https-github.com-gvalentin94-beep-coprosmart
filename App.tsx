@@ -828,7 +828,7 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
                 <h1 className="text-2xl md:text-3xl font-black tracking-tighter text-white leading-none">
                     CoproSmart.
                 </h1>
-                <div className="w-full flex justify-between text-[0.6rem] md:text-[0.7rem] font-black text-white tracking-tight uppercase mt-1 leading-none">
+                <div className="w-full flex justify-between text-[0.65rem] md:text-[0.8rem] font-bold text-white tracking-wide leading-none mt-1">
                     <span>Simple.</span>
                     <span>Local.</span>
                     <span>Gagnant-gagnant.</span>
@@ -1034,10 +1034,10 @@ export default function App() {
         </div>
 
         <div className="w-full max-w-3xl z-10 mb-10 text-center mx-auto space-y-2">
-            <h1 className="text-[5rem] md:text-[8rem] font-black tracking-tighter text-white leading-none w-full text-center">
+            <h1 className="text-6xl md:text-7xl font-black tracking-tighter text-white leading-none w-full text-center">
                 CoproSmart.
             </h1>
-            <div className="w-full flex justify-between px-1 md:px-2 text-sm md:text-xl font-bold text-white tracking-widest uppercase leading-none">
+            <div className="w-full flex justify-between px-1 text-lg md:text-xl font-bold text-white mt-2">
                  <span>On</span> <span>réduit</span> <span>nos</span> <span>charges</span> <span>de</span> <span>copropriété.</span>
             </div>
         </div>

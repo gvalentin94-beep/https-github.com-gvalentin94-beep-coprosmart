@@ -50,7 +50,14 @@ export function LoginCard({ onLogin }: LoginCardProps) {
       const u = await fakeApi.login(email.trim(), password);
       onLogin(u);
     } catch (e) {
-      if (e instanceof Error) setErr(e.message);
+      if (e instanceof Error) {
+          let msg = e.message;
+          // Add specific hint for "User not found" in this prototype version
+          if (msg === "Utilisateur non trouvé.") {
+              msg += " (Note: Sur ce prototype, les comptes sont stockés sur l'appareil. Créez un compte si vous changez d'appareil.)";
+          }
+          setErr(msg);
+      }
       else setErr("Une erreur inconnue est survenue.");
     }
   };
@@ -165,6 +172,9 @@ export function LoginCard({ onLogin }: LoginCardProps) {
                         placeholder="prenom@copro.fr" 
                         value={email} 
                         onChange={(e) => setEmail(e.target.value)} 
+                        autoCapitalize="none"
+                        autoComplete="email"
+                        autoCorrect="off"
                     />
                 </div>
                 <div className="space-y-1.5">
@@ -210,7 +220,10 @@ export function LoginCard({ onLogin }: LoginCardProps) {
                     <Input 
                         type="email" 
                         value={email} 
-                        onChange={(e) => setEmail(e.target.value)} 
+                        onChange={(e) => setEmail(e.target.value)}
+                        autoCapitalize="none"
+                        autoComplete="email"
+                        autoCorrect="off"
                     />
                 </div>
                 <div className="space-y-1.5">
@@ -264,7 +277,9 @@ export function LoginCard({ onLogin }: LoginCardProps) {
                     <Input 
                         type="email" 
                         value={email} 
-                        onChange={(e) => setEmail(e.target.value)} 
+                        onChange={(e) => setEmail(e.target.value)}
+                        autoCapitalize="none"
+                        autoComplete="email"
                     />
                 </div>
                 {err && <p className="text-sm text-rose-400">{err}</p>}

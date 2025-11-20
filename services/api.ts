@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import type { Task, LedgerEntry, User, UserRole, RegisteredUser, UserStatus } from '../types';
+import type { Task, LedgerEntry, User, UserRole, RegisteredUser, UserStatus, DeletedRating } from '../types';
 
 const storageKey = "copro_tasks_v3";
 const ledgerKey = "copro_ledger_v3";
@@ -210,12 +210,29 @@ export const fakeApi = {
       }
   },
 
-  deleteRating: async (taskId: string, ratingIndex: number): Promise<void> => {
+  deleteRating: async (taskId: string, ratingIndex: number, deletedByEmail: string): Promise<void> => {
       const tasks = safeJsonParse<Task[]>(storageKey, []);
       const taskIdx = tasks.findIndex(t => t.id === taskId);
       if (taskIdx > -1 && tasks[taskIdx].ratings) {
-          // Remove rating at index
+          // Move rating to deletedRatings array instead of destroying it
+          const ratingToDelete = tasks[taskIdx].ratings[ratingIndex];
+          if (!ratingToDelete) return;
+
+          // Remove from active ratings
           tasks[taskIdx].ratings.splice(ratingIndex, 1);
+
+          // Add to history
+          const deletedEntry: DeletedRating = {
+              ...ratingToDelete,
+              deletedAt: new Date().toISOString(),
+              deletedBy: deletedByEmail
+          };
+          
+          if (!tasks[taskIdx].deletedRatings) {
+              tasks[taskIdx].deletedRatings = [];
+          }
+          tasks[taskIdx].deletedRatings!.push(deletedEntry);
+
           localStorage.setItem(storageKey, JSON.stringify(tasks));
       }
   }

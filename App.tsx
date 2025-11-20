@@ -378,41 +378,44 @@ function CreateTaskForm({ me, onSubmit }: { me: User, onSubmit: (t: Partial<Task
         title, category, scope, location, details, startingPrice: Number(startingPrice), warrantyDays: Number(warranty), photo
     };
 
+    // Style helper for compact labels
+    const LabelSm = ({ children }: { children: React.ReactNode }) => <Label className="text-[10px] uppercase tracking-wider text-slate-500 mb-1">{children}</Label>;
+
     return (
         <>
-            <div className="space-y-4">
-                <div className="space-y-1.5">
-                    <Label>Titre de la demande <span className="text-rose-500">*</span></Label>
-                    <Input placeholder="Ex: Ampoule grillée Hall A" value={title} onChange={(e) => setTitle(e.target.value)} />
+            <div className="space-y-3">
+                <div>
+                    <LabelSm>Titre de la demande <span className="text-rose-500">*</span></LabelSm>
+                    <Input placeholder="Ex: Ampoule grillée Hall A" value={title} onChange={(e) => setTitle(e.target.value)} className="text-sm py-1.5" />
                 </div>
 
                 {/* Category and Scope immediately below Title */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                        <Label>Catégorie</Label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                        <LabelSm>Catégorie</LabelSm>
                         <div className="grid grid-cols-2 gap-2">
                             {CATEGORIES.map((cat) => (
                                 <button
                                     key={cat.id}
                                     onClick={() => setCategory(cat.id as TaskCategory)}
-                                    className={`flex flex-col items-center justify-center p-2 rounded-lg border text-xs transition-all ${
+                                    className={`flex flex-col items-center justify-center p-1.5 rounded-lg border text-[10px] transition-all ${
                                         category === cat.id ? "bg-indigo-600 border-indigo-600 text-white" : "bg-white border-slate-300 text-slate-600 hover:bg-slate-50"
                                     }`}
                                 >
-                                    {cat.icon}
-                                    <span className="mt-1">{cat.label}</span>
+                                    {React.cloneElement(cat.icon, { className: "h-4 w-4 mb-0.5" })}
+                                    <span>{cat.label}</span>
                                 </button>
                             ))}
                         </div>
                     </div>
-                    <div className="space-y-1.5">
-                        <Label>Concerne</Label>
+                    <div>
+                        <LabelSm>Concerne</LabelSm>
                         <div className="grid grid-cols-1 gap-2">
                             {SCOPES.map((s) => (
                                 <button
                                     key={s.id}
                                     onClick={() => setScope(s.id as TaskScope)}
-                                    className={`p-3 rounded-lg border text-sm text-left transition-all ${
+                                    className={`p-2 rounded-lg border text-xs text-left transition-all ${
                                         scope === s.id ? "bg-indigo-600 border-indigo-600 text-white" : "bg-white border-slate-300 text-slate-600 hover:bg-slate-50"
                                     }`}
                                 >
@@ -423,42 +426,42 @@ function CreateTaskForm({ me, onSubmit }: { me: User, onSubmit: (t: Partial<Task
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                     <div className="space-y-1.5">
-                        <Label>Emplacement <span className="text-rose-500">*</span></Label>
-                        <Select value={location} onChange={(e) => setLocation(e.target.value)}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                     <div>
+                        <LabelSm>Emplacement <span className="text-rose-500">*</span></LabelSm>
+                        <Select value={location} onChange={(e) => setLocation(e.target.value)} className="text-sm py-1.5">
                             {LOCATIONS.map(l => <option key={l} value={l}>{l}</option>)}
                         </Select>
                     </div>
-                    <div className="space-y-1.5">
-                        <Label>Prix de départ (€) <span className="text-rose-500">*</span></Label>
+                    <div>
+                        <LabelSm>Prix de départ (€) <span className="text-rose-500">*</span></LabelSm>
                         <div className="relative">
                             <Input 
                                 type="number" 
                                 placeholder="15" 
-                                className="pl-8"
+                                className="pl-8 text-sm py-1.5"
                                 value={startingPrice} 
                                 onChange={(e) => setStartingPrice(e.target.value)} 
                             />
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 font-bold">€</span>
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 font-bold text-sm">€</span>
                         </div>
-                        <p className="text-xs text-slate-500">Max: {MAX_TASK_PRICE}€</p>
+                        <p className="text-[10px] text-slate-500 mt-0.5">Max: {MAX_TASK_PRICE}€</p>
                     </div>
                 </div>
 
-                <div className="space-y-1.5">
-                    <Label>Détails (Optionnel)</Label>
-                    <Textarea placeholder="Précisions utiles..." value={details} onChange={(e) => setDetails(e.target.value)} />
+                <div>
+                    <LabelSm>Détails (Optionnel)</LabelSm>
+                    <Textarea placeholder="Précisions utiles..." value={details} onChange={(e) => setDetails(e.target.value)} className="text-sm py-1.5 min-h-[60px]" />
                 </div>
                 
-                <div className="space-y-1.5">
-                    <Label>Photo (Optionnel)</Label>
-                    <Input type="file" accept="image/*" onChange={handleFileChange} className="p-1 file:mr-4 file:py-1 file:px-4 file:rounded-full file:border-0 file:text-xs file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"/>
+                <div>
+                    <LabelSm>Photo (Optionnel)</LabelSm>
+                    <Input type="file" accept="image/*" onChange={handleFileChange} className="p-1 text-xs file:mr-4 file:py-0.5 file:px-2 file:rounded-full file:border-0 file:text-[10px] file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"/>
                 </div>
 
-                <div className="space-y-3">
-                    <Label className="text-center block">Garantie offerte (Mois)</Label>
-                    <div className="flex justify-center gap-2">
+                <div className="space-y-2">
+                    <LabelSm>Garantie offerte (Mois)</LabelSm>
+                    <div className="flex justify-center gap-1.5">
                         {[
                             { val: "0", label: "Sans" },
                             { val: "30", label: "1 mois" },
@@ -469,7 +472,7 @@ function CreateTaskForm({ me, onSubmit }: { me: User, onSubmit: (t: Partial<Task
                             <button
                                 key={opt.val}
                                 onClick={() => setWarranty(opt.val)}
-                                className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                                className={`px-2.5 py-1 rounded-full text-[10px] font-medium border transition-all ${
                                     warranty === opt.val ? "bg-emerald-600 border-emerald-600 text-white shadow-md" : "bg-white border-slate-300 text-slate-600 hover:bg-slate-100"
                                 }`}
                             >
@@ -479,7 +482,7 @@ function CreateTaskForm({ me, onSubmit }: { me: User, onSubmit: (t: Partial<Task
                     </div>
                 </div>
 
-                <Button className="w-full mt-4" onClick={handlePreview}>Prévisualiser la tâche</Button>
+                <Button className="w-full mt-2 text-sm" onClick={handlePreview}>Prévisualiser la tâche</Button>
             </div>
 
             {showPreview && (
@@ -806,9 +809,9 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
   };
 
   const handleDeleteRating = async (taskId: string, ratingIndex: number) => {
-      await fakeApi.deleteRating(taskId, ratingIndex);
+      await fakeApi.deleteRating(taskId, ratingIndex, user.email); // Pass user email for history
       loadData();
-      addToast("Supprimé", "Le commentaire a été supprimé.", "info");
+      addToast("Supprimé", "Le commentaire a été supprimé et archivé.", "info");
   }
 
   const handleDelete = async (taskId: string) => {
@@ -868,7 +871,7 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
                 <h1 className="text-2xl font-black tracking-tighter text-white group-hover:text-indigo-400 transition-colors">
                     CoproSmart
                 </h1>
-                <span className="text-[10px] font-medium text-indigo-400 uppercase tracking-widest">On réduit vos charges de copropriété</span>
+                <span className="text-[10px] font-medium text-indigo-400 uppercase tracking-widest">Simple. Local. Gagnant-gagnant.</span>
             </button>
             
             {/* Navigation Links */}
@@ -953,15 +956,19 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
                          {/* 2. PENDING VALIDATION (Visible to all, Actionable by CS/Admin) */}
                         {tasks.some(t => t.status === 'pending') && (
                             <Section title="⏳ En attente de validation">
-                                {tasks.filter(t => t.status === 'pending').map(t => (
-                                    <TaskCard 
-                                        key={t.id} task={t} me={user} usersMap={usersMap}
-                                        onBid={() => {}} onAward={() => {}} onComplete={() => {}} onRate={() => {}} onPayApartment={() => {}} onDelete={() => handleDelete(t.id)}
-                                        canDelete={user.role === 'admin'}
-                                        onApprove={() => handleApprove(t.id)}
-                                        onReject={() => handleReject(t.id)}
-                                    />
-                                ))}
+                                {tasks.filter(t => t.status === 'pending').map(t => {
+                                    // Permission Check: Only Admin or Council can validate
+                                    const canValidate = user.role === 'admin' || user.role === 'council';
+                                    return (
+                                        <TaskCard 
+                                            key={t.id} task={t} me={user} usersMap={usersMap}
+                                            onBid={() => {}} onAward={() => {}} onComplete={() => {}} onRate={() => {}} onPayApartment={() => {}} onDelete={() => handleDelete(t.id)}
+                                            canDelete={user.role === 'admin'}
+                                            onApprove={canValidate ? () => handleApprove(t.id) : undefined}
+                                            onReject={canValidate ? () => handleReject(t.id) : undefined}
+                                        />
+                                    );
+                                })}
                             </Section>
                         )}
 
@@ -1054,15 +1061,15 @@ export default function App() {
         </div>
 
         <div className="w-full max-w-md z-10 mb-8 text-center mx-auto">
-            <h1 className="text-5xl font-black tracking-tighter text-white mb-2">CoproSmart</h1>
-            <h2 className="text-xl font-black tracking-tighter text-indigo-400">On réduit vos charges de copropriété</h2>
+            <h1 className="text-6xl sm:text-7xl font-black tracking-tighter text-white mb-2 leading-none">CoproSmart</h1>
+            <h2 className="text-xl font-bold tracking-tight text-white">On réduit vos charges de copropriété.</h2>
         </div>
         
         <div className="w-full max-w-md z-10 mx-auto">
              <LoginCard onLogin={setUser} />
         </div>
         
-        <div className="mt-8 text-center text-sm text-slate-400 z-10 max-w-lg mx-auto leading-relaxed font-medium">
+        <div className="mt-8 text-center text-sm text-slate-400 z-10 max-w-4xl mx-auto leading-relaxed font-medium">
             CoproSmart permet aux copropriétaires de réduire collectivement les charges communes en réalisant eux-mêmes les petits travaux des parties communes : une ampoule à changer, une porte à régler, des encombrants à évacuer… Les charges diminuent pour tous, et celui qui intervient bénéficie d’un crédit supplémentaire sur ses propres charges. Simple, local, gagnant-gagnant.
         </div>
       </div>

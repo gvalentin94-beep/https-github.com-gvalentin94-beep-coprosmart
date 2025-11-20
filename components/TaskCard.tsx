@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import type { Task, User, Rating, Bid } from '../types';
 import { Button, Card, CardContent, CardHeader, CardTitle, Input, Label, Badge, Textarea } from './ui';
@@ -253,6 +254,9 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
     // Check if current user has already rated this task
     const hasRated = task.ratings?.some(r => r.byHash === me.id);
 
+    // Check if current user is the assignee (cannot rate self)
+    const isAssignee = task.awardedTo === me.email;
+
     const BidArea = () => {
         if (task.status !== 'open' || me?.role !== 'owner') {
             return null;
@@ -375,7 +379,7 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                             <div className="font-bold flex items-center gap-2">✅ Intervention terminée</div>
                             <div className="mt-1 space-y-0.5">
                                 {task.validatedBy && (
-                                    <div className="text-xs">Validée par : <span className="font-medium">{usersMap?.[task.validatedBy] || task.validatedBy}</span></div>
+                                    <div className="text-xs">Contrôle qualité validé par : <span className="font-medium">{usersMap?.[task.validatedBy] || task.validatedBy}</span></div>
                                 )}
                                 {warrantyUntil && <div className="text-xs">Garantie jusqu'au : {warrantyUntil.toLocaleDateString()}</div>}
                             </div>
@@ -411,13 +415,40 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                             <div className="text-xs text-slate-500 italic">Aucun avis pour le moment.</div>
                         )}
 
-                        {/* Anyone can rate if they haven't already */}
-                        {!hasRated ? (
+                        {/* Anyone can rate if they haven't already, EXCEPT the person who did the work */}
+                        {!hasRated && !isAssignee ? (
                              <RatingBox onSubmit={onRate} />
+                        ) : isAssignee ? (
+                             <div className="text-xs text-slate-500 italic text-center border border-slate-700 p-2 rounded">
+                                 Vous ne pouvez pas noter votre propre travail.
+                             </div>
                         ) : (
                              <div className="text-xs text-slate-500 italic text-center border border-slate-700 p-2 rounded">
                                  Vous avez déjà noté cette intervention.
                              </div>
+                        )}
+
+                        {/* Deleted Ratings History (Admin/CS Only) */}
+                        {(isAdmin || me.role === 'council') && task.deletedRatings && task.deletedRatings.length > 0 && (
+                            <div className="mt-4 p-3 border border-slate-700 border-dashed rounded-lg bg-slate-900/30">
+                                <div className="text-xs font-semibold text-slate-500 uppercase mb-2">Historique des avis supprimés</div>
+                                <ul className="space-y-2">
+                                    {task.deletedRatings.map((dr, idx) => (
+                                        <li key={idx} className="text-xs text-slate-400 bg-slate-800/50 p-2 rounded">
+                                            <div className="flex justify-between mb-1">
+                                                <span className="text-amber-700">{Array(dr.stars).fill('★').join('')}</span>
+                                                <span className="text-slate-600">{new Date(dr.deletedAt).toLocaleDateString()}</span>
+                                            </div>
+                                            <div className="italic text-slate-500 line-through">"{dr.comment}"</div>
+                                            {isAdmin && (
+                                                <div className="mt-1 text-[10px] text-slate-600">
+                                                    Supprimé par : {dr.deletedBy}
+                                                </div>
+                                            )}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
                         )}
                     </div>
                 )}
@@ -427,7 +458,7 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                         <div className="flex items-center justify-between">
                             <span>⏳ En attente de validations du Conseil syndical. ({task.approvals?.length || 0}/{COUNCIL_MIN_APPROVALS})</span>
                         </div>
-                        {onApprove && onReject && (
+                        {onApprove && onReject ? (
                             <div className="flex gap-2">
                                 <Button 
                                     size="sm" 
@@ -438,6 +469,10 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                                     {isAdmin ? '⚡ Forcer la validation' : '✅ Valider'}
                                 </Button>
                                 <Button size="sm" variant="destructive" onClick={onReject}>❌ Rejeter</Button>
+                            </div>
+                        ) : (
+                            <div className="text-xs italic opacity-70">
+                                Seuls les membres du Conseil Syndical et l'administrateur peuvent valider.
                             </div>
                         )}
                     </div>

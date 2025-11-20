@@ -52,6 +52,11 @@ export interface Rating {
   byHash: string;
 }
 
+export interface DeletedRating extends Rating {
+    deletedAt: string;
+    deletedBy: string;
+}
+
 export interface Task {
   id: string;
   title: string;
@@ -66,6 +71,7 @@ export interface Task {
   createdAt: string;
   bids: Bid[];
   ratings: Rating[];
+  deletedRatings?: DeletedRating[]; // History of deleted ratings
   approvals: Approval[];
   rejections: Rejection[];
   awardedTo?: string;

@@ -12,12 +12,12 @@ export const ROLES = [
 
 export const LOCATIONS = ["Bâtiment A", "Bâtiment B", "Caves", "Parking", "Extérieurs"];
 
-// COLORS DEFINED HERE FOR CATEGORIES
+// COLORS: Backgrounds/Borders removed, Text colors kept for icons.
 export const CATEGORIES = [
-  { id: "ampoule", label: "Ampoule / Lumière", icon: <LightbulbIcon />, colorClass: "text-amber-400 bg-amber-400/10 border-amber-400/20" },
-  { id: "porte", label: "Porte / Serrure", icon: <KeyIcon />, colorClass: "text-sky-400 bg-sky-400/10 border-sky-400/20" },
-  { id: "encombrants", label: "Encombrants", icon: <ArchiveBoxIcon />, colorClass: "text-rose-400 bg-rose-400/10 border-rose-400/20" },
-  { id: "divers", label: "Divers", icon: <SparklesIcon />, colorClass: "text-fuchsia-400 bg-fuchsia-400/10 border-fuchsia-400/20" },
+  { id: "ampoule", label: "Ampoule / Lumière", icon: <LightbulbIcon />, colorClass: "text-amber-400 bg-slate-900/50 border-slate-700" },
+  { id: "porte", label: "Porte / Serrure", icon: <KeyIcon />, colorClass: "text-sky-400 bg-slate-900/50 border-slate-700" },
+  { id: "encombrants", label: "Encombrants", icon: <ArchiveBoxIcon />, colorClass: "text-rose-400 bg-slate-900/50 border-slate-700" },
+  { id: "divers", label: "Divers", icon: <SparklesIcon />, colorClass: "text-fuchsia-400 bg-slate-900/50 border-slate-700" },
 ];
 
 export const SCOPES = [
@@ -36,7 +36,7 @@ export const TASK_STATUS_CONFIG: { [key: string]: { label: string; color: string
   pending: { label: "En validation", color: "amber", icon: <ClockIcon className="h-4 w-4" /> },
   open: { label: "Offres ouvertes", color: "indigo", icon: <ScaleIcon className="h-4 w-4" /> },
   awarded: { label: "Attribuée", color: "sky", icon: <CheckBadgeIcon className="h-4 w-4" /> },
-  verification: { label: "Vérification", color: "fuchsia", icon: <MagnifyingGlassIcon className="h-4 w-4" /> },
+  verification: { label: "Attente contrôle qualité", color: "fuchsia", icon: <MagnifyingGlassIcon className="h-4 w-4" /> },
   completed: { label: "Terminée", color: "emerald", icon: <CheckCircleIcon className="h-4 w-4" /> },
   rejected: { label: "Rejetée", color: "rose", icon: <XCircleIcon className="h-4 w-4" /> },
 };

@@ -337,27 +337,22 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                             {(task.status === 'completed' || task.status === 'rejected') && (
                                 <div className="text-[10px] text-slate-400 mt-1 flex flex-wrap gap-1 items-center">
                                     <span>Créé par <span className="text-slate-300">{creatorName}</span></span>
+                                    <span className="text-slate-600">•</span>
+                                    <span>Attribué à <span className="text-slate-300">{awardedToName}</span></span>
+                                    <span className="text-slate-600">•</span>
                                     
                                     {task.status === 'completed' && (
-                                        <>
-                                            <span className="text-slate-600">•</span>
-                                            <span>Attribué à <span className="text-slate-300">{awardedToName}</span></span>
-                                            <span className="text-slate-600">•</span>
-                                            {validatorName ? (
-                                                <span>✅ Contrôle qualité validé par <span className="text-emerald-400 font-medium">{validatorName}</span></span>
-                                            ) : (
-                                                <span>✅ Terminé</span>
-                                            )}
-                                        </>
+                                        validatorName ? (
+                                            <span>✅ Contrôle qualité validé par <span className="text-emerald-400 font-medium">{validatorName}</span></span>
+                                        ) : (
+                                            <span>✅ Terminé</span>
+                                        )
                                     )}
 
                                     {task.status === 'rejected' && (
-                                        <>
-                                            <span className="text-slate-600">•</span>
-                                            <span className="flex items-center gap-1">
-                                                ❌ Rejeté par <span className="text-rose-400 font-medium">{rejectorName}</span>
-                                            </span>
-                                        </>
+                                        <span className="flex items-center gap-1">
+                                            ❌ Rejeté par <span className="text-rose-400 font-medium">{rejectorName}</span>
+                                        </span>
                                     )}
                                 </div>
                             )}

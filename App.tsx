@@ -1,11 +1,31 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import type { Task, User, LedgerEntry, TaskCategory, TaskScope, Rating, Bid, RegisteredUser, UserRole } from './types';
 import { useAuth, fakeApi } from './services/api';
 import { Button, Card, CardContent, CardHeader, CardTitle, Label, Input, Textarea, Select, Badge, Section } from './components/ui';
 import { TaskCard } from './components/TaskCard';
 import { LOCATIONS, CATEGORIES, SCOPES, COUNCIL_MIN_APPROVALS, ROLES, MAX_TASK_PRICE } from './constants';
 import { LoginCard } from './components/LoginCard';
+
+// --- Constants for Random Messages ---
+const OPEN_EMPTY_MESSAGES = [
+    "Tout va bien dans la copro, rien à signaler ! 🏖️",
+    "Calme plat. Profitez-en pour arroser les plantes ! 🌿",
+    "Pas une seule ampoule grillée à l'horizon. Quel miracle ! 💡",
+    "C'est louche... tout fonctionne parfaitement aujourd'hui. 🤔",
+    "Le syndic est au chômage technique (pour le moment). 😎",
+    "Rien à faire ? C'est le moment de dire bonjour à vos voisins ! 👋",
+    "Aucune mission pour nos super-héros du quotidien. 🦸‍♂️"
+];
+
+const PROGRESS_EMPTY_MESSAGES = [
+    "Les artisans se reposent... ou tout est déjà réparé ! 🛠️",
+    "Silence radio sur le chantier. 🤫",
+    "Ça bosse dur (ou ça prend le café). ☕",
+    "Les outils sont rangés, les travaux sont finis ? 🧰",
+    "Aucun bruit de perceuse... profitez du silence ! 🎵",
+    "Tout est calme. Trop calme. 🕵️‍♂️"
+];
 
 // --- Toast Notification System ---
 interface Toast {
@@ -540,6 +560,10 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
     setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 4000);
   };
 
+  // Generate Random Messages
+  const randomOpenMessage = useMemo(() => OPEN_EMPTY_MESSAGES[Math.floor(Math.random() * OPEN_EMPTY_MESSAGES.length)], [view]);
+  const randomProgressMessage = useMemo(() => PROGRESS_EMPTY_MESSAGES[Math.floor(Math.random() * PROGRESS_EMPTY_MESSAGES.length)], [view]);
+
   // Email Notification
   const notify = async (recipients: string[], subject: string, message: string) => {
       addToast("Notification", `Email envoyé pour : ${subject}`, "info");
@@ -906,7 +930,7 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
                         <Section title="🔥 Offres ouvertes">
                              {tasks.filter(t => t.status === 'open').length === 0 ? (
                                 <div className="bg-slate-900/30 border border-slate-800 rounded-xl p-8 text-center">
-                                    <p className="text-slate-500 italic">Tout va bien dans la copro, rien à signaler ! 🏖️</p>
+                                    <p className="text-slate-500 italic">{randomOpenMessage}</p>
                                 </div>
                              ) : (
                                 <div className="grid grid-cols-1 gap-3">
@@ -928,7 +952,7 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
                         <Section title="🏗️ Travaux en cours">
                             {tasks.filter(t => t.status === 'awarded' || t.status === 'verification').length === 0 ? (
                                 <div className="bg-slate-900/30 border border-slate-800 rounded-xl p-8 text-center">
-                                    <p className="text-slate-500 italic">Les artisans se reposent... ou tout est déjà réparé ! 🛠️</p>
+                                    <p className="text-slate-500 italic">{randomProgressMessage}</p>
                                 </div>
                              ) : (
                                 <div className="grid grid-cols-1 gap-3">
@@ -947,12 +971,12 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
                              )}
                         </Section>
 
-                         {/* COMPLETED HISTORY - GHOST MODE */}
+                         {/* COMPLETED HISTORY - RESTORED FULL VIEW */}
                         <Section title="✅ Historique terminé">
                             {tasks.filter(t => t.status === 'completed').length === 0 ? (
                                 <p className="text-slate-500 italic pl-2">Aucun historique pour le moment.</p>
                             ) : (
-                                <div className="flex flex-col border-t border-slate-800">
+                                <div className="flex flex-col gap-3">
                                     {tasks.filter(t => t.status === 'completed').sort((a,b) => new Date(b.completionAt!).getTime() - new Date(a.completionAt!).getTime()).map(t => (
                                         <TaskCard 
                                             key={t.id} task={t} me={user} usersMap={usersMap}
@@ -961,7 +985,7 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
                                             onDeleteRating={handleDeleteRating}
                                             onPayApartment={() => {}} onDelete={() => handleDelete(t.id)}
                                             canDelete={user.role === 'admin'}
-                                            variant="ghost"
+                                            // variant="ghost" <-- REMOVED to show full details
                                         />
                                     ))}
                                 </div>

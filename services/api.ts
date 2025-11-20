@@ -176,9 +176,8 @@ export const fakeApi = {
 
   getDirectory: async (): Promise<RegisteredUser[]> => {
       const users = safeJsonParse<RegisteredUser[]>(usersDbKey, []);
-      // Return all users except pending, but include deleted so admin can restore
-      // Exclude admin from the public list
-      return users.filter(u => u.status !== 'pending' && u.role !== 'admin');
+      // Return all users (including pending, deleted, etc.) EXCEPT admin
+      return users.filter(u => u.role !== 'admin');
   },
 
   updateUserStatus: async (email: string, status: UserStatus): Promise<void> => {

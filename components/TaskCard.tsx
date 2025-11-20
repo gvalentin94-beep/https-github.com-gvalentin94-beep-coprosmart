@@ -1,18 +1,18 @@
 
 import React, { useState, useEffect } from 'react';
 import type { Task, User, Rating, Bid } from '../types';
-import { Button, Card, CardContent, CardHeader, CardTitle, Input, Label, Badge, Textarea } from './ui';
+import { Button, Card, Input, Label, Badge, Textarea } from './ui';
 import { CATEGORIES, TASK_STATUS_CONFIG, COUNCIL_MIN_APPROVALS } from '../constants';
 
 // --- Sub-components defined in the same file to keep file count low ---
 
-const statusClasses: { [key: string]: { border: string; text: string } } = {
-    amber: { border: 'border-amber-500/50', text: 'text-amber-400' },
-    indigo: { border: 'border-indigo-500/50', text: 'text-indigo-400' },
-    sky: { border: 'border-sky-500/50', text: 'text-sky-400' },
-    emerald: { border: 'border-emerald-500/50', text: 'text-emerald-400' },
-    rose: { border: 'border-rose-500/50', text: 'text-rose-400' },
-    fuchsia: { border: 'border-fuchsia-500/50', text: 'text-fuchsia-400' },
+const statusClasses: { [key: string]: { border: string; text: string; bg: string } } = {
+    amber: { border: 'border-amber-500/50', text: 'text-amber-400', bg: 'bg-amber-500/10' },
+    indigo: { border: 'border-indigo-500/50', text: 'text-indigo-400', bg: 'bg-indigo-500/10' },
+    sky: { border: 'border-sky-500/50', text: 'text-sky-400', bg: 'bg-sky-500/10' },
+    emerald: { border: 'border-emerald-500/50', text: 'text-emerald-400', bg: 'bg-emerald-500/10' },
+    rose: { border: 'border-rose-500/50', text: 'text-rose-400', bg: 'bg-rose-500/10' },
+    fuchsia: { border: 'border-fuchsia-500/50', text: 'text-fuchsia-400', bg: 'bg-fuchsia-500/10' },
 };
 
 interface BidBoxProps {
@@ -62,7 +62,6 @@ function BidBox({ task, onBid }: BidBoxProps) {
         }
         onBid({ amount: val, note, plannedExecutionDate });
         setNote("");
-        // Reset date to tomorrow
         setPlannedExecutionDate(getTomorrow());
     };
 
@@ -72,44 +71,49 @@ function BidBox({ task, onBid }: BidBoxProps) {
     const maxDateStr = maxDate.toISOString().split('T')[0];
     
     return (
-        <div className="border border-slate-700 rounded-xl p-3 space-y-3 bg-slate-800/50">
-            <div>
-                <div className="text-xs text-slate-300 font-medium mb-1">Faire une offre (enchère inversée)</div>
-                 <p className="text-xs text-slate-400">
-                    Départ: <b className="text-slate-200">{task.startingPrice} €</b>
+        <div className="border border-slate-700 rounded-xl p-4 space-y-4 bg-slate-900/50 shadow-inner">
+            <div className="flex justify-between items-center border-b border-slate-800 pb-2">
+                <div className="text-xs text-slate-400 font-bold uppercase tracking-wider">Faire une offre</div>
+                <div className="text-xs text-slate-400">
+                    Départ: <b className="text-slate-300">{task.startingPrice} €</b>
                     {hasBids && <> • Actuelle: <b className="text-indigo-400">{currentPrice} €</b></>}
-                </p>
+                </div>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                <Input
-                    className="col-span-1"
-                    type="number"
-                    min="1"
-                    max={currentPrice - 1}
-                    step="1"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                />
-                <Input
-                    className="col-span-2"
-                    placeholder="Message (optionnel)"
-                    value={note}
-                    onChange={(e) => setNote(e.target.value)}
-                />
+            <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                <div className="sm:col-span-3">
+                    <Label className="mb-1">Montant (€)</Label>
+                    <Input
+                        type="number"
+                        min="1"
+                        max={currentPrice - 1}
+                        step="1"
+                        value={amount}
+                        onChange={(e) => setAmount(e.target.value)}
+                        className="font-bold text-indigo-600"
+                    />
+                </div>
+                <div className="sm:col-span-5">
+                    <Label className="mb-1">Date d'intervention</Label>
+                    <Input
+                        type="date"
+                        value={plannedExecutionDate}
+                        onChange={(e) => setPlannedExecutionDate(e.target.value)}
+                        min={today}
+                        max={maxDateStr}
+                        className="bg-white text-slate-900"
+                    />
+                </div>
+                <div className="sm:col-span-4">
+                     <Label className="mb-1">Message (Optionnel)</Label>
+                     <Input
+                        placeholder="..."
+                        value={note}
+                        onChange={(e) => setNote(e.target.value)}
+                    />
+                </div>
             </div>
-             <div className="space-y-1.5">
-              <Label>Date de réalisation prévue</Label>
-              <Input
-                type="date"
-                value={plannedExecutionDate}
-                onChange={(e) => setPlannedExecutionDate(e.target.value)}
-                min={today}
-                max={maxDateStr}
-                className="w-full sm:w-auto bg-white text-slate-900"
-              />
-            </div>
-            <Button size="sm" onClick={handleBid} disabled={!amount || Number(amount) <= 0 || Number(amount) >= currentPrice || !plannedExecutionDate}>
-                Se positionner
+            <Button className="w-full bg-indigo-600 hover:bg-indigo-500 shadow-lg shadow-indigo-900/20" onClick={handleBid} disabled={!amount || Number(amount) <= 0 || Number(amount) >= currentPrice || !plannedExecutionDate}>
+                🚀 Se positionner
             </Button>
         </div>
     );
@@ -127,25 +131,29 @@ function RatingBox({ onSubmit }: RatingBoxProps) {
 
     if (!open) {
         return (
-            <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
+            <Button size="sm" variant="outline" className="w-full border-dashed border-slate-600 text-slate-400 hover:text-white hover:border-slate-500" onClick={() => setOpen(true)}>
                 ⭐ Noter l'intervention
             </Button>
         );
     }
 
     return (
-        <div className="border border-slate-700 rounded-xl p-3 space-y-3 bg-slate-800/50">
+        <div className="border border-slate-700 rounded-xl p-4 space-y-3 bg-slate-900/50">
             <div className="space-y-1">
                 <Label>Note (1 à 5)</Label>
-                <Input type="number" min="1" max="5" value={stars} onChange={(e) => setStars(Number(e.target.value))} />
+                <div className="flex gap-2">
+                    {[1,2,3,4,5].map(s => (
+                        <button key={s} onClick={() => setStars(s)} className={`text-2xl transition-transform hover:scale-110 ${s <= stars ? 'grayscale-0' : 'grayscale opacity-30'}`}>⭐</button>
+                    ))}
+                </div>
             </div>
             <div className="space-y-1">
                 <Label>Commentaire</Label>
-                <Textarea value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Intervention rapide et soignée..." />
+                <Textarea value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Intervention rapide et soignée..." className="bg-slate-950 border-slate-800" />
             </div>
             <div className="flex justify-end gap-2">
                 <Button variant="ghost" size="sm" onClick={() => setOpen(false)}>Annuler</Button>
-                <Button size="sm" onClick={() => { onSubmit({ stars, comment }); setOpen(false); }}>Envoyer</Button>
+                <Button size="sm" onClick={() => { onSubmit({ stars, comment }); setOpen(false); }}>Envoyer avis</Button>
             </div>
         </div>
     );
@@ -156,7 +164,6 @@ function Countdown({ startedAt }: { startedAt: string }) {
 
     useEffect(() => {
         const interval = setInterval(() => {
-            // 24 Hours countdown
             const endTime = new Date(startedAt).getTime() + 24 * 60 * 60 * 1000;
             const now = new Date().getTime();
             const distance = endTime - now;
@@ -179,8 +186,10 @@ function Countdown({ startedAt }: { startedAt: string }) {
     if (!timeLeft || timeLeft === "Terminé") return null;
 
     return (
-        <div className="bg-indigo-900/30 border border-indigo-800 text-indigo-200 p-2 rounded-lg text-sm font-medium text-center">
-            ⏳ Attribution automatique dans : <b className="font-mono text-white">{timeLeft}</b>
+        <div className="bg-indigo-900/30 border border-indigo-800/50 text-indigo-200 px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2 justify-center shadow-sm">
+            <span className="animate-pulse">⏳</span> 
+            <span>Attribution automatique dans :</span>
+            <b className="font-mono text-white tracking-widest">{timeLeft}</b>
         </div>
     );
 }
@@ -191,7 +200,7 @@ function Countdown({ startedAt }: { startedAt: string }) {
 interface TaskCardProps {
   task: Task;
   me: User;
-  usersMap?: Record<string, string>; // Map email -> Full Name
+  usersMap?: Record<string, string>; 
   onBid: (bid: Omit<Bid, 'by' | 'at'>) => void;
   onAward: () => void;
   onComplete: () => void;
@@ -200,10 +209,8 @@ interface TaskCardProps {
   onPayApartment: () => void;
   onDelete: () => void;
   canDelete: boolean;
-  // Optional props for Validation Mode
   onApprove?: () => void;
   onReject?: () => void;
-  // Verification workflow
   onRequestVerification?: () => void;
   onRejectWork?: () => void;
   key?: React.Key;
@@ -220,20 +227,16 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
         ? new Date(new Date(task.completionAt).getTime() + task.warrantyDays * 24 * 3600 * 1000)
         : null;
 
-    const colorClasses = statusClasses[statusConfig.color] || { border: 'border-slate-600', text: 'text-slate-400' };
+    const style = statusClasses[statusConfig.color] || { border: 'border-slate-600', text: 'text-slate-400', bg: 'bg-slate-800' };
     
-    // Compact Row Styling
-    const borderColor = `border-l-4 ${colorClasses.border}`;
+    // Accordion Visuals
+    const borderClass = `border-l-[6px] ${style.border}`;
 
     const myBidsCount = task.bids.filter(b => b.by === me.email).length;
     const isFirstBidder = task.bids.length > 0 && task.bids[0].by === me.email;
-    const canBid =
-        (isFirstBidder && myBidsCount < 2) ||
-        (!isFirstBidder && myBidsCount < 1);
-
+    const canBid = (isFirstBidder && myBidsCount < 2) || (!isFirstBidder && myBidsCount < 1);
     const hasApproved = task.approvals?.some(a => a.by === me.email);
 
-    // Check if timer is still running for manual award restriction
     const isTimerRunning = task.biddingStartedAt 
         ? (new Date().getTime() < new Date(task.biddingStartedAt).getTime() + 24 * 60 * 60 * 1000)
         : false;
@@ -241,126 +244,120 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
     const isAdmin = me.role === 'admin';
     const canVerify = isAdmin || me.role === 'council';
     
-    // Allow award if: 
-    // 1. Status is open AND bids exist
-    // 2. AND ( (I am creator AND timer finished) OR (I am Admin) )
-    const canManualAward = task.status === "open" && 
-                           task.bids?.length > 0 && 
-                           lowestBid && 
-                           (
-                             (task.createdBy === me?.email && !isTimerRunning) || 
-                             isAdmin
-                           );
-    
-    // Resolve winner name
+    const canManualAward = task.status === "open" && task.bids?.length > 0 && lowestBid && ((task.createdBy === me?.email && !isTimerRunning) || isAdmin);
     const awardedToName = task.awardedTo && usersMap ? (usersMap[task.awardedTo] || task.awardedTo) : task.awardedTo;
-
-    // Check if current user has already rated this task
     const hasRated = task.ratings?.some(r => r.byHash === me.id);
-
-    // Check if current user is the assignee (cannot rate self)
     const isAssignee = task.awardedTo === me.email;
 
     const BidArea = () => {
-        if (task.status !== 'open' || me?.role !== 'owner') {
-            return null;
-        }
-
-        if (canBid) {
-            return <BidBox task={task} onBid={onBid} />;
-        }
-        
+        if (task.status !== 'open' || me?.role !== 'owner') return null;
+        if (canBid) return <BidBox task={task} onBid={onBid} />;
         return (
-            <div className="bg-slate-900/50 border border-slate-700 text-slate-400 p-3 rounded-lg text-sm text-center">
+            <div className="bg-slate-900/50 border border-slate-800 text-slate-400 p-4 rounded-xl text-sm text-center italic">
                 {isFirstBidder ? "Vous avez utilisé vos 2 offres." : "Vous avez déjà fait une offre."}
             </div>
         );
     }
 
-    // Determine current displayed price
+    // Price logic
     let displayPrice = task.startingPrice;
     if (lowestBid) displayPrice = lowestBid.amount;
     if (task.awardedAmount) displayPrice = task.awardedAmount;
 
     return (
-        <Card className={`overflow-hidden transition-all duration-300 ${borderColor} ${isOpen ? 'ring-1 ring-indigo-500/30' : 'hover:bg-slate-800/50 cursor-pointer'}`} padding="none">
+        <Card className={`transition-all duration-300 ${borderClass} ${isOpen ? 'ring-1 ring-indigo-500/30 shadow-xl bg-slate-800' : 'hover:bg-slate-800/80 cursor-pointer bg-slate-800/40 border-t border-b border-r border-slate-800'}`} padding="none">
             
-            {/* COMPACT HEADER (Always Visible) */}
-            <div className="flex items-center justify-between p-3 md:px-4 md:py-3 bg-slate-800" onClick={() => setIsOpen(!isOpen)}>
-                <div className="flex items-center gap-3 flex-1 min-w-0">
-                    {/* Icon */}
-                    <div className={`flex-shrink-0 w-8 h-8 rounded-full bg-slate-900 flex items-center justify-center ${colorClasses.text}`}>
-                        {React.cloneElement(statusConfig.icon, { className: 'h-4 w-4' })}
+            {/* HEADER (Folded View) */}
+            <div className="flex items-center justify-between p-4" onClick={() => setIsOpen(!isOpen)}>
+                <div className="flex items-center gap-4 flex-1 min-w-0">
+                    <div className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center ${style.text} ${style.bg}`}>
+                        {React.cloneElement(statusConfig.icon, { className: 'h-5 w-5' })}
                     </div>
                     
-                    {/* Text Info */}
                     <div className="flex flex-col min-w-0">
                         <div className="flex items-center gap-2">
-                            <h3 className="font-bold text-sm text-white truncate">{task.title}</h3>
-                            {categoryInfo && <span className="text-xs grayscale opacity-50">{React.cloneElement(categoryInfo.icon, { className: "h-3 w-3 inline" })}</span>}
+                            <h3 className="font-bold text-base text-white truncate">{task.title}</h3>
+                            {categoryInfo && <span className="text-xs opacity-50 grayscale">{React.cloneElement(categoryInfo.icon, { className: "h-3 w-3 inline" })}</span>}
                         </div>
-                        <div className="flex items-center gap-2 text-[10px] text-slate-400">
-                             <span>{usersMap?.[task.createdBy] || task.createdBy}</span>
-                             <span>•</span>
+                        <div className="flex items-center gap-2 text-xs text-slate-500 mt-0.5">
+                             <span className="hidden sm:inline font-medium">{usersMap?.[task.createdBy] || task.createdBy}</span>
+                             <span className="hidden sm:inline">•</span>
                              <span>{new Date(task.createdAt).toLocaleDateString()}</span>
-                             <span className="hidden sm:inline">• {task.location}</span>
+                             <span>• {task.location}</span>
                         </div>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-3 pl-2">
-                    <Badge variant="outline" className="font-mono text-xs bg-slate-900 border-slate-700 text-white px-2">
-                        {displayPrice}€
-                    </Badge>
-                    <div className={`transform transition-transform duration-300 text-slate-500 ${isOpen ? 'rotate-180' : ''}`}>
-                        ▼
+                <div className="flex items-center gap-4 pl-2">
+                    <div className="text-right">
+                        <div className="font-mono font-bold text-lg text-white tracking-tight">{displayPrice}€</div>
+                        {task.status === 'open' && <div className="text-[10px] text-slate-500 uppercase font-bold">Offre actuelle</div>}
                     </div>
+                    <div className={`transform transition-transform duration-300 text-slate-600 ${isOpen ? 'rotate-180' : ''}`}>▼</div>
                 </div>
             </div>
 
-            {/* EXPANDABLE CONTENT */}
+            {/* CONTENT (Unfolded) */}
             {isOpen && (
-                <div className="p-4 border-t border-slate-700 bg-slate-800/30 space-y-4">
-                    {/* Details */}
-                    <div className="grid grid-cols-2 gap-2 text-xs text-slate-400 border-b border-slate-700 pb-3 mb-3">
-                        <div className="flex items-center gap-2"><span className="text-slate-600">📍</span><span>{task.location}</span></div>
-                        <div className="flex items-center gap-2"><span className="text-slate-600">🛡️</span><span>Garantie: {task.warrantyDays} jours</span></div>
-                        <div className="flex items-center gap-2"><span className="text-slate-600">{task.scope === 'copro' ? '🏢' : '🏠'}</span><span>{task.scope === 'copro' ? 'Charges communes' : 'Privatif'}</span></div>
-                        <div className="flex items-center gap-2"><span className="text-slate-600">📂</span><span>{categoryInfo?.label}</span></div>
+                <div className="p-5 border-t border-slate-700/50 bg-slate-900/20 space-y-6 animate-in slide-in-from-top-2 duration-200">
+                    
+                    {/* Tags Row */}
+                    <div className="flex flex-wrap gap-2 text-xs">
+                        <Badge className="bg-slate-800 text-slate-300 border-slate-700">📍 {task.location}</Badge>
+                        <Badge className="bg-slate-800 text-slate-300 border-slate-700">🛡️ Garantie {task.warrantyDays}j</Badge>
+                        <Badge className="bg-slate-800 text-slate-300 border-slate-700">{task.scope === 'copro' ? '🏢 Communs' : '🏠 Privatif'}</Badge>
+                        <Badge className="bg-slate-800 text-slate-300 border-slate-700">📂 {categoryInfo?.label}</Badge>
                     </div>
 
-                    {task.details && <p className="text-sm text-slate-300 italic border-l-2 border-slate-600 pl-3 mb-3">{task.details}</p>}
-                    
-                    {task.photo && (
-                        <div className="w-full h-32 rounded-lg overflow-hidden border border-slate-700 bg-slate-900/50 mb-3">
-                            <img src={task.photo} alt="Photo" className="w-full h-full object-cover" />
+                    {/* Photo & Details */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {task.photo && (
+                            <div className="md:col-span-1 aspect-video rounded-lg overflow-hidden border border-slate-700 bg-slate-950 shadow-sm">
+                                <img src={task.photo} alt="Photo" className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
+                            </div>
+                        )}
+                        <div className={`${task.photo ? 'md:col-span-2' : 'md:col-span-3'}`}>
+                             {task.details ? (
+                                 <p className="text-sm text-slate-300 leading-relaxed bg-slate-800/50 p-3 rounded-lg border border-slate-800">{task.details}</p>
+                             ) : (
+                                 <p className="text-sm text-slate-500 italic">Aucune description détaillée.</p>
+                             )}
                         </div>
-                    )}
+                    </div>
 
+                    {/* Countdown */}
                     {task.biddingStartedAt && task.status === 'open' && <Countdown startedAt={task.biddingStartedAt} />}
 
+                    {/* Awarded Info */}
                     {task.awardedTo && (
-                        <div className="bg-sky-900/30 border border-sky-800 text-sky-200 p-3 rounded-lg text-sm flex justify-between items-center">
-                            <div>🤝 Attribuée à <b>{awardedToName}</b> pour <b>{task.awardedAmount}€</b></div>
+                        <div className="bg-sky-900/20 border border-sky-800/50 text-sky-200 p-4 rounded-xl flex flex-col sm:flex-row justify-between items-center gap-3">
+                            <div className="flex items-center gap-2">
+                                <span className="text-2xl">🤝</span>
+                                <div>
+                                    <div className="font-bold text-sm">Attribuée à {awardedToName}</div>
+                                    <div className="text-xs opacity-70">Montant final : {task.awardedAmount}€</div>
+                                </div>
+                            </div>
                             {task.awardedTo === me.email && (task.status === 'awarded' || task.status === 'verification') && (
-                                <Badge className="bg-emerald-600 text-white animate-pulse">👉 À faire par vous</Badge>
+                                <Badge className="bg-emerald-600 text-white shadow-lg shadow-emerald-900/20 py-1 px-3">👉 À faire par vous</Badge>
                             )}
                         </div>
                     )}
 
+                    {/* Bids List */}
                     {task.status === 'open' && task.bids?.length > 0 && (
-                        <div className="space-y-2">
-                            <h4 className="text-xs font-semibold text-slate-400">Offres en cours</h4>
-                            <ul className="space-y-1">
+                        <div className="space-y-3">
+                            <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-800 pb-1">Offres en cours ({task.bids.length})</h4>
+                            <ul className="space-y-2">
                                 {task.bids.slice().sort((a,b) => a.amount - b.amount).map((b, i) => {
                                     const bidderName = usersMap ? (usersMap[b.by] || b.by) : b.by;
                                     return (
-                                        <li key={i} className={`flex flex-col sm:flex-row justify-between items-start sm:items-center text-sm p-2 rounded-md ${i === 0 ? 'bg-indigo-900/40 border border-indigo-800 text-indigo-100' : 'bg-slate-800/50 border border-slate-700 text-slate-400'}`}>
+                                        <li key={i} className={`flex justify-between items-center text-sm p-3 rounded-lg border ${i === 0 ? 'bg-indigo-900/20 border-indigo-500/30 text-indigo-200' : 'bg-slate-800/50 border-slate-700 text-slate-400'}`}>
                                             <div>
-                                                <span className="font-semibold text-white">{b.amount} €</span> <span className="text-slate-500 text-xs">par {bidderName}</span>
-                                                <div className="text-xs text-indigo-400/80 mt-1">🗓️ Prévu le: {new Date(b.plannedExecutionDate).toLocaleDateString()}</div>
+                                                <span className="font-bold mr-2">{b.amount} €</span> 
+                                                <span className="text-xs opacity-70">par {bidderName}</span>
                                             </div>
-                                            <span className="text-xs text-slate-600 mt-1 sm:mt-0">{new Date(b.at).toLocaleDateString()}</span>
+                                            <div className="text-xs opacity-50">{new Date(b.plannedExecutionDate).toLocaleDateString()}</div>
                                         </li>
                                     );
                                 })}
@@ -370,146 +367,94 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
 
                     <BidArea />
 
+                    {/* ACTIONS: Award */}
                     {canManualAward && lowestBid && (
-                        <Button size="sm" onClick={onAward}>
-                            {isAdmin && isTimerRunning ? `⚡ Attribuer maintenant (Admin) (${lowestBid.amount} €)` : `✅ Attribuer au plus bas (${lowestBid.amount} €)`}
+                        <Button className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-6" onClick={onAward}>
+                            {isAdmin && isTimerRunning ? `⚡ Admin: Attribuer maintenant (${lowestBid.amount} €)` : `✅ Clore les enchères (${lowestBid.amount} €)`}
                         </Button>
                     )}
 
-                    {/* WORKER ACTIONS (AWARDED) */}
+                    {/* ACTIONS: Worker */}
                     {task.status === "awarded" && task.awardedTo === me.email && onRequestVerification && (
-                        <div className="flex gap-2">
-                             <Button size="sm" onClick={onRequestVerification}>🏁 J'ai fini (Demander validation)</Button>
-                        </div>
+                         <Button className="w-full py-6 bg-gradient-to-r from-fuchsia-600 to-purple-600 hover:from-fuchsia-500 hover:to-purple-500 text-white font-bold shadow-lg" onClick={onRequestVerification}>
+                            🏁 J'ai fini (Demander validation)
+                         </Button>
                     )}
 
-                    {/* VERIFICATION FLOW (CS/ADMIN) */}
+                    {/* ACTIONS: Verify (CS/Admin) */}
                     {task.status === "verification" && (
-                         <div className="bg-fuchsia-900/30 border border-fuchsia-800 text-fuchsia-200 p-3 rounded-lg text-sm flex flex-col gap-3">
-                            <div className="flex items-center justify-between">
-                                <span className="font-bold flex items-center gap-2">🕵️ Contrôle qualité en cours</span>
+                         <div className="bg-fuchsia-900/20 border border-fuchsia-800/50 p-4 rounded-xl space-y-4">
+                            <div className="flex items-center gap-3 text-fuchsia-300 font-bold">
+                                <span className="text-2xl">🕵️</span> Contrôle qualité requis
                             </div>
-                            <p className="text-xs opacity-80">Le copropriétaire indique avoir terminé. Le Conseil Syndical doit valider pour déclencher le paiement.</p>
+                            <p className="text-sm text-slate-400">Le copropriétaire déclare avoir terminé. Merci de vérifier le travail.</p>
                             
                             {canVerify && onRejectWork ? (
-                                <div className="flex gap-2 mt-1">
-                                    <Button size="sm" className="bg-emerald-600 hover:bg-emerald-500 border-none text-white" onClick={onComplete}>✅ Valider le travail définitif</Button>
-                                    <Button size="sm" variant="destructive" onClick={onRejectWork}>❌ Refuser (Travail incomplet)</Button>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <Button className="bg-emerald-600 hover:bg-emerald-500 border-none text-white py-6" onClick={onComplete}>✅ Valider & Payer</Button>
+                                    <Button variant="destructive" className="py-6" onClick={onRejectWork}>❌ Refuser</Button>
                                 </div>
                             ) : (
-                                <div className="text-xs italic opacity-50">En attente de validation par le CS.</div>
+                                <div className="text-xs italic text-slate-500 text-center">En attente de validation par le CS.</div>
                             )}
                         </div>
                     )}
                     
+                    {/* COMPLETED INFO */}
                     {task.status === "completed" && (
-                        <div className="space-y-3">
-                            <div className="bg-emerald-900/30 border border-emerald-800 text-emerald-200 p-3 rounded-lg text-sm">
-                                <div className="font-bold flex items-center gap-2">✅ Intervention terminée</div>
-                                <div className="mt-1 space-y-0.5">
-                                    {task.validatedBy && (
-                                        <div className="text-xs">Contrôle qualité validé par : <span className="font-medium">{usersMap?.[task.validatedBy] || task.validatedBy}</span></div>
-                                    )}
-                                    {warrantyUntil && <div className="text-xs">Garantie jusqu'au : {warrantyUntil.toLocaleDateString()}</div>}
-                                </div>
+                        <div className="space-y-4">
+                            <div className="bg-emerald-900/20 border border-emerald-800/50 text-emerald-200 p-4 rounded-xl text-sm space-y-2">
+                                <div className="font-bold flex items-center gap-2">✅ Terminé & Validé</div>
+                                {task.validatedBy && <div className="text-xs opacity-80">Contrôle qualité validé par : {usersMap?.[task.validatedBy] || task.validatedBy}</div>}
+                                {warrantyUntil && <div className="text-xs opacity-80">Garantie active jusqu'au : {warrantyUntil.toLocaleDateString()}</div>}
                             </div>
                             
-                            {/* Display ratings */}
-                            {task.ratings && task.ratings.length > 0 ? (
-                                <div className="space-y-2 border-t border-slate-700 pt-2">
-                                    <div className="text-xs font-semibold text-slate-400">Avis ({task.ratings.length})</div>
-                                    {task.ratings.map((rating, i) => (
-                                        <div key={i} className="bg-slate-800/50 p-2 rounded text-sm border border-slate-700 flex justify-between items-start group">
-                                            <div>
-                                                <div className="text-amber-400 text-xs tracking-widest mb-1">
-                                                    {Array(rating.stars).fill('⭐').join('')}
+                            {/* Ratings */}
+                            <div className="border-t border-slate-800 pt-4">
+                                <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Avis & Commentaires</div>
+                                {task.ratings && task.ratings.length > 0 ? (
+                                    <div className="space-y-3">
+                                        {task.ratings.map((rating, i) => (
+                                            <div key={i} className="bg-slate-950/50 p-3 rounded-lg border border-slate-800 flex justify-between group">
+                                                <div>
+                                                    <div className="text-amber-400 text-xs tracking-widest mb-1">{Array(rating.stars).fill('⭐').join('')}</div>
+                                                    <p className="text-slate-300 text-sm italic">"{rating.comment}"</p>
                                                 </div>
-                                                <p className="text-slate-300 italic">"{rating.comment}"</p>
-                                            </div>
-                                            {canVerify && onDeleteRating && (
-                                                <Button 
-                                                    variant="ghost" 
-                                                    size="sm" 
-                                                    className="text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 p-0" 
-                                                    onClick={() => onDeleteRating(task.id, i)}
-                                                    title="Supprimer ce commentaire"
-                                                >
-                                                    🗑️
-                                                </Button>
-                                            )}
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="text-xs text-slate-500 italic">Aucun avis pour le moment.</div>
-                            )}
-
-                            {/* Anyone can rate if they haven't already, EXCEPT the person who did the work */}
-                            {!hasRated && !isAssignee ? (
-                                 <RatingBox onSubmit={onRate} />
-                            ) : isAssignee ? (
-                                 <div className="text-xs text-slate-500 italic text-center border border-slate-700 p-2 rounded">
-                                     Vous ne pouvez pas noter votre propre travail.
-                                 </div>
-                            ) : (
-                                 <div className="text-xs text-slate-500 italic text-center border border-slate-700 p-2 rounded">
-                                     Vous avez déjà noté cette intervention.
-                                 </div>
-                            )}
-
-                            {/* Deleted Ratings History (Admin/CS Only) */}
-                            {(isAdmin || me.role === 'council') && task.deletedRatings && task.deletedRatings.length > 0 && (
-                                <div className="mt-4 p-3 border border-slate-700 border-dashed rounded-lg bg-slate-900/30">
-                                    <div className="text-xs font-semibold text-slate-500 uppercase mb-2">Historique des avis supprimés</div>
-                                    <ul className="space-y-2">
-                                        {task.deletedRatings.map((dr, idx) => (
-                                            <li key={idx} className="text-xs text-slate-400 bg-slate-800/50 p-2 rounded">
-                                                <div className="flex justify-between mb-1">
-                                                    <span className="text-amber-700">{Array(dr.stars).fill('★').join('')}</span>
-                                                    <span className="text-slate-600">{new Date(dr.deletedAt).toLocaleDateString()}</span>
-                                                </div>
-                                                <div className="italic text-slate-500 line-through">"{dr.comment}"</div>
-                                                {isAdmin && (
-                                                    <div className="mt-1 text-[10px] text-slate-600">
-                                                        Supprimé par : {dr.deletedBy}
-                                                    </div>
+                                                {canVerify && onDeleteRating && (
+                                                    <button onClick={() => onDeleteRating(task.id, i)} className="text-slate-700 hover:text-rose-500 transition-colors" title="Supprimer">🗑️</button>
                                                 )}
-                                            </li>
+                                            </div>
                                         ))}
-                                    </ul>
-                                </div>
-                            )}
+                                    </div>
+                                ) : ( <div className="text-sm text-slate-600 italic">Aucun avis laissé.</div> )}
+
+                                {!hasRated && !isAssignee ? <div className="mt-4"><RatingBox onSubmit={onRate} /></div> : null}
+                            </div>
                         </div>
                     )}
                     
+                    {/* PENDING VALIDATION */}
                     {task.status === "pending" && (
-                         <div className="bg-amber-900/30 border border-amber-800 text-amber-200 p-3 rounded-lg text-sm flex flex-col gap-3">
-                            <div className="flex items-center justify-between">
-                                <span>⏳ En attente de validations du Conseil syndical. ({task.approvals?.length || 0}/{COUNCIL_MIN_APPROVALS})</span>
+                         <div className="bg-amber-900/20 border border-amber-800/50 text-amber-200 p-4 rounded-xl space-y-3">
+                            <div className="flex items-center gap-2 font-bold">
+                                <span>⏳ Validation requise</span>
+                                <Badge className="ml-auto bg-amber-900 text-amber-200 border-amber-700">{task.approvals?.length || 0} / {COUNCIL_MIN_APPROVALS}</Badge>
                             </div>
                             {onApprove && onReject ? (
-                                <div className="flex gap-2">
-                                    <Button 
-                                        size="sm" 
-                                        onClick={onApprove} 
-                                        disabled={hasApproved && !isAdmin} 
-                                        className="bg-emerald-600 hover:bg-emerald-500 border-none text-white disabled:opacity-50 disabled:cursor-not-allowed"
-                                    >
-                                        {isAdmin ? '⚡ Forcer la validation' : '✅ Valider'}
+                                <div className="grid grid-cols-2 gap-4 mt-2">
+                                    <Button className="bg-emerald-600 hover:bg-emerald-500 border-none text-white py-2" onClick={onApprove} disabled={hasApproved && !isAdmin}>
+                                        {isAdmin ? '⚡ Forcer (Admin)' : '✅ Valider'}
                                     </Button>
-                                    <Button size="sm" variant="destructive" onClick={onReject}>❌ Rejeter</Button>
+                                    <Button variant="destructive" onClick={onReject}>❌ Rejeter</Button>
                                 </div>
-                            ) : (
-                                <div className="text-xs italic opacity-70">
-                                    Seuls les membres du Conseil Syndical et l'administrateur peuvent valider.
-                                </div>
-                            )}
+                            ) : ( <div className="text-xs opacity-60 italic">En attente du Conseil Syndical.</div> )}
                         </div>
                     )}
 
+                    {/* DELETE */}
                     {canDelete && (
-                        <div className="pt-3 border-t border-slate-700">
-                            <Button size="sm" variant="destructive" onClick={onDelete}>🗑️ Supprimer</Button>
+                        <div className="flex justify-center pt-2">
+                            <Button size="sm" variant="ghost" className="text-slate-600 hover:text-rose-500 hover:bg-rose-950" onClick={onDelete}>🗑️ Supprimer cette tâche (Admin)</Button>
                         </div>
                     )}
                 </div>

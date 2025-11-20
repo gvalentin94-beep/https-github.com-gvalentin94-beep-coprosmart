@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import type { Task, User, LedgerEntry, TaskCategory, TaskScope, Rating, Bid, RegisteredUser, UserRole } from './types';
+import type { Task, LedgerEntry, User, LedgerEntry as LedgerEntryType, TaskCategory, TaskScope, Rating, Bid, RegisteredUser, UserRole } from './types';
 import { useAuth, fakeApi } from './services/api';
 import { Button, Card, CardContent, CardHeader, CardTitle, Label, Input, Textarea, Select, Badge, Section } from './components/ui';
 import { TaskCard } from './components/TaskCard';
@@ -59,6 +59,25 @@ function ToastContainer({ toasts, onClose }: { toasts: Toast[]; onClose: (id: st
 }
 
 // --- Helper Components ---
+
+function InfoModal({ title, children, onClose }: { title: string; children: React.ReactNode; onClose: () => void }) {
+    return (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+            <Card className="w-full max-w-2xl bg-slate-900 border-slate-700 max-h-[80vh] overflow-y-auto shadow-2xl">
+                <CardHeader className="border-b border-slate-800 flex flex-row justify-between items-center sticky top-0 bg-slate-900 z-10">
+                    <CardTitle>{title}</CardTitle>
+                    <button onClick={onClose} className="text-slate-400 hover:text-white text-xl font-bold">✕</button>
+                </CardHeader>
+                <CardContent className="p-6 text-sm text-slate-300 space-y-4 leading-relaxed">
+                    {children}
+                </CardContent>
+                <div className="p-4 border-t border-slate-800 bg-slate-900 sticky bottom-0 text-right">
+                    <Button onClick={onClose}>Fermer</Button>
+                </div>
+            </Card>
+        </div>
+    );
+}
 
 function TaskPreviewModal({ task, onConfirm, onCancel }: { task: Partial<Task>; onConfirm: () => void; onCancel: () => void }) {
     const catLabel = CATEGORIES.find(c => c.id === task.category)?.label;
@@ -411,7 +430,7 @@ function CreateTaskPage({ me, onSubmit, onCancel }: { me: User, onSubmit: (t: Pa
                             <Input 
                                 placeholder="Ex: Remplacer ampoule Hall A, Évacuer carton..." 
                                 value={title} onChange={(e) => setTitle(e.target.value)} 
-                                className="h-12 text-lg bg-slate-800 border-slate-700 text-white placeholder:text-slate-600 focus:ring-indigo-500"
+                                className="h-12 text-lg" // Removed bg-slate-800 text-white to rely on ui.tsx defaults (White bg/Dark text)
                             />
                         </div>
                         
@@ -452,7 +471,7 @@ function CreateTaskPage({ me, onSubmit, onCancel }: { me: User, onSubmit: (t: Pa
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2">
                                 <Label className="text-base text-white">Emplacement <span className="text-rose-500">*</span></Label>
-                                <Select value={location} onChange={(e) => setLocation(e.target.value)} className="h-12 bg-slate-800 border-slate-700 text-white">
+                                <Select value={location} onChange={(e) => setLocation(e.target.value)} className="h-12">
                                     {LOCATIONS.map(l => <option key={l} value={l}>📍 {l}</option>)}
                                 </Select>
                             </div>
@@ -464,7 +483,7 @@ function CreateTaskPage({ me, onSubmit, onCancel }: { me: User, onSubmit: (t: Pa
                                     <Input 
                                         type="number" 
                                         placeholder="15" 
-                                        className="pl-10 h-12 text-lg font-mono font-bold bg-white text-slate-900"
+                                        className="pl-10 h-12 text-lg font-mono font-bold"
                                         value={startingPrice} 
                                         onChange={(e) => setStartingPrice(e.target.value)} 
                                     />
@@ -505,7 +524,7 @@ function CreateTaskPage({ me, onSubmit, onCancel }: { me: User, onSubmit: (t: Pa
                             <Textarea 
                                 placeholder="Décrivez précisément ce qu'il y a à faire..." 
                                 value={details} onChange={(e) => setDetails(e.target.value)} 
-                                className="h-32 bg-slate-800 border-slate-700 text-white placeholder:text-slate-600 resize-none" 
+                                className="h-32 resize-none" 
                             />
                         </div>
                         <div className="space-y-2">
@@ -554,6 +573,11 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
   const [usersMap, setUsersMap] = useState<Record<string, string>>({});
   
   const [toasts, setToasts] = useState<Toast[]>([]);
+  
+  // States for Legal Modals
+  const [showCGU, setShowCGU] = useState(false);
+  const [showLegal, setShowLegal] = useState(false);
+
   const addToast = (title: string, message: string, type: Toast['type'] = 'info') => {
     const id = Math.random().toString(36).substring(2, 9);
     setToasts((prev) => [...prev, { id, title, message, type }]);
@@ -1010,11 +1034,48 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
                 CoproSmart permet aux copropriétaires de réduire collectivement les charges communes en réalisant eux-mêmes les petits travaux des parties communes. Les charges diminuent pour tous, et celui qui intervient bénéficie d’un crédit sur ses charges.
               </p>
               <p className="text-slate-400 font-bold text-sm uppercase tracking-widest">Simple. Local. Gagnant-gagnant.</p>
+              
+              <div className="flex justify-center gap-6 text-xs text-slate-500 pt-4">
+                  <button onClick={() => setShowCGU(true)} className="hover:text-white underline">Conditions Générales d'Utilisation</button>
+                  <button onClick={() => setShowLegal(true)} className="hover:text-white underline">Mentions Légales</button>
+              </div>
+
               <div className="text-xs text-slate-700 pt-4 border-t border-slate-900 w-24 mx-auto mt-8">
                   v0.1.0
               </div>
           </div>
       </footer>
+
+      {/* CGU Modal */}
+      {showCGU && (
+          <InfoModal title="Conditions Générales d'Utilisation" onClose={() => setShowCGU(false)}>
+              <p>Bienvenue sur CoproSmart.</p>
+              <p>En utilisant cette application, vous acceptez les règles suivantes :</p>
+              <ul className="list-disc pl-5 space-y-2">
+                  <li><b>Initiative locale :</b> CoproSmart est un outil d'entraide pour faciliter la gestion des petites interventions entre copropriétaires.</li>
+                  <li><b>Absence de contrat de travail :</b> Les interventions réalisées ne constituent pas une activité salariée ni une prestation commerciale professionnelle, mais une participation collaborative à la vie de l'immeuble.</li>
+                  <li><b>Compensation :</b> La rémunération se fait exclusivement par le biais d'un crédit (déduction) sur les charges de copropriété, validé par le Conseil Syndical et le Syndic.</li>
+                  <li><b>Responsabilité :</b> Chaque intervenant agit sous sa propre responsabilité. Il s'engage à ne réaliser que des tâches à sa portée et à respecter les règles de sécurité.</li>
+                  <li><b>Confidentialité :</b> Les données (noms, offres) sont visibles uniquement par les membres de la copropriété inscrits.</li>
+              </ul>
+          </InfoModal>
+      )}
+
+      {/* Legal Modal */}
+      {showLegal && (
+          <InfoModal title="Mentions Légales" onClose={() => setShowLegal(false)}>
+              <p><b>Éditeur du service :</b></p>
+              <p>CoproSmart - Initiative privée de copropriété.</p>
+              <p>Résidence Watteau</p>
+              <br/>
+              <p><b>Hébergement :</b></p>
+              <p>Ce site est hébergé par Vercel Inc.</p>
+              <p>340 S Lemon Ave #4133, Walnut, CA 91789, USA</p>
+              <br/>
+              <p><b>Données personnelles :</b></p>
+              <p>Conformément au RGPD, vous disposez d'un droit d'accès, de rectification et de suppression de vos données. Pour exercer ce droit, contactez le Conseil Syndical.</p>
+          </InfoModal>
+      )}
       
       <ToastContainer toasts={toasts} onClose={(id) => setToasts(prev => prev.filter(t => t.id !== id))} />
     </div>

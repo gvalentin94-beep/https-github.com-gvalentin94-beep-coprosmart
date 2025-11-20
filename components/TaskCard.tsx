@@ -213,10 +213,11 @@ interface TaskCardProps {
   onReject?: () => void;
   onRequestVerification?: () => void;
   onRejectWork?: () => void;
+  variant?: 'default' | 'ghost';
   key?: React.Key;
 }
 
-export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRate, onDeleteRating, onPayApartment, onDelete, canDelete, onApprove, onReject, onRequestVerification, onRejectWork }: TaskCardProps) {
+export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRate, onDeleteRating, onPayApartment, onDelete, canDelete, onApprove, onReject, onRequestVerification, onRejectWork, variant = 'default' }: TaskCardProps) {
     const [isOpen, setIsOpen] = useState(false);
     
     const statusConfig = TASK_STATUS_CONFIG[task.status];
@@ -229,9 +230,6 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
 
     const style = statusClasses[statusConfig.color] || { border: 'border-slate-600', text: 'text-slate-400', bg: 'bg-slate-800' };
     
-    // Accordion Visuals
-    const borderClass = `border-l-[6px] ${style.border}`;
-
     const myBidsCount = task.bids.filter(b => b.by === me.email).length;
     const isFirstBidder = task.bids.length > 0 && task.bids[0].by === me.email;
     const canBid = (isFirstBidder && myBidsCount < 2) || (!isFirstBidder && myBidsCount < 1);
@@ -249,6 +247,49 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
     const hasRated = task.ratings?.some(r => r.byHash === me.id);
     const isAssignee = task.awardedTo === me.email;
 
+    // --- GHOST VARIANT (Minimalist / History) ---
+    if (variant === 'ghost') {
+        return (
+            <div className="group border-b border-slate-800 py-3 hover:bg-slate-900/50 transition-colors px-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2 cursor-pointer" onClick={() => setIsOpen(!isOpen)}>
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center bg-slate-800 text-slate-400`}>
+                        {React.cloneElement(statusConfig.icon, { className: 'h-4 w-4' })}
+                    </div>
+                    <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                            <span className="font-bold text-sm text-slate-300 truncate">{task.title}</span>
+                            {categoryInfo && <span className="text-xs text-slate-600">{React.cloneElement(categoryInfo.icon, { className: "h-3 w-3 inline" })}</span>}
+                        </div>
+                        <div className="flex items-center gap-2 text-[10px] text-slate-500">
+                             <span>{task.location}</span>
+                             <span>• {task.awardedAmount}€</span>
+                             <span>• Par {awardedToName}</span>
+                        </div>
+                    </div>
+                </div>
+                <div className="flex items-center gap-3 text-xs text-slate-500">
+                    {task.validatedBy && <span>Validé par {usersMap?.[task.validatedBy] || 'CS'}</span>}
+                    {task.ratings && task.ratings.length > 0 && (
+                        <span className="text-amber-500/80 tracking-tighter">{Array(Math.round(task.ratings.reduce((a,b)=>a+b.stars,0)/task.ratings.length)).fill('★').join('')}</span>
+                    )}
+                    {canDelete && (
+                        <button onClick={(e) => { e.stopPropagation(); onDelete(); }} className="text-slate-700 hover:text-rose-500 p-1">🗑️</button>
+                    )}
+                </div>
+                {/* Hidden detail expansion could go here if needed, but for now plain list as requested */}
+                {isOpen && (
+                     <div className="w-full sm:hidden pt-2 text-xs text-slate-500 border-t border-slate-800 mt-2 italic">
+                        {task.ratings && task.ratings.length > 0 ? `"${task.ratings[0].comment}"` : "Aucun commentaire"}
+                     </div>
+                )}
+            </div>
+        );
+    }
+
+    // --- DEFAULT ACCORDION VARIANT ---
+    
+    const borderClass = `border-l-[6px] ${style.border}`;
+    
     const BidArea = () => {
         if (task.status !== 'open' || me?.role !== 'owner') return null;
         if (canBid) return <BidBox task={task} onBid={onBid} />;
@@ -259,7 +300,6 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
         );
     }
 
-    // Price logic
     let displayPrice = task.startingPrice;
     if (lowestBid) displayPrice = lowestBid.amount;
     if (task.awardedAmount) displayPrice = task.awardedAmount;

@@ -394,7 +394,23 @@ function CreateTaskPage({ me, onSubmit, onCancel }: { me: User, onSubmit: (t: Pa
                             />
                         </div>
                         
+                        {/* CATEGORY & SCOPE moved here */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                                <Label className="text-base text-white">Catégorie <span className="text-rose-500">*</span></Label>
+                                <div className="grid grid-cols-2 gap-3">
+                                    {CATEGORIES.map(c => (
+                                        <div 
+                                            key={c.id}
+                                            onClick={() => setCategory(c.id as TaskCategory)}
+                                            className={`cursor-pointer rounded-xl border p-2 flex flex-col items-center text-center gap-1 transition-all ${category === c.id ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700'}`}
+                                        >
+                                            <div className="scale-110">{React.cloneElement(c.icon, { className: "h-5 w-5" })}</div>
+                                            <span className="text-[10px] font-medium">{c.label}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
                             <div className="space-y-2">
                                 <Label className="text-base text-white">Concerne <span className="text-rose-500">*</span></Label>
                                 <div className="grid grid-cols-2 gap-3">
@@ -402,77 +418,62 @@ function CreateTaskPage({ me, onSubmit, onCancel }: { me: User, onSubmit: (t: Pa
                                         <div 
                                             key={s.id}
                                             onClick={() => setScope(s.id as TaskScope)}
-                                            className={`cursor-pointer rounded-xl border p-4 flex flex-col items-center text-center gap-2 transition-all ${scope === s.id ? 'bg-indigo-600 border-indigo-500 text-white ring-2 ring-indigo-400 ring-offset-2 ring-offset-slate-900' : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700 hover:border-slate-600'}`}
+                                            className={`cursor-pointer rounded-xl border p-2 flex flex-col items-center text-center gap-1 transition-all ${scope === s.id ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700'}`}
                                         >
-                                            <span className="text-2xl">{s.id === 'copro' ? '🏢' : '🏠'}</span>
-                                            <span className="text-xs font-bold">{s.id === 'copro' ? 'Parties Communes' : 'Privatif'}</span>
+                                            <span className="text-xl">{s.id === 'copro' ? '🏢' : '🏠'}</span>
+                                            <span className="text-[10px] font-bold">{s.id === 'copro' ? 'Parties Communes' : 'Privatif'}</span>
                                         </div>
                                     ))}
                                 </div>
                             </div>
-
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2">
                                 <Label className="text-base text-white">Emplacement <span className="text-rose-500">*</span></Label>
-                                <Select value={location} onChange={(e) => setLocation(e.target.value)} className="h-[88px] bg-slate-800 border-slate-700 text-white">
+                                <Select value={location} onChange={(e) => setLocation(e.target.value)} className="h-12 bg-slate-800 border-slate-700 text-white">
                                     {LOCATIONS.map(l => <option key={l} value={l}>📍 {l}</option>)}
                                 </Select>
                             </div>
-                        </div>
-                    </div>
-
-                    {/* 2. CATEGORY */}
-                    <div className="space-y-2">
-                        <Label className="text-base text-white">Catégorie <span className="text-rose-500">*</span></Label>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                            {CATEGORIES.map(c => (
-                                <div 
-                                    key={c.id}
-                                    onClick={() => setCategory(c.id as TaskCategory)}
-                                    className={`cursor-pointer rounded-xl border p-3 flex flex-col items-center text-center gap-2 transition-all ${category === c.id ? 'bg-indigo-600 border-indigo-500 text-white ring-2 ring-indigo-400 ring-offset-2 ring-offset-slate-900' : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700 hover:border-slate-600'}`}
-                                >
-                                    <div className="scale-125 mb-1">{React.cloneElement(c.icon, { className: "h-6 w-6" })}</div>
-                                    <span className="text-xs font-medium">{c.label}</span>
+                            
+                            {/* PRICE */}
+                            <div className="space-y-2">
+                                 <Label className="text-base text-white">Prix de départ (€) <span className="text-rose-500">*</span></Label>
+                                 <div className="relative">
+                                    <Input 
+                                        type="number" 
+                                        placeholder="15" 
+                                        className="pl-10 h-12 text-lg font-mono font-bold bg-white text-slate-900"
+                                        value={startingPrice} 
+                                        onChange={(e) => setStartingPrice(e.target.value)} 
+                                    />
+                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-lg font-bold">€</span>
                                 </div>
-                            ))}
+                                <p className="text-xs text-slate-500">Max: {MAX_TASK_PRICE}€</p>
+                            </div>
                         </div>
                     </div>
 
-                    {/* 3. PRICE & WARRANTY */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-800/50 p-6 rounded-xl border border-slate-800">
-                        <div className="space-y-2">
-                             <Label className="text-base text-white">Prix de départ (€) <span className="text-rose-500">*</span></Label>
-                             <div className="relative">
-                                <Input 
-                                    type="number" 
-                                    placeholder="15" 
-                                    className="pl-10 h-12 text-lg font-mono font-bold bg-white text-slate-900"
-                                    value={startingPrice} 
-                                    onChange={(e) => setStartingPrice(e.target.value)} 
-                                />
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-lg font-bold">€</span>
-                            </div>
-                            <p className="text-xs text-slate-500">Max: {MAX_TASK_PRICE}€</p>
-                        </div>
-                        <div className="space-y-2">
-                            <Label className="text-base text-white">Garantie souhaitée</Label>
-                            <div className="flex bg-slate-900 p-1 rounded-lg border border-slate-700 h-12">
-                                {[
-                                    { val: "0", label: "Sans" },
-                                    { val: "30", label: "1 mois" },
-                                    { val: "180", label: "6 mois" },
-                                    { val: "365", label: "1 an" }
-                                ].map((opt) => (
-                                    <button
-                                        key={opt.val}
-                                        onClick={() => setWarranty(opt.val)}
-                                        className={`flex-1 rounded-md text-xs font-bold transition-all ${
-                                            warranty === opt.val ? "bg-indigo-600 text-white shadow-sm" : "text-slate-500 hover:text-slate-300"
-                                        }`}
-                                    >
-                                        {opt.label}
-                                    </button>
-                                ))}
-                            </div>
+                    {/* WARRANTY */}
+                    <div className="space-y-2 bg-slate-800/50 p-4 rounded-xl border border-slate-800">
+                        <Label className="text-base text-white">Garantie souhaitée</Label>
+                        <div className="flex bg-slate-900 p-1 rounded-lg border border-slate-700 h-10">
+                            {[
+                                { val: "0", label: "Sans" },
+                                { val: "30", label: "1 mois" },
+                                { val: "180", label: "6 mois" },
+                                { val: "365", label: "1 an" }
+                            ].map((opt) => (
+                                <button
+                                    key={opt.val}
+                                    onClick={() => setWarranty(opt.val)}
+                                    className={`flex-1 rounded-md text-xs font-bold transition-all ${
+                                        warranty === opt.val ? "bg-indigo-600 text-white shadow-sm" : "text-slate-500 hover:text-slate-300"
+                                    }`}
+                                >
+                                    {opt.label}
+                                </button>
+                            ))}
                         </div>
                     </div>
 
@@ -793,14 +794,6 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
   const handleRestoreUser = async (email: string) => { await fakeApi.updateUserStatus(email, 'active'); loadData(); }
   const handleUpdateUser = async (email: string, data: any) => { await fakeApi.updateUser(email, data); loadData(); }
 
-  // Stats calculation
-  const stats = {
-      open: tasks.filter(t => t.status === 'open').length,
-      inProgress: tasks.filter(t => t.status === 'awarded' || t.status === 'verification').length,
-      completed: tasks.filter(t => t.status === 'completed').length,
-      pending: tasks.filter(t => t.status === 'pending').length
-  };
-
   // --- View Logic ---
   return (
     <div className="min-h-screen bg-slate-950 text-slate-200 font-sans selection:bg-indigo-500/30 flex flex-col">
@@ -811,11 +804,18 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
                 <h1 className="text-2xl md:text-3xl font-black tracking-tighter text-white group-hover:text-indigo-400 transition-colors">
                     CoproSmart
                 </h1>
-                <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest hidden sm:block">Simple. Local. Gagnant-gagnant.</span>
+                <span className="text-[10px] font-bold text-white uppercase tracking-widest hidden sm:block">Simple. Local. Gagnant-gagnant.</span>
             </button>
             
+            {/* Create Task Button - Moved to Right of Logo */}
+            {view !== 'create-task' && (
+                <Button onClick={() => setView('create-task')} className="ml-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold shadow-lg shadow-indigo-500/20 rounded-full px-4 sm:px-6 py-2">
+                    + <span className="hidden sm:inline">Nouvelle Tâche</span>
+                </Button>
+            )}
+            
             {/* Desktop Navigation */}
-            <nav className="hidden md:flex items-center gap-8 flex-1">
+            <nav className="hidden md:flex items-center gap-8 flex-1 justify-end mr-8">
                 <button onClick={() => setView('home')} className={`text-sm font-bold transition-colors ${view === 'home' ? 'text-white' : 'text-slate-400 hover:text-white'}`}>Accueil</button>
                 <button onClick={() => setView('directory')} className={`text-sm font-bold transition-colors ${view === 'directory' ? 'text-white' : 'text-slate-400 hover:text-white'}`}>Annuaire</button>
                 {(user.role === 'admin' || user.role === 'council') && (
@@ -824,13 +824,6 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
             </nav>
 
             <div className="flex items-center gap-4">
-                {/* Create Task Button (Primary CTA) */}
-                {view !== 'create-task' && (
-                    <Button onClick={() => setView('create-task')} className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold shadow-lg shadow-indigo-500/20 rounded-full px-6">
-                        + <span className="hidden sm:inline">Nouvelle Tâche</span>
-                    </Button>
-                )}
-
                 <div className="text-right hidden lg:block border-l border-slate-800 pl-4 ml-2">
                     <div className="text-sm font-bold text-white">{user.firstName} {user.lastName.toUpperCase()}</div>
                     <div className="text-xs text-slate-500">{user.email}</div>
@@ -883,28 +876,8 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
         )}
 
         {view === 'home' && (
-            <div className="space-y-10 animate-in fade-in duration-500">
+            <div className="space-y-10 animate-in fade-in duration-500 pt-6">
                 
-                {/* KPI Stats Section */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="bg-slate-900/50 border border-slate-800 p-4 rounded-xl text-center">
-                        <div className="text-3xl font-black text-indigo-400">{stats.open}</div>
-                        <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">Offres Ouvertes</div>
-                    </div>
-                    <div className="bg-slate-900/50 border border-slate-800 p-4 rounded-xl text-center">
-                        <div className="text-3xl font-black text-sky-400">{stats.inProgress}</div>
-                        <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">En cours</div>
-                    </div>
-                    <div className="bg-slate-900/50 border border-slate-800 p-4 rounded-xl text-center">
-                        <div className="text-3xl font-black text-amber-400">{stats.pending}</div>
-                        <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">À Valider</div>
-                    </div>
-                    <div className="bg-slate-900/50 border border-slate-800 p-4 rounded-xl text-center">
-                        <div className="text-3xl font-black text-emerald-400">{stats.completed}</div>
-                        <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">Terminées</div>
-                    </div>
-                </div>
-
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
                     <div className="lg:col-span-12 space-y-12">
                         
@@ -932,8 +905,7 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
                         <Section title="🔥 Offres ouvertes">
                              {tasks.filter(t => t.status === 'open').length === 0 ? (
                                 <div className="bg-slate-900/30 border border-slate-800 rounded-xl p-8 text-center">
-                                    <p className="text-slate-500 italic">Aucune offre en cours actuellement.</p>
-                                    <Button onClick={() => setView('create-task')} variant="outline" className="mt-4 border-slate-700 text-slate-400 hover:text-white">Créer une tâche</Button>
+                                    <p className="text-slate-500 italic">Tout va bien dans la copro, rien à signaler ! 🏖️</p>
                                 </div>
                              ) : (
                                 <div className="grid grid-cols-1 gap-3">
@@ -954,7 +926,9 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
                         {/* WORKS IN PROGRESS */}
                         <Section title="🏗️ Travaux en cours">
                             {tasks.filter(t => t.status === 'awarded' || t.status === 'verification').length === 0 ? (
-                                <p className="text-slate-500 italic pl-2">Aucun chantier en cours.</p>
+                                <div className="bg-slate-900/30 border border-slate-800 rounded-xl p-8 text-center">
+                                    <p className="text-slate-500 italic">Les artisans se reposent... ou tout est déjà réparé ! 🛠️</p>
+                                </div>
                              ) : (
                                 <div className="grid grid-cols-1 gap-3">
                                     {tasks.filter(t => t.status === 'awarded' || t.status === 'verification').map(t => (
@@ -972,20 +946,25 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
                              )}
                         </Section>
 
-                         {/* COMPLETED HISTORY */}
+                         {/* COMPLETED HISTORY - GHOST MODE */}
                         <Section title="✅ Historique terminé">
-                            <div className="grid grid-cols-1 gap-3">
-                                {tasks.filter(t => t.status === 'completed').sort((a,b) => new Date(b.completionAt!).getTime() - new Date(a.completionAt!).getTime()).map(t => (
-                                    <TaskCard 
-                                        key={t.id} task={t} me={user} usersMap={usersMap}
-                                        onBid={() => {}} onAward={() => {}} onComplete={() => {}} 
-                                        onRate={(r) => handleRate(t.id, r)} 
-                                        onDeleteRating={handleDeleteRating}
-                                        onPayApartment={() => {}} onDelete={() => handleDelete(t.id)}
-                                        canDelete={user.role === 'admin'}
-                                    />
-                                ))}
-                            </div>
+                            {tasks.filter(t => t.status === 'completed').length === 0 ? (
+                                <p className="text-slate-500 italic pl-2">Aucun historique pour le moment.</p>
+                            ) : (
+                                <div className="flex flex-col border-t border-slate-800">
+                                    {tasks.filter(t => t.status === 'completed').sort((a,b) => new Date(b.completionAt!).getTime() - new Date(a.completionAt!).getTime()).map(t => (
+                                        <TaskCard 
+                                            key={t.id} task={t} me={user} usersMap={usersMap}
+                                            onBid={() => {}} onAward={() => {}} onComplete={() => {}} 
+                                            onRate={(r) => handleRate(t.id, r)} 
+                                            onDeleteRating={handleDeleteRating}
+                                            onPayApartment={() => {}} onDelete={() => handleDelete(t.id)}
+                                            canDelete={user.role === 'admin'}
+                                            variant="ghost"
+                                        />
+                                    ))}
+                                </div>
+                            )}
                         </Section>
                     </div>
                 </div>

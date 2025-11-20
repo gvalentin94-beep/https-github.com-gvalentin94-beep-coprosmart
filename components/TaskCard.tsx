@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import type { Task, User, Rating, Bid } from '../types';
 import { Button, Card, Input, Label, Badge, Textarea } from './ui';
-import { CATEGORIES, TASK_STATUS_CONFIG, SCOPES, MapPinIcon, ShieldCheckIcon } from '../constants';
+import { CATEGORIES, TASK_STATUS_CONFIG, SCOPES, WARRANTY_OPTIONS, MapPinIcon } from '../constants';
 
 // --- Sub-components defined in the same file to keep file count low ---
 
@@ -226,6 +226,7 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
     const statusConfig = TASK_STATUS_CONFIG[task.status];
     const categoryInfo = CATEGORIES.find(c => c.id === task.category);
     const scopeInfo = SCOPES.find(s => s.id === task.scope);
+    const warrantyInfo = WARRANTY_OPTIONS.find(w => String(w.val) === String(task.warrantyDays));
     
     const lowestBid = task.bids?.length > 0 ? task.bids.reduce((min, b) => b.amount < min.amount ? b : min, task.bids[0]) : null;
 
@@ -316,15 +317,16 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                                 )}
                                 
                                 {scopeInfo && (
-                                    <Badge className="bg-slate-800 text-slate-400 border-slate-700 gap-1">
+                                    <Badge className={`${scopeInfo.colorClass} gap-1`}>
                                         {React.cloneElement(scopeInfo.icon, { className: 'w-3 h-3' })}
                                         {scopeInfo.label}
                                     </Badge>
                                 )}
 
-                                {task.warrantyDays > 0 && (
-                                    <Badge className="bg-emerald-900/20 text-emerald-400 border-emerald-800 gap-1">
-                                        <ShieldCheckIcon className="w-3 h-3" /> {task.warrantyDays}j
+                                {warrantyInfo && (
+                                    <Badge className={`${warrantyInfo.colorClass} gap-1`}>
+                                        {React.cloneElement(warrantyInfo.icon, { className: 'w-3 h-3' })}
+                                        {warrantyInfo.label}
                                     </Badge>
                                 )}
 

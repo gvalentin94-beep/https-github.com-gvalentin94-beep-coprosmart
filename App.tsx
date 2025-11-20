@@ -4,7 +4,7 @@ import type { Task, LedgerEntry, User, LedgerEntry as LedgerEntryType, TaskCateg
 import { useAuth, fakeApi } from './services/api';
 import { Button, Card, CardContent, CardHeader, CardTitle, Label, Input, Textarea, Select, Badge, Section } from './components/ui';
 import { TaskCard } from './components/TaskCard';
-import { LOCATIONS, CATEGORIES, SCOPES, COUNCIL_MIN_APPROVALS, ROLES, MAX_TASK_PRICE } from './constants';
+import { LOCATIONS, CATEGORIES, SCOPES, WARRANTY_OPTIONS, COUNCIL_MIN_APPROVALS, ROLES, MAX_TASK_PRICE } from './constants';
 import { LoginCard } from './components/LoginCard';
 
 // --- Constants for Random Messages ---
@@ -458,10 +458,10 @@ function CreateTaskPage({ me, onSubmit, onCancel }: { me: User, onSubmit: (t: Pa
                                         <div 
                                             key={s.id}
                                             onClick={() => setScope(s.id as TaskScope)}
-                                            className={`cursor-pointer rounded-xl border p-2 flex flex-col items-center text-center gap-1 transition-all ${scope === s.id ? 'bg-indigo-600 border-indigo-500 text-white ring-2 ring-offset-2 ring-offset-slate-900' : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700'}`}
+                                            className={`cursor-pointer rounded-xl border p-2 flex flex-col items-center text-center gap-1 transition-all ${scope === s.id ? `${s.colorClass} border-2 ring-2 ring-offset-2 ring-offset-slate-900` : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700'}`}
                                         >
                                             <div className="scale-110">{React.cloneElement(s.icon, { className: "h-5 w-5" })}</div>
-                                            <span className="text-[10px] font-bold">{s.id === 'copro' ? 'Parties Communes' : 'Privatif'}</span>
+                                            <span className="text-[10px] font-bold">{s.label}</span>
                                         </div>
                                     ))}
                                 </div>
@@ -497,22 +497,18 @@ function CreateTaskPage({ me, onSubmit, onCancel }: { me: User, onSubmit: (t: Pa
                     {/* WARRANTY */}
                     <div className="space-y-2 bg-slate-800/50 p-4 rounded-xl border border-slate-800">
                         <Label className="text-base text-white">Garantie souhaitée</Label>
-                        <div className="flex bg-slate-900 p-1 rounded-lg border border-slate-700 h-10">
-                            {[
-                                { val: "0", label: "Sans" },
-                                { val: "30", label: "1 mois" },
-                                { val: "180", label: "6 mois" },
-                                { val: "365", label: "1 an" }
-                            ].map((opt) => (
-                                <button
+                        <div className="grid grid-cols-4 gap-3">
+                            {WARRANTY_OPTIONS.map((opt) => (
+                                <div
                                     key={opt.val}
                                     onClick={() => setWarranty(opt.val)}
-                                    className={`flex-1 rounded-md text-xs font-bold transition-all ${
-                                        warranty === opt.val ? "bg-indigo-600 text-white shadow-sm" : "text-slate-500 hover:text-slate-300"
+                                    className={`cursor-pointer rounded-xl border p-2 flex flex-col items-center text-center gap-1 transition-all ${
+                                        warranty === opt.val ? `${opt.colorClass} border-2 ring-2 ring-offset-2 ring-offset-slate-900` : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700'
                                     }`}
                                 >
-                                    {opt.label}
-                                </button>
+                                    <div className="scale-110">{React.cloneElement(opt.icon, { className: "h-5 w-5" })}</div>
+                                    <span className="text-[10px] font-bold">{opt.label}</span>
+                                </div>
                             ))}
                         </div>
                     </div>
@@ -623,7 +619,7 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
       allUsers.forEach(u => { mapping[u.email] = `${u.firstName} ${u.lastName.toUpperCase()}`; });
       setUsersMap(mapping);
 
-      // Get Directory users for the list (filtered)
+      // Get Directory users for the list
       const dir = await fakeApi.getDirectory();
       setDirectoryUsers(dir);
     } catch (e) { console.error(e); }

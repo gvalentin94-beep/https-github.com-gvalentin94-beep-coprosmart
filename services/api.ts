@@ -168,6 +168,11 @@ export const fakeApi = {
   },
 
   // Directory & Admin Features
+  getAllUsers: async (): Promise<RegisteredUser[]> => {
+      const users = safeJsonParse<RegisteredUser[]>(usersDbKey, []);
+      return users;
+  },
+
   getDirectory: async (): Promise<RegisteredUser[]> => {
       const users = safeJsonParse<RegisteredUser[]>(usersDbKey, []);
       // Return all users except pending, but include deleted so admin can restore

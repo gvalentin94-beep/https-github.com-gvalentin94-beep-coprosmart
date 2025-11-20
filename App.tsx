@@ -129,7 +129,7 @@ function Ledger({ entries, usersMap, onDelete, isAdmin }: { entries: LedgerEntry
                 <tr>
                   <th className="px-4 py-4 font-medium">Date</th>
                   <th className="px-4 py-4 font-medium">Type</th>
-                  <th className="px-4 py-4 font-medium">Tâche / Objet</th>
+                  <th className="px-4 py-4 font-medium">Travail</th>
                   <th className="px-4 py-4 font-medium">Payeur</th>
                   <th className="px-4 py-4 font-medium">Bénéficiaire</th>
                   <th className="px-4 py-4 text-right font-medium">Montant</th>
@@ -566,11 +566,16 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
       if (user.role === 'admin' || user.role === 'council') {
           setPendingUsers(await fakeApi.getPendingUsers());
       }
+      
+      // Get ALL users for mapping names (even admin or deleted)
+      const allUsers = await fakeApi.getAllUsers();
+      const mapping: Record<string, string> = {};
+      allUsers.forEach(u => { mapping[u.email] = `${u.firstName} ${u.lastName.toUpperCase()}`; });
+      setUsersMap(mapping);
+
+      // Get Directory users for the list (filtered)
       const dir = await fakeApi.getDirectory();
       setDirectoryUsers(dir);
-      const mapping: Record<string, string> = {};
-      dir.forEach(u => { mapping[u.email] = `${u.firstName} ${u.lastName.toUpperCase()}`; });
-      setUsersMap(mapping);
     } catch (e) { console.error(e); }
   }, [user.role]);
 

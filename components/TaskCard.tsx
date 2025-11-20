@@ -18,9 +18,10 @@ const statusClasses: { [key: string]: { border: string; text: string; bg: string
 interface BidBoxProps {
     task: Task;
     onBid: (bid: Omit<Bid, 'by' | 'at'>) => void;
+    onCancel: () => void;
 }
 
-function BidBox({ task, onBid }: BidBoxProps) {
+function BidBox({ task, onBid, onCancel }: BidBoxProps) {
     const hasBids = task.bids?.length > 0;
     const currentPrice = hasBids ? Math.min(...task.bids.map(b => b.amount)) : task.startingPrice;
     
@@ -63,6 +64,7 @@ function BidBox({ task, onBid }: BidBoxProps) {
         onBid({ amount: val, note, plannedExecutionDate });
         setNote("");
         setPlannedExecutionDate(getTomorrow());
+        onCancel();
     };
 
     const today = new Date().toISOString().split('T')[0];
@@ -71,9 +73,9 @@ function BidBox({ task, onBid }: BidBoxProps) {
     const maxDateStr = maxDate.toISOString().split('T')[0];
     
     return (
-        <div className="border border-slate-700 rounded-xl p-4 space-y-4 bg-slate-900/50 shadow-inner">
+        <div className="border border-slate-700 rounded-xl p-4 space-y-4 bg-slate-900/50 shadow-inner mt-4">
             <div className="flex justify-between items-center border-b border-slate-800 pb-2">
-                <div className="text-xs text-slate-400 font-bold uppercase tracking-wider">Faire une offre</div>
+                <div className="text-xs text-slate-400 font-bold uppercase tracking-wider">Nouvelle offre</div>
                 <div className="text-xs text-slate-400">
                     Départ: <b className="text-slate-300">{task.startingPrice} €</b>
                     {hasBids && <> • Actuelle: <b className="text-indigo-400">{currentPrice} €</b></>}
@@ -112,9 +114,12 @@ function BidBox({ task, onBid }: BidBoxProps) {
                     />
                 </div>
             </div>
-            <Button className="w-full bg-indigo-600 hover:bg-indigo-500 shadow-lg shadow-indigo-900/20" onClick={handleBid} disabled={!amount || Number(amount) <= 0 || Number(amount) >= currentPrice || !plannedExecutionDate}>
-                🚀 Se positionner
-            </Button>
+            <div className="flex gap-2">
+                <Button variant="ghost" className="flex-1" onClick={onCancel}>Annuler</Button>
+                <Button className="flex-[3] bg-indigo-600 hover:bg-indigo-500" onClick={handleBid} disabled={!amount || Number(amount) <= 0 || Number(amount) >= currentPrice || !plannedExecutionDate}>
+                    🚀 Confirmer mon offre
+                </Button>
+            </div>
         </div>
     );
 }
@@ -138,7 +143,7 @@ function RatingBox({ onSubmit }: RatingBoxProps) {
     }
 
     return (
-        <div className="border border-slate-700 rounded-xl p-4 space-y-3 bg-slate-900/50">
+        <div className="border border-slate-700 rounded-xl p-4 space-y-3 bg-slate-900/50 mt-2">
             <div className="space-y-1">
                 <Label>Note (1 à 5)</Label>
                 <div className="flex gap-2">
@@ -186,10 +191,8 @@ function Countdown({ startedAt }: { startedAt: string }) {
     if (!timeLeft || timeLeft === "Terminé") return null;
 
     return (
-        <div className="bg-indigo-900/30 border border-indigo-800/50 text-indigo-200 px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2 justify-center shadow-sm">
-            <span className="animate-pulse">⏳</span> 
-            <span>Attribution automatique dans :</span>
-            <b className="font-mono text-white tracking-widest">{timeLeft}</b>
+        <div className="text-xs text-indigo-300 font-mono tracking-tight bg-indigo-900/30 px-2 py-1 rounded border border-indigo-800/50">
+            ⏱ {timeLeft}
         </div>
     );
 }
@@ -213,12 +216,12 @@ interface TaskCardProps {
   onReject?: () => void;
   onRequestVerification?: () => void;
   onRejectWork?: () => void;
-  variant?: 'default' | 'ghost';
   key?: React.Key;
 }
 
-export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRate, onDeleteRating, onPayApartment, onDelete, canDelete, onApprove, onReject, onRequestVerification, onRejectWork, variant = 'default' }: TaskCardProps) {
-    const [isOpen, setIsOpen] = useState(false);
+export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRate, onDeleteRating, onPayApartment, onDelete, canDelete, onApprove, onReject, onRequestVerification, onRejectWork }: TaskCardProps) {
+    const [showDetails, setShowDetails] = useState(false);
+    const [showBidForm, setShowBidForm] = useState(false);
     
     const statusConfig = TASK_STATUS_CONFIG[task.status];
     const categoryInfo = CATEGORIES.find(c => c.id === task.category);
@@ -247,258 +250,154 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
     const hasRated = task.ratings?.some(r => r.byHash === me.id);
     const isAssignee = task.awardedTo === me.email;
 
-    // --- GHOST VARIANT (Minimalist / History) ---
-    if (variant === 'ghost') {
-        return (
-            <div className="group border-b border-slate-800 py-3 hover:bg-slate-900/50 transition-colors px-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2 cursor-pointer" onClick={() => setIsOpen(!isOpen)}>
-                <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <div className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center bg-slate-800 text-slate-400`}>
-                        {React.cloneElement(statusConfig.icon, { className: 'h-4 w-4' })}
-                    </div>
-                    <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                            <span className="font-bold text-sm text-slate-300 truncate">{task.title}</span>
-                            {categoryInfo && <span className="text-xs text-slate-600">{React.cloneElement(categoryInfo.icon, { className: "h-3 w-3 inline" })}</span>}
-                        </div>
-                        <div className="flex items-center gap-2 text-[10px] text-slate-500">
-                             <span>{task.location}</span>
-                             <span>• {task.awardedAmount}€</span>
-                             <span>• Par {awardedToName}</span>
-                        </div>
-                    </div>
-                </div>
-                <div className="flex items-center gap-3 text-xs text-slate-500">
-                    {task.validatedBy && <span>Validé par {usersMap?.[task.validatedBy] || 'CS'}</span>}
-                    {task.ratings && task.ratings.length > 0 && (
-                        <span className="text-amber-500/80 tracking-tighter">{Array(Math.round(task.ratings.reduce((a,b)=>a+b.stars,0)/task.ratings.length)).fill('★').join('')}</span>
-                    )}
-                    {canDelete && (
-                        <button onClick={(e) => { e.stopPropagation(); onDelete(); }} className="text-slate-700 hover:text-rose-500 p-1">🗑️</button>
-                    )}
-                </div>
-                {/* Hidden detail expansion could go here if needed, but for now plain list as requested */}
-                {isOpen && (
-                     <div className="w-full sm:hidden pt-2 text-xs text-slate-500 border-t border-slate-800 mt-2 italic">
-                        {task.ratings && task.ratings.length > 0 ? `"${task.ratings[0].comment}"` : "Aucun commentaire"}
-                     </div>
-                )}
-            </div>
-        );
-    }
-
-    // --- DEFAULT ACCORDION VARIANT ---
-    
-    const borderClass = `border-l-[6px] ${style.border}`;
-    
-    const BidArea = () => {
-        if (task.status !== 'open' || me?.role !== 'owner') return null;
-        if (canBid) return <BidBox task={task} onBid={onBid} />;
-        return (
-            <div className="bg-slate-900/50 border border-slate-800 text-slate-400 p-4 rounded-xl text-sm text-center italic">
-                {isFirstBidder ? "Vous avez utilisé vos 2 offres." : "Vous avez déjà fait une offre."}
-            </div>
-        );
-    }
-
     let displayPrice = task.startingPrice;
     if (lowestBid) displayPrice = lowestBid.amount;
     if (task.awardedAmount) displayPrice = task.awardedAmount;
 
-    return (
-        <Card className={`transition-all duration-300 ${borderClass} ${isOpen ? 'ring-1 ring-indigo-500/30 shadow-xl bg-slate-800' : 'hover:bg-slate-800/80 cursor-pointer bg-slate-800/40 border-t border-b border-r border-slate-800'}`} padding="none">
-            
-            {/* HEADER (Folded View) */}
-            <div className="flex items-center justify-between p-4" onClick={() => setIsOpen(!isOpen)}>
-                <div className="flex items-center gap-4 flex-1 min-w-0">
-                    <div className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center ${style.text} ${style.bg}`}>
-                        {React.cloneElement(statusConfig.icon, { className: 'h-5 w-5' })}
-                    </div>
-                    
-                    <div className="flex flex-col min-w-0">
-                        <div className="flex items-center gap-2">
-                            <h3 className="font-bold text-base text-white truncate">{task.title}</h3>
-                            {categoryInfo && <span className="text-xs opacity-50 grayscale">{React.cloneElement(categoryInfo.icon, { className: "h-3 w-3 inline" })}</span>}
-                        </div>
-                        <div className="flex items-center gap-2 text-xs text-slate-500 mt-0.5">
-                             <span className="hidden sm:inline font-medium">{usersMap?.[task.createdBy] || task.createdBy}</span>
-                             <span className="hidden sm:inline">•</span>
-                             <span>{new Date(task.createdAt).toLocaleDateString()}</span>
-                             <span>• {task.location}</span>
-                        </div>
-                    </div>
-                </div>
+    // Action Button Logic
+    let ActionButton = null;
 
-                <div className="flex items-center gap-4 pl-2">
-                    <div className="text-right">
-                        <div className="font-mono font-bold text-lg text-white tracking-tight">{displayPrice}€</div>
-                        {task.status === 'open' && <div className="text-[10px] text-slate-500 uppercase font-bold">Offre actuelle</div>}
-                    </div>
-                    <div className={`transform transition-transform duration-300 text-slate-600 ${isOpen ? 'rotate-180' : ''}`}>▼</div>
-                </div>
+    if (task.status === 'open' && me.role === 'owner') {
+        if (canBid) {
+            ActionButton = <Button size="sm" onClick={(e) => { e.stopPropagation(); setShowBidForm(!showBidForm); }} className="bg-indigo-600 hover:bg-indigo-500 text-white shadow-md whitespace-nowrap">🚀 Faire une offre</Button>;
+        } else {
+             ActionButton = <span className="text-xs text-slate-500 italic whitespace-nowrap">Offre envoyée</span>;
+        }
+    } else if (canManualAward) {
+        ActionButton = <Button size="sm" onClick={onAward} className="bg-emerald-600 hover:bg-emerald-500 whitespace-nowrap">{isAdmin && isTimerRunning ? '⚡ Attribuer (Admin)' : '✅ Attribuer'}</Button>;
+    } else if (task.status === 'awarded' && isAssignee && onRequestVerification) {
+        ActionButton = <Button size="sm" onClick={onRequestVerification} className="bg-fuchsia-600 hover:bg-fuchsia-500 whitespace-nowrap">🏁 J'ai fini</Button>;
+    } else if (task.status === 'verification' && canVerify && onRejectWork) {
+        ActionButton = (
+            <div className="flex gap-1">
+                <Button size="sm" onClick={onComplete} className="bg-emerald-600 hover:bg-emerald-500 px-2">✅</Button>
+                <Button size="sm" onClick={onRejectWork} variant="destructive" className="px-2">❌</Button>
             </div>
+        );
+    } else if (task.status === 'pending' && onApprove && onReject) {
+        ActionButton = (
+             <div className="flex gap-1">
+                <Button size="sm" onClick={onApprove} disabled={hasApproved && !isAdmin} className="bg-emerald-600 px-2">✅</Button>
+                <Button size="sm" onClick={onReject} variant="destructive" className="px-2">❌</Button>
+            </div>
+        );
+    }
 
-            {/* CONTENT (Unfolded) */}
-            {isOpen && (
-                <div className="p-5 border-t border-slate-700/50 bg-slate-900/20 space-y-6 animate-in slide-in-from-top-2 duration-200">
+    return (
+        <Card className={`transition-all duration-300 border-l-[4px] ${style.border} bg-slate-800 hover:bg-slate-800/80`}>
+            <div className="p-3 md:p-4">
+                {/* ROW LAYOUT: ICON | TITLE & BADGES | PRICE | ACTION */}
+                <div className="flex flex-col sm:flex-row gap-3 sm:items-center justify-between">
                     
-                    {/* Tags Row */}
-                    <div className="flex flex-wrap gap-2 text-xs">
-                        <Badge className="bg-slate-800 text-slate-300 border-slate-700">📍 {task.location}</Badge>
-                        <Badge className="bg-slate-800 text-slate-300 border-slate-700">🛡️ Garantie {task.warrantyDays}j</Badge>
-                        <Badge className="bg-slate-800 text-slate-300 border-slate-700">{task.scope === 'copro' ? '🏢 Communs' : '🏠 Privatif'}</Badge>
-                        <Badge className="bg-slate-800 text-slate-300 border-slate-700">📂 {categoryInfo?.label}</Badge>
+                    {/* LEFT: Icon & Main Info */}
+                    <div className="flex items-start sm:items-center gap-3 flex-1 min-w-0">
+                        <div className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center ${style.text} ${style.bg} mt-1 sm:mt-0`}>
+                            {React.cloneElement(statusConfig.icon, { className: 'h-4 w-4' })}
+                        </div>
+                        
+                        <div className="flex flex-col min-w-0 gap-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                                <h3 className="font-bold text-sm md:text-base text-white truncate leading-tight">{task.title}</h3>
+                                {categoryInfo && <Badge className="bg-slate-700 text-slate-300 border-slate-600 hidden md:inline-flex">{categoryInfo.label}</Badge>}
+                            </div>
+                            
+                            {/* Badges Row */}
+                            <div className="flex flex-wrap items-center gap-2 text-[10px] md:text-xs">
+                                <Badge className="bg-slate-900/50 text-slate-400 border-slate-700">📍 {task.location}</Badge>
+                                {task.warrantyDays > 0 && <Badge className="bg-emerald-900/20 text-emerald-400 border-emerald-800">🛡️ {task.warrantyDays}j</Badge>}
+                                <Badge className="bg-slate-900/50 text-slate-400 border-slate-700">{task.scope === 'copro' ? 'Communs' : 'Privé'}</Badge>
+                                {task.biddingStartedAt && task.status === 'open' && <Countdown startedAt={task.biddingStartedAt} />}
+                                <span className="text-slate-500 ml-1">par {usersMap?.[task.createdBy] || task.createdBy}</span>
+                            </div>
+                        </div>
                     </div>
 
-                    {/* Photo & Details */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        {task.photo && (
-                            <div className="md:col-span-1 aspect-video rounded-lg overflow-hidden border border-slate-700 bg-slate-950 shadow-sm">
-                                <img src={task.photo} alt="Photo" className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
+                    {/* RIGHT: Price & Action */}
+                    <div className="flex items-center justify-between sm:justify-end gap-4 pl-11 sm:pl-0">
+                         <div className="text-right">
+                            <div className="font-mono font-bold text-base md:text-lg text-white">{displayPrice}€</div>
+                            {task.status === 'open' && <div className="text-[9px] text-slate-500 uppercase">Offre</div>}
+                        </div>
+                        
+                        {ActionButton}
+                        
+                        <button onClick={() => setShowDetails(!showDetails)} className="text-xs text-slate-500 hover:text-white underline whitespace-nowrap ml-2">
+                            {showDetails ? 'Masquer' : 'Détails'}
+                        </button>
+                    </div>
+                </div>
+
+                {/* INLINE BID FORM */}
+                {showBidForm && (
+                    <div className="animate-in slide-in-from-top-2 duration-200">
+                        <BidBox task={task} onBid={onBid} onCancel={() => setShowBidForm(false)} />
+                    </div>
+                )}
+
+                {/* EXPANDABLE DETAILS */}
+                {showDetails && (
+                    <div className="mt-4 pt-4 border-t border-slate-700/50 space-y-4 animate-in fade-in duration-200">
+                        
+                        {/* Description & Photo */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                             {task.photo && (
+                                <div className="md:col-span-1 aspect-video rounded-lg overflow-hidden bg-slate-950 border border-slate-700">
+                                    <img src={task.photo} alt="Photo" className="w-full h-full object-cover" />
+                                </div>
+                            )}
+                            <div className={task.photo ? 'md:col-span-2' : 'md:col-span-3'}>
+                                <p className="text-sm text-slate-300 bg-slate-900/30 p-3 rounded-lg border border-slate-800/50">{task.details || "Aucune description détaillée."}</p>
+                            </div>
+                        </div>
+                        
+                        {/* Additional Info Block (History, bids, etc) */}
+                        {task.awardedTo && (
+                            <div className="text-xs text-slate-400">
+                                Attribué à <b className="text-slate-300">{awardedToName}</b> pour {task.awardedAmount}€
+                                {task.validatedBy && <span> • Validé par {usersMap?.[task.validatedBy] || task.validatedBy}</span>}
                             </div>
                         )}
-                        <div className={`${task.photo ? 'md:col-span-2' : 'md:col-span-3'}`}>
-                             {task.details ? (
-                                 <p className="text-sm text-slate-300 leading-relaxed bg-slate-800/50 p-3 rounded-lg border border-slate-800">{task.details}</p>
-                             ) : (
-                                 <p className="text-sm text-slate-500 italic">Aucune description détaillée.</p>
-                             )}
-                        </div>
-                    </div>
 
-                    {/* Countdown */}
-                    {task.biddingStartedAt && task.status === 'open' && <Countdown startedAt={task.biddingStartedAt} />}
-
-                    {/* Awarded Info */}
-                    {task.awardedTo && (
-                        <div className="bg-sky-900/20 border border-sky-800/50 text-sky-200 p-4 rounded-xl flex flex-col sm:flex-row justify-between items-center gap-3">
-                            <div className="flex items-center gap-2">
-                                <span className="text-2xl">🤝</span>
-                                <div>
-                                    <div className="font-bold text-sm">Attribuée à {awardedToName}</div>
-                                    <div className="text-xs opacity-70">Montant final : {task.awardedAmount}€</div>
-                                </div>
-                            </div>
-                            {task.awardedTo === me.email && (task.status === 'awarded' || task.status === 'verification') && (
-                                <Badge className="bg-emerald-600 text-white shadow-lg shadow-emerald-900/20 py-1 px-3">👉 À faire par vous</Badge>
-                            )}
-                        </div>
-                    )}
-
-                    {/* Bids List */}
-                    {task.status === 'open' && task.bids?.length > 0 && (
-                        <div className="space-y-3">
-                            <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-800 pb-1">Offres en cours ({task.bids.length})</h4>
-                            <ul className="space-y-2">
-                                {task.bids.slice().sort((a,b) => a.amount - b.amount).map((b, i) => {
-                                    const bidderName = usersMap ? (usersMap[b.by] || b.by) : b.by;
-                                    return (
-                                        <li key={i} className={`flex justify-between items-center text-sm p-3 rounded-lg border ${i === 0 ? 'bg-indigo-900/20 border-indigo-500/30 text-indigo-200' : 'bg-slate-800/50 border-slate-700 text-slate-400'}`}>
-                                            <div>
-                                                <span className="font-bold mr-2">{b.amount} €</span> 
-                                                <span className="text-xs opacity-70">par {bidderName}</span>
-                                            </div>
-                                            <div className="text-xs opacity-50">{new Date(b.plannedExecutionDate).toLocaleDateString()}</div>
-                                        </li>
-                                    );
-                                })}
-                            </ul>
-                        </div>
-                    )}
-
-                    <BidArea />
-
-                    {/* ACTIONS: Award */}
-                    {canManualAward && lowestBid && (
-                        <Button className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-6" onClick={onAward}>
-                            {isAdmin && isTimerRunning ? `⚡ Admin: Attribuer maintenant (${lowestBid.amount} €)` : `✅ Clore les enchères (${lowestBid.amount} €)`}
-                        </Button>
-                    )}
-
-                    {/* ACTIONS: Worker */}
-                    {task.status === "awarded" && task.awardedTo === me.email && onRequestVerification && (
-                         <Button className="w-full py-6 bg-gradient-to-r from-fuchsia-600 to-purple-600 hover:from-fuchsia-500 hover:to-purple-500 text-white font-bold shadow-lg" onClick={onRequestVerification}>
-                            🏁 J'ai fini (Demander validation)
-                         </Button>
-                    )}
-
-                    {/* ACTIONS: Verify (CS/Admin) */}
-                    {task.status === "verification" && (
-                         <div className="bg-fuchsia-900/20 border border-fuchsia-800/50 p-4 rounded-xl space-y-4">
-                            <div className="flex items-center gap-3 text-fuchsia-300 font-bold">
-                                <span className="text-2xl">🕵️</span> Contrôle qualité requis
-                            </div>
-                            <p className="text-sm text-slate-400">Le copropriétaire déclare avoir terminé. Merci de vérifier le travail.</p>
-                            
-                            {canVerify && onRejectWork ? (
-                                <div className="grid grid-cols-2 gap-4">
-                                    <Button className="bg-emerald-600 hover:bg-emerald-500 border-none text-white py-6" onClick={onComplete}>✅ Valider & Payer</Button>
-                                    <Button variant="destructive" className="py-6" onClick={onRejectWork}>❌ Refuser</Button>
-                                </div>
-                            ) : (
-                                <div className="text-xs italic text-slate-500 text-center">En attente de validation par le CS.</div>
-                            )}
-                        </div>
-                    )}
-                    
-                    {/* COMPLETED INFO */}
-                    {task.status === "completed" && (
-                        <div className="space-y-4">
-                            <div className="bg-emerald-900/20 border border-emerald-800/50 text-emerald-200 p-4 rounded-xl text-sm space-y-2">
-                                <div className="font-bold flex items-center gap-2">✅ Terminé & Validé</div>
-                                {task.validatedBy && <div className="text-xs opacity-80">Contrôle qualité validé par : {usersMap?.[task.validatedBy] || task.validatedBy}</div>}
-                                {warrantyUntil && <div className="text-xs opacity-80">Garantie active jusqu'au : {warrantyUntil.toLocaleDateString()}</div>}
-                            </div>
-                            
-                            {/* Ratings */}
-                            <div className="border-t border-slate-800 pt-4">
-                                <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Avis & Commentaires</div>
-                                {task.ratings && task.ratings.length > 0 ? (
-                                    <div className="space-y-3">
-                                        {task.ratings.map((rating, i) => (
-                                            <div key={i} className="bg-slate-950/50 p-3 rounded-lg border border-slate-800 flex justify-between group">
-                                                <div>
-                                                    <div className="text-amber-400 text-xs tracking-widest mb-1">{Array(rating.stars).fill('⭐').join('')}</div>
-                                                    <p className="text-slate-300 text-sm italic">"{rating.comment}"</p>
-                                                </div>
-                                                {canVerify && onDeleteRating && (
-                                                    <button onClick={() => onDeleteRating(task.id, i)} className="text-slate-700 hover:text-rose-500 transition-colors" title="Supprimer">🗑️</button>
-                                                )}
-                                            </div>
-                                        ))}
+                        {/* Bids List (Only if Open) */}
+                        {task.status === 'open' && task.bids?.length > 0 && (
+                             <div className="space-y-2">
+                                <div className="text-xs font-bold text-slate-500 uppercase">Historique des offres</div>
+                                {task.bids.map((b, i) => (
+                                    <div key={i} className="text-xs flex justify-between p-2 bg-slate-900/30 rounded border border-slate-800/50">
+                                        <span className="text-slate-300">{b.amount}€ par {usersMap?.[b.by] || b.by}</span>
+                                        <span className="text-slate-500">{new Date(b.plannedExecutionDate).toLocaleDateString()}</span>
                                     </div>
-                                ) : ( <div className="text-sm text-slate-600 italic">Aucun avis laissé.</div> )}
+                                ))}
+                             </div>
+                        )}
 
-                                {!hasRated && !isAssignee ? <div className="mt-4"><RatingBox onSubmit={onRate} /></div> : null}
+                        {/* Ratings Section */}
+                        {task.status === 'completed' && (
+                            <div className="border-t border-slate-800 pt-2">
+                                {task.ratings?.map((r, i) => (
+                                    <div key={i} className="bg-slate-950/50 p-2 rounded mb-2 text-sm flex justify-between group">
+                                        <div>
+                                            <div className="text-amber-400 text-xs tracking-widest">{Array(r.stars).fill('⭐').join('')}</div>
+                                            <p className="text-slate-300 italic">"{r.comment}"</p>
+                                        </div>
+                                        {canDelete && onDeleteRating && (
+                                            <button onClick={() => onDeleteRating(task.id, i)} className="text-rose-500 opacity-0 group-hover:opacity-100">Supprimer</button>
+                                        )}
+                                    </div>
+                                ))}
+                                {!hasRated && !isAssignee && <RatingBox onSubmit={onRate} />}
                             </div>
-                        </div>
-                    )}
-                    
-                    {/* PENDING VALIDATION */}
-                    {task.status === "pending" && (
-                         <div className="bg-amber-900/20 border border-amber-800/50 text-amber-200 p-4 rounded-xl space-y-3">
-                            <div className="flex items-center gap-2 font-bold">
-                                <span>⏳ Validation requise</span>
-                                <Badge className="ml-auto bg-amber-900 text-amber-200 border-amber-700">{task.approvals?.length || 0} / {COUNCIL_MIN_APPROVALS}</Badge>
-                            </div>
-                            {onApprove && onReject ? (
-                                <div className="grid grid-cols-2 gap-4 mt-2">
-                                    <Button className="bg-emerald-600 hover:bg-emerald-500 border-none text-white py-2" onClick={onApprove} disabled={hasApproved && !isAdmin}>
-                                        {isAdmin ? '⚡ Forcer (Admin)' : '✅ Valider'}
-                                    </Button>
-                                    <Button variant="destructive" onClick={onReject}>❌ Rejeter</Button>
-                                </div>
-                            ) : ( <div className="text-xs opacity-60 italic">En attente du Conseil Syndical.</div> )}
-                        </div>
-                    )}
+                        )}
 
-                    {/* DELETE */}
-                    {canDelete && (
-                        <div className="flex justify-center pt-2">
-                            <Button size="sm" variant="ghost" className="text-slate-600 hover:text-rose-500 hover:bg-rose-950" onClick={onDelete}>🗑️ Supprimer cette tâche (Admin)</Button>
-                        </div>
-                    )}
-                </div>
-            )}
+                         {/* Delete Button */}
+                         {canDelete && (
+                            <div className="flex justify-end">
+                                <Button size="sm" variant="ghost" className="text-rose-500 hover:bg-rose-900/20" onClick={onDelete}>Supprimer la tâche</Button>
+                            </div>
+                        )}
+                    </div>
+                )}
+            </div>
         </Card>
     );
 }

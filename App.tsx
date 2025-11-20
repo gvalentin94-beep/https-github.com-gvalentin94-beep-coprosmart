@@ -999,11 +999,11 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
 
                          {/* COMPLETED HISTORY - RESTORED FULL VIEW */}
                         <Section title="✅ Historique terminé">
-                            {tasks.filter(t => t.status === 'completed').length === 0 ? (
+                            {tasks.filter(t => t.status === 'completed' || t.status === 'rejected').length === 0 ? (
                                 <p className="text-slate-500 italic pl-2">Aucun historique pour le moment.</p>
                             ) : (
                                 <div className="flex flex-col gap-3">
-                                    {tasks.filter(t => t.status === 'completed').sort((a,b) => new Date(b.completionAt!).getTime() - new Date(a.completionAt!).getTime()).map(t => (
+                                    {tasks.filter(t => t.status === 'completed' || t.status === 'rejected').sort((a,b) => new Date(b.completionAt || b.createdAt).getTime() - new Date(a.completionAt || a.createdAt).getTime()).map(t => (
                                         <TaskCard 
                                             key={t.id} task={t} me={user} usersMap={usersMap}
                                             onBid={() => {}} onAward={() => {}} onComplete={() => {}} 

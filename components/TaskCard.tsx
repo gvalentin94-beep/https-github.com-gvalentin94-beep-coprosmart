@@ -247,6 +247,9 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
     const awardedToName = task.awardedTo && usersMap ? (usersMap[task.awardedTo] || task.awardedTo) : task.awardedTo;
     const creatorName = task.createdBy && usersMap ? (usersMap[task.createdBy] || task.createdBy) : task.createdBy;
     const validatorName = task.validatedBy && usersMap ? (usersMap[task.validatedBy] || task.validatedBy) : task.validatedBy;
+    const rejectorName = task.rejections?.length > 0 
+        ? (usersMap?.[task.rejections[task.rejections.length-1].by] || task.rejections[task.rejections.length-1].by)
+        : 'Inconnu';
     
     const hasRated = task.ratings?.some(r => r.byHash === me.id);
     const isAssignee = task.awardedTo === me.email;
@@ -328,16 +331,35 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                                 {task.biddingStartedAt && task.status === 'open' && <Countdown startedAt={task.biddingStartedAt} />}
                             </div>
                             
-                            {/* INLINE VALIDATION INFO FOR COMPLETED TASKS */}
-                            {task.status === 'completed' && (
-                                <div className="text-[10px] text-slate-400 mt-1">
-                                    Créé par <span className="text-slate-300">{creatorName}</span>
-                                    {validatorName && (
-                                        <> • Contrôle qualité validé par <span className="text-emerald-400 font-medium">{validatorName}</span></>
+                            {/* INLINE INFO FOR COMPLETED/REJECTED TASKS */}
+                            {(task.status === 'completed' || task.status === 'rejected') && (
+                                <div className="text-[10px] text-slate-400 mt-1 flex flex-wrap gap-1 items-center">
+                                    <span>Créé par <span className="text-slate-300">{creatorName}</span></span>
+                                    
+                                    {task.status === 'completed' && (
+                                        <>
+                                            <span className="text-slate-600">•</span>
+                                            <span>Attribué à <span className="text-slate-300">{awardedToName}</span></span>
+                                            <span className="text-slate-600">•</span>
+                                            {validatorName ? (
+                                                <span>✅ Contrôle qualité validé par <span className="text-emerald-400 font-medium">{validatorName}</span></span>
+                                            ) : (
+                                                <span>✅ Terminé</span>
+                                            )}
+                                        </>
+                                    )}
+
+                                    {task.status === 'rejected' && (
+                                        <>
+                                            <span className="text-slate-600">•</span>
+                                            <span className="flex items-center gap-1">
+                                                ❌ Rejeté par <span className="text-rose-400 font-medium">{rejectorName}</span>
+                                            </span>
+                                        </>
                                     )}
                                 </div>
                             )}
-                            {task.status !== 'completed' && <span className="text-[10px] text-slate-500">par {creatorName}</span>}
+                            {task.status !== 'completed' && task.status !== 'rejected' && <span className="text-[10px] text-slate-500">par {creatorName}</span>}
                         </div>
                     </div>
 

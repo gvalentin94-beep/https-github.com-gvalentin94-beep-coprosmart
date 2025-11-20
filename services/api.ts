@@ -37,7 +37,7 @@ export const fakeApi = {
 
   // Auth & User Management
   signUp: async (email: string, password: string, role: UserRole, firstName: string, lastName: string): Promise<void> => {
-    if (!email || !password || !firstName || !lastName) throw new Error("Tous les champs sont requis.");
+    if (!email || !password) throw new Error("Email et mot de passe requis.");
     const users = safeJsonParse<RegisteredUser[]>(usersDbKey, []);
     if (users.some(u => u.email.toLowerCase() === email.toLowerCase())) {
         throw new Error("Cet email est déjà utilisé.");
@@ -91,12 +91,13 @@ export const fakeApi = {
     }
 
     // Create a session user object *without* the password
+    // Removed fallbacks to 'Prénom' and 'Nom' to allow blank names
     const sessionUser: User = { 
         id: foundUser.id, 
         email: foundUser.email, 
         role: foundUser.role,
-        firstName: foundUser.firstName || 'Prénom', // Fallback for old data
-        lastName: foundUser.lastName || 'Nom',     // Fallback for old data
+        firstName: foundUser.firstName || '', 
+        lastName: foundUser.lastName || '',
     };
     localStorage.setItem(userKey, JSON.stringify(sessionUser));
     return sessionUser;

@@ -67,10 +67,7 @@ export function LoginCard({ onLogin }: LoginCardProps) {
       setErr("Les mots de passe ne correspondent pas.");
       return;
     }
-    if (!firstName.trim() || !lastName.trim()) {
-        setErr("Nom et prénom sont obligatoires.");
-        return;
-    }
+    // Names are now optional. Removed check.
     try {
       setErr("");
       await fakeApi.signUp(email.trim(), password, role, firstName.trim(), lastName.trim());

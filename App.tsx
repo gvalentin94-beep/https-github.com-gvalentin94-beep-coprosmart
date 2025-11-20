@@ -54,10 +54,10 @@ function TaskPreviewModal({ task, onConfirm, onCancel }: { task: Partial<Task>; 
                 <CardContent className="space-y-6 pt-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
                         <div><span className="text-slate-500 uppercase text-xs font-bold tracking-wider">Titre</span> <div className="font-medium text-white text-lg">{task.title}</div></div>
-                        <div><span className="text-slate-500 uppercase text-xs font-bold tracking-wider">Prix départ</span> <div className="font-mono text-xl text-indigo-400 font-bold">{task.startingPrice} €</div></div>
-                        
-                        <div><span className="text-slate-500 uppercase text-xs font-bold tracking-wider">Concerne</span> <div className="font-medium text-white flex items-center gap-2">{task.scope === 'copro' ? '🏢' : '🏠'} {scopeLabel}</div></div>
                         <div><span className="text-slate-500 uppercase text-xs font-bold tracking-wider">Catégorie</span> <div className="font-medium text-white">{catLabel}</div></div>
+
+                        <div><span className="text-slate-500 uppercase text-xs font-bold tracking-wider">Concerne</span> <div className="font-medium text-white flex items-center gap-2">{task.scope === 'copro' ? '🏢' : '🏠'} {scopeLabel}</div></div>
+                        <div><span className="text-slate-500 uppercase text-xs font-bold tracking-wider">Prix départ</span> <div className="font-mono text-xl text-indigo-400 font-bold">{task.startingPrice} €</div></div>
                         
                         <div><span className="text-slate-500 uppercase text-xs font-bold tracking-wider">Emplacement</span> <div className="font-medium text-white">{task.location}</div></div>
                         <div><span className="text-slate-500 uppercase text-xs font-bold tracking-wider">Garantie</span> <div className="font-medium text-white">{task.warrantyDays} jours</div></div>
@@ -184,8 +184,8 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDel
 
     const handleEditClick = (u: RegisteredUser) => {
         setEditingUser(u);
-        setEditFirstName(u.firstName);
-        setEditLastName(u.lastName);
+        setEditFirstName(u.firstName || "");
+        setEditLastName(u.lastName || "");
         setEditRole(u.role);
     };
 
@@ -210,7 +210,8 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDel
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {users.map(u => {
                     const isMe = u.email === me.email;
-                    const canEdit = isMe || me.role === 'admin' || me.role === 'council';
+                    // Copropriétaires cannot edit themselves. Only Admin or Council can edit users.
+                    const canEdit = me.role === 'admin' || me.role === 'council';
                     const isDeleted = u.status === 'deleted';
                     const history = tasks.filter(t => t.status === 'completed' && t.awardedTo === u.email);
                     
@@ -220,10 +221,10 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDel
                                 <div className="flex justify-between items-start">
                                     <div className="flex items-center gap-3">
                                         <div className="w-10 h-10 rounded-full bg-indigo-500/20 flex items-center justify-center text-indigo-300 font-bold text-lg border border-indigo-500/30">
-                                            {u.firstName.charAt(0)}{u.lastName.charAt(0)}
+                                            {u.firstName ? u.firstName.charAt(0) : ''}{u.lastName ? u.lastName.charAt(0) : ''}
                                         </div>
                                         <div>
-                                            <div className="font-bold text-lg text-white leading-tight">{u.firstName} {u.lastName}</div>
+                                            <div className="font-bold text-lg text-white leading-tight min-h-[1.5rem]">{u.firstName} {u.lastName}</div>
                                             <div className="text-xs text-slate-400">{u.email}</div>
                                         </div>
                                     </div>
@@ -394,8 +395,8 @@ function CreateTaskPage({ me, onSubmit, onCancel }: { me: User, onSubmit: (t: Pa
                             />
                         </div>
                         
-                        {/* CATEGORY & SCOPE moved here */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                         {/* CATEGORY & SCOPE moved here */}
+                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2">
                                 <Label className="text-base text-white">Catégorie <span className="text-rose-500">*</span></Label>
                                 <div className="grid grid-cols-2 gap-3">
@@ -427,7 +428,7 @@ function CreateTaskPage({ me, onSubmit, onCancel }: { me: User, onSubmit: (t: Pa
                                 </div>
                             </div>
                         </div>
-                        
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2">
                                 <Label className="text-base text-white">Emplacement <span className="text-rose-500">*</span></Label>

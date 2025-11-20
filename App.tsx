@@ -868,7 +868,7 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
                 <h1 className="text-2xl font-black tracking-tighter text-white group-hover:text-indigo-400 transition-colors">
                     CoproSmart
                 </h1>
-                <span className="text-[10px] font-medium text-indigo-400 uppercase tracking-widest">Gestion Collaborative</span>
+                <span className="text-[10px] font-medium text-indigo-400 uppercase tracking-widest">On réduit vos charges de copropriété</span>
             </button>
             
             {/* Navigation Links */}
@@ -1046,25 +1046,24 @@ export default function App() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-4 relative overflow-hidden pt-10 overflow-y-auto items-start">
+      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-4 relative overflow-hidden pt-10 overflow-y-auto">
         {/* Background decoration */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
              <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] rounded-full bg-indigo-900/20 blur-[100px]"></div>
              <div className="absolute top-[20%] right-[10%] w-[30%] h-[30%] rounded-full bg-rose-900/20 blur-[80px]"></div>
         </div>
 
-        <div className="w-full max-w-md z-10 mb-8 text-center">
-            <h1 className="text-4xl font-black tracking-tighter text-white mb-2">CoproSmart</h1>
-            <p className="text-lg text-indigo-300 font-medium">On réduit les charges de votre copropriété.</p>
-            <p className="text-slate-400">C'est simple, local, gagnant-gagnant.</p>
+        <div className="w-full max-w-md z-10 mb-8 text-center mx-auto">
+            <h1 className="text-5xl font-black tracking-tighter text-white mb-2">CoproSmart</h1>
+            <h2 className="text-xl font-black tracking-tighter text-indigo-400">On réduit vos charges de copropriété</h2>
         </div>
         
-        <div className="w-full max-w-md z-10">
+        <div className="w-full max-w-md z-10 mx-auto">
              <LoginCard onLogin={setUser} />
         </div>
         
-        <div className="mt-8 text-center text-xs text-slate-600 z-10 max-w-sm">
-            Une initiative pour valoriser le travail local et réduire les coûts de gestion.
+        <div className="mt-8 text-center text-sm text-slate-400 z-10 max-w-lg mx-auto leading-relaxed font-medium">
+            CoproSmart permet aux copropriétaires de réduire collectivement les charges communes en réalisant eux-mêmes les petits travaux des parties communes : une ampoule à changer, une porte à régler, des encombrants à évacuer… Les charges diminuent pour tous, et celui qui intervient bénéficie d’un crédit supplémentaire sur ses propres charges. Simple, local, gagnant-gagnant.
         </div>
       </div>
     );

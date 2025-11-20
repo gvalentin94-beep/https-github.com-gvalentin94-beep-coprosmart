@@ -149,7 +149,7 @@ export function Badge({ children, variant, className = "", color }: BadgeProps) 
 }
 
 // Section Component
-export function Section({ title, children, className = "" }: { title: string; children: React.ReactNode; className?: string }) {
+export function Section({ title, children, className = "" }: { title: string; children?: React.ReactNode; className?: string }) {
   return (
     <section className={`space-y-4 ${className}`}>
         <h3 className="text-xl font-bold text-white flex items-center gap-2">{title}</h3>

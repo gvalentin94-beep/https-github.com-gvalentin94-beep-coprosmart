@@ -182,7 +182,7 @@ function Countdown({ startedAt }: { startedAt: string }) {
             const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
             const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
             const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-            setTimeLeft(`${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`);
+            setTimeLeft(`Attribution automatique dans : ${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`);
         }, 1000);
 
         return () => clearInterval(interval);
@@ -247,6 +247,9 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
     
     const canManualAward = task.status === "open" && task.bids?.length > 0 && lowestBid && ((task.createdBy === me?.email && !isTimerRunning) || isAdmin);
     const awardedToName = task.awardedTo && usersMap ? (usersMap[task.awardedTo] || task.awardedTo) : task.awardedTo;
+    const creatorName = task.createdBy && usersMap ? (usersMap[task.createdBy] || task.createdBy) : task.createdBy;
+    const validatorName = task.validatedBy && usersMap ? (usersMap[task.validatedBy] || task.validatedBy) : task.validatedBy;
+    
     const hasRated = task.ratings?.some(r => r.byHash === me.id);
     const isAssignee = task.awardedTo === me.email;
 
@@ -266,12 +269,12 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
     } else if (canManualAward) {
         ActionButton = <Button size="sm" onClick={onAward} className="bg-emerald-600 hover:bg-emerald-500 whitespace-nowrap">{isAdmin && isTimerRunning ? '⚡ Attribuer (Admin)' : '✅ Attribuer'}</Button>;
     } else if (task.status === 'awarded' && isAssignee && onRequestVerification) {
-        ActionButton = <Button size="sm" onClick={onRequestVerification} className="bg-fuchsia-600 hover:bg-fuchsia-500 whitespace-nowrap">🏁 J'ai fini</Button>;
+        ActionButton = <Button size="sm" onClick={onRequestVerification} className="bg-fuchsia-600 hover:bg-fuchsia-500 whitespace-nowrap">🏁 Terminé (Demander contrôle)</Button>;
     } else if (task.status === 'verification' && canVerify && onRejectWork) {
         ActionButton = (
-            <div className="flex gap-1">
-                <Button size="sm" onClick={onComplete} className="bg-emerald-600 hover:bg-emerald-500 px-2">✅</Button>
-                <Button size="sm" onClick={onRejectWork} variant="destructive" className="px-2">❌</Button>
+            <div className="flex flex-col sm:flex-row gap-1 items-end">
+                <Button size="sm" onClick={onComplete} className="bg-emerald-600 hover:bg-emerald-500 whitespace-nowrap">✅ Valider qualité</Button>
+                <Button size="sm" onClick={onRejectWork} variant="destructive" className="whitespace-nowrap">❌ Refuser (Non conforme)</Button>
             </div>
         );
     } else if (task.status === 'pending' && onApprove && onReject) {
@@ -307,8 +310,18 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                                 {task.warrantyDays > 0 && <Badge className="bg-emerald-900/20 text-emerald-400 border-emerald-800">🛡️ {task.warrantyDays}j</Badge>}
                                 <Badge className="bg-slate-900/50 text-slate-400 border-slate-700">{task.scope === 'copro' ? 'Communs' : 'Privé'}</Badge>
                                 {task.biddingStartedAt && task.status === 'open' && <Countdown startedAt={task.biddingStartedAt} />}
-                                <span className="text-slate-500 ml-1">par {usersMap?.[task.createdBy] || task.createdBy}</span>
+                                {task.status !== 'completed' && <span className="text-slate-500 ml-1">par {creatorName}</span>}
                             </div>
+                            
+                            {/* INLINE VALIDATION INFO FOR COMPLETED TASKS */}
+                            {task.status === 'completed' && (
+                                <div className="text-[10px] text-slate-400 mt-1">
+                                    Créé par <span className="text-slate-300">{creatorName}</span>
+                                    {validatorName && (
+                                        <> • Contrôle qualité validé par <span className="text-emerald-400 font-medium">{validatorName}</span></>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -354,7 +367,6 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                         {task.awardedTo && (
                             <div className="text-xs text-slate-400">
                                 Attribué à <b className="text-slate-300">{awardedToName}</b> pour {task.awardedAmount}€
-                                {task.validatedBy && <span> • Validé par {usersMap?.[task.validatedBy] || task.validatedBy}</span>}
                             </div>
                         )}
 
@@ -385,6 +397,19 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                                         )}
                                     </div>
                                 ))}
+                                {/* Show deleted ratings to admin */}
+                                {task.deletedRatings && canDelete && (
+                                    <div className="mt-2 border-t border-rose-900/20 pt-2">
+                                        <p className="text-[10px] text-rose-500 font-bold uppercase">Avis supprimés</p>
+                                        {task.deletedRatings.map((dr, i) => (
+                                            <div key={i} className="text-[10px] text-slate-500 flex gap-2">
+                                                <span>{new Date(dr.deletedAt).toLocaleDateString()}</span>
+                                                <span className="italic">"{dr.comment}"</span>
+                                                <span className="text-rose-400">par {usersMap?.[dr.deletedBy] || dr.deletedBy}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                                 {!hasRated && !isAssignee && <RatingBox onSubmit={onRate} />}
                             </div>
                         )}

@@ -13,7 +13,7 @@ const OPEN_EMPTY_MESSAGES = [
     "Calme plat. Profitez-en pour arroser les plantes ! 🌿",
     "Pas une seule ampoule grillée à l'horizon. Quel miracle ! 💡",
     "C'est louche... tout fonctionne parfaitement aujourd'hui. 🤔",
-    "Le syndic est au chômage technique (pour le moment). 😎",
+    "Le Conseil Syndical est au chômage technique (pour le moment). 😎",
     "Rien à faire ? C'est le moment de dire bonjour à vos voisins ! 👋",
     "Aucune mission pour nos super-héros du quotidien. 🦸‍♂️"
 ];
@@ -230,7 +230,6 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDel
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {users.map(u => {
                     const isMe = u.email === me.email;
-                    // Copropriétaires cannot edit themselves. Only Admin or Council can edit users.
                     const canEdit = me.role === 'admin' || me.role === 'council';
                     const isDeleted = u.status === 'deleted';
                     const history = tasks.filter(t => t.status === 'completed' && t.awardedTo === u.email);
@@ -826,10 +825,14 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
       <header className="sticky top-0 z-40 w-full backdrop-blur-xl bg-slate-950/70 border-b border-slate-800">
         <div className="max-w-6xl mx-auto px-4 h-18 md:h-20 flex items-center justify-between">
              <button onClick={() => setView('home')} className="flex flex-col items-start focus:outline-none group mr-6">
-                <h1 className="text-2xl md:text-3xl font-black tracking-tighter text-white group-hover:text-indigo-400 transition-colors">
-                    CoproSmart
+                <h1 className="text-2xl md:text-3xl font-black tracking-tighter text-white leading-none">
+                    CoproSmart.
                 </h1>
-                <span className="text-[10px] font-bold text-white uppercase tracking-widest hidden sm:block">Simple. Local. Gagnant-gagnant.</span>
+                <div className="w-full flex justify-between text-[0.6rem] md:text-[0.7rem] font-black text-white tracking-tight uppercase mt-1 leading-none">
+                    <span>Simple.</span>
+                    <span>Local.</span>
+                    <span>Gagnant-gagnant.</span>
+                </div>
             </button>
             
             {/* Create Task Button - Moved to Right of Logo */}
@@ -985,7 +988,6 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
                                             onDeleteRating={handleDeleteRating}
                                             onPayApartment={() => {}} onDelete={() => handleDelete(t.id)}
                                             canDelete={user.role === 'admin'}
-                                            // variant="ghost" <-- REMOVED to show full details
                                         />
                                     ))}
                                 </div>
@@ -1003,7 +1005,7 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
           <div className="max-w-4xl mx-auto px-4 text-center space-y-6">
               <div className="flex items-center justify-center gap-2 opacity-50 grayscale hover:grayscale-0 transition-all duration-500">
                   <span className="text-2xl">🏢</span>
-                  <span className="font-black text-xl tracking-tight text-white">CoproSmart</span>
+                  <span className="font-black text-xl tracking-tight text-white">CoproSmart.</span>
               </div>
               <p className="text-slate-500 text-sm leading-relaxed max-w-2xl mx-auto">
                 CoproSmart permet aux copropriétaires de réduire collectivement les charges communes en réalisant eux-mêmes les petits travaux des parties communes. Les charges diminuent pour tous, et celui qui intervient bénéficie d’un crédit sur ses charges.
@@ -1031,9 +1033,13 @@ export default function App() {
              <div className="absolute top-[20%] right-[10%] w-[40%] h-[40%] rounded-full bg-rose-900/10 blur-[100px]"></div>
         </div>
 
-        <div className="w-full max-w-lg z-10 mb-10 text-center mx-auto space-y-4">
-            <h1 className="text-7xl font-black tracking-tighter text-white leading-none drop-shadow-2xl">CoproSmart</h1>
-            <h2 className="text-2xl font-bold tracking-tight text-white/90">On réduit vos charges de copropriété.</h2>
+        <div className="w-full max-w-3xl z-10 mb-10 text-center mx-auto space-y-2">
+            <h1 className="text-[5rem] md:text-[8rem] font-black tracking-tighter text-white leading-none w-full text-center">
+                CoproSmart.
+            </h1>
+            <div className="w-full flex justify-between px-1 md:px-2 text-sm md:text-xl font-bold text-white tracking-widest uppercase leading-none">
+                 <span>On</span> <span>réduit</span> <span>nos</span> <span>charges</span> <span>de</span> <span>copropriété.</span>
+            </div>
         </div>
         
         <div className="w-full max-w-md z-10 mx-auto shadow-2xl shadow-indigo-900/20 rounded-2xl">

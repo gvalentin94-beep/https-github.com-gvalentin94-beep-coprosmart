@@ -210,6 +210,8 @@ interface TaskCardProps {
 }
 
 export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRate, onDeleteRating, onPayApartment, onDelete, canDelete, onApprove, onReject, onRequestVerification, onRejectWork }: TaskCardProps) {
+    const [isOpen, setIsOpen] = useState(false);
+    
     const statusConfig = TASK_STATUS_CONFIG[task.status];
     const categoryInfo = CATEGORIES.find(c => c.id === task.category);
     const lowestBid = task.bids?.length > 0 ? task.bids.reduce((min, b) => b.amount < min.amount ? b : min, task.bids[0]) : null;
@@ -219,8 +221,10 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
         : null;
 
     const colorClasses = statusClasses[statusConfig.color] || { border: 'border-slate-600', text: 'text-slate-400' };
-    const borderColor = `border-l-4 ${colorClasses.border}`;
     
+    // Compact Row Styling
+    const borderColor = `border-l-4 ${colorClasses.border}`;
+
     const myBidsCount = task.bids.filter(b => b.by === me.email).length;
     const isFirstBidder = task.bids.length > 0 && task.bids[0].by === me.email;
     const canBid =
@@ -273,218 +277,243 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
         );
     }
 
+    // Determine current displayed price
+    let displayPrice = task.startingPrice;
+    if (lowestBid) displayPrice = lowestBid.amount;
+    if (task.awardedAmount) displayPrice = task.awardedAmount;
+
     return (
-        <Card className={borderColor}>
-            <CardHeader>
-                <div className="flex items-start justify-between gap-3">
-                    <div className="space-y-1.5">
+        <Card className={`overflow-hidden transition-all duration-300 ${borderColor} ${isOpen ? 'ring-1 ring-indigo-500/30' : 'hover:bg-slate-800/50 cursor-pointer'}`} padding="none">
+            
+            {/* COMPACT HEADER (Always Visible) */}
+            <div className="flex items-center justify-between p-3 md:px-4 md:py-3 bg-slate-800" onClick={() => setIsOpen(!isOpen)}>
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                    {/* Icon */}
+                    <div className={`flex-shrink-0 w-8 h-8 rounded-full bg-slate-900 flex items-center justify-center ${colorClasses.text}`}>
+                        {React.cloneElement(statusConfig.icon, { className: 'h-4 w-4' })}
+                    </div>
+                    
+                    {/* Text Info */}
+                    <div className="flex flex-col min-w-0">
                         <div className="flex items-center gap-2">
-                           <span className={colorClasses.text}>{React.cloneElement(statusConfig.icon, { className: 'h-5 w-5' })}</span>
-                            <CardTitle className="text-base md:text-lg">{task.title}</CardTitle>
+                            <h3 className="font-bold text-sm text-white truncate">{task.title}</h3>
+                            {categoryInfo && <span className="text-xs grayscale opacity-50">{React.cloneElement(categoryInfo.icon, { className: "h-3 w-3 inline" })}</span>}
                         </div>
-                        <p className="text-xs text-slate-400">
-                            Proposée par <span className="font-medium text-slate-300">{usersMap?.[task.createdBy] || task.createdBy}</span> le {new Date(task.createdAt).toLocaleDateString()}
-                        </p>
+                        <div className="flex items-center gap-2 text-[10px] text-slate-400">
+                             <span>{usersMap?.[task.createdBy] || task.createdBy}</span>
+                             <span>•</span>
+                             <span>{new Date(task.createdAt).toLocaleDateString()}</span>
+                             <span className="hidden sm:inline">• {task.location}</span>
+                        </div>
                     </div>
-                     <div className="flex items-center gap-2">
-                        {categoryInfo && React.cloneElement(categoryInfo.icon, {className: "h-5 w-5 text-slate-500"})}
-                        <Badge variant="secondary" className="font-mono text-sm bg-slate-900 border-slate-600 text-slate-300">{task.startingPrice}€</Badge>
-                     </div>
                 </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-                
-                {task.photo && (
-                    <div className="w-full h-48 rounded-lg overflow-hidden border border-slate-700 mb-4 bg-slate-900/50">
-                        <img src={task.photo} alt="Photo de la tâche" className="w-full h-full object-cover" />
+
+                <div className="flex items-center gap-3 pl-2">
+                    <Badge variant="outline" className="font-mono text-xs bg-slate-900 border-slate-700 text-white px-2">
+                        {displayPrice}€
+                    </Badge>
+                    <div className={`transform transition-transform duration-300 text-slate-500 ${isOpen ? 'rotate-180' : ''}`}>
+                        ▼
                     </div>
-                )}
-
-                <p className="text-sm text-slate-300">{task.details}</p>
-
-                <div className="grid grid-cols-2 gap-2 text-xs text-slate-400 border-t border-b border-slate-700 py-3">
-                    <div className="flex items-center gap-2"><span className="text-slate-600">📍</span><span>{task.location || 'Non précisé'}</span></div>
-                    <div className="flex items-center gap-2"><span className="text-slate-600">🛡️</span><span>Garantie: {task.warrantyDays} jours</span></div>
-                    <div className="flex items-center gap-2"><span className="text-slate-600">{task.scope === 'copro' ? '🏢' : '🏠'}</span><span>{task.scope === 'copro' ? 'Charges communes' : 'Privatif'}</span></div>
                 </div>
-                
-                {task.biddingStartedAt && task.status === 'open' && <Countdown startedAt={task.biddingStartedAt} />}
+            </div>
 
-                {task.awardedTo && (
-                    <div className="bg-sky-900/30 border border-sky-800 text-sky-200 p-3 rounded-lg text-sm flex justify-between items-center">
-                        <div>🤝 Attribuée à <b>{awardedToName}</b> pour <b>{task.awardedAmount}€</b></div>
-                        {task.awardedTo === me.email && (task.status === 'awarded' || task.status === 'verification') && (
-                            <Badge className="bg-emerald-600 text-white animate-pulse">👉 À faire par vous</Badge>
-                        )}
+            {/* EXPANDABLE CONTENT */}
+            {isOpen && (
+                <div className="p-4 border-t border-slate-700 bg-slate-800/30 space-y-4">
+                    {/* Details */}
+                    <div className="grid grid-cols-2 gap-2 text-xs text-slate-400 border-b border-slate-700 pb-3 mb-3">
+                        <div className="flex items-center gap-2"><span className="text-slate-600">📍</span><span>{task.location}</span></div>
+                        <div className="flex items-center gap-2"><span className="text-slate-600">🛡️</span><span>Garantie: {task.warrantyDays} jours</span></div>
+                        <div className="flex items-center gap-2"><span className="text-slate-600">{task.scope === 'copro' ? '🏢' : '🏠'}</span><span>{task.scope === 'copro' ? 'Charges communes' : 'Privatif'}</span></div>
+                        <div className="flex items-center gap-2"><span className="text-slate-600">📂</span><span>{categoryInfo?.label}</span></div>
                     </div>
-                )}
 
-                {task.status === 'open' && task.bids?.length > 0 && (
-                    <div className="space-y-2">
-                        <h4 className="text-xs font-semibold text-slate-400">Offres en cours</h4>
-                        <ul className="space-y-1">
-                            {task.bids.slice().sort((a,b) => a.amount - b.amount).map((b, i) => {
-                                const bidderName = usersMap ? (usersMap[b.by] || b.by) : b.by;
-                                return (
-                                    <li key={i} className={`flex flex-col sm:flex-row justify-between items-start sm:items-center text-sm p-2 rounded-md ${i === 0 ? 'bg-indigo-900/40 border border-indigo-800 text-indigo-100' : 'bg-slate-800/50 border border-slate-700 text-slate-400'}`}>
-                                        <div>
-                                            <span className="font-semibold text-white">{b.amount} €</span> <span className="text-slate-500 text-xs">par {bidderName}</span>
-                                            <div className="text-xs text-indigo-400/80 mt-1">🗓️ Prévu le: {new Date(b.plannedExecutionDate).toLocaleDateString()}</div>
-                                        </div>
-                                        <span className="text-xs text-slate-600 mt-1 sm:mt-0">{new Date(b.at).toLocaleDateString()}</span>
-                                    </li>
-                                );
-                            })}
-                        </ul>
-                    </div>
-                )}
-
-                <BidArea />
-
-                {canManualAward && lowestBid && (
-                    <Button size="sm" onClick={onAward}>
-                        {isAdmin && isTimerRunning ? `⚡ Attribuer maintenant (Admin) (${lowestBid.amount} €)` : `✅ Attribuer au plus bas (${lowestBid.amount} €)`}
-                    </Button>
-                )}
-
-                {/* WORKER ACTIONS (AWARDED) */}
-                {task.status === "awarded" && task.awardedTo === me.email && onRequestVerification && (
-                    <div className="flex gap-2">
-                         <Button size="sm" onClick={onRequestVerification}>🏁 J'ai fini (Demander validation)</Button>
-                    </div>
-                )}
-
-                {/* VERIFICATION FLOW (CS/ADMIN) */}
-                {task.status === "verification" && (
-                     <div className="bg-fuchsia-900/30 border border-fuchsia-800 text-fuchsia-200 p-3 rounded-lg text-sm flex flex-col gap-3">
-                        <div className="flex items-center justify-between">
-                            <span className="font-bold flex items-center gap-2">🕵️ Contrôle qualité en cours</span>
+                    {task.details && <p className="text-sm text-slate-300 italic border-l-2 border-slate-600 pl-3 mb-3">{task.details}</p>}
+                    
+                    {task.photo && (
+                        <div className="w-full h-32 rounded-lg overflow-hidden border border-slate-700 bg-slate-900/50 mb-3">
+                            <img src={task.photo} alt="Photo" className="w-full h-full object-cover" />
                         </div>
-                        <p className="text-xs opacity-80">Le copropriétaire indique avoir terminé. Le Conseil Syndical doit valider pour déclencher le paiement.</p>
-                        
-                        {canVerify && onRejectWork ? (
-                            <div className="flex gap-2 mt-1">
-                                <Button size="sm" className="bg-emerald-600 hover:bg-emerald-500 border-none text-white" onClick={onComplete}>✅ Valider le travail définitif</Button>
-                                <Button size="sm" variant="destructive" onClick={onRejectWork}>❌ Refuser (Travail incomplet)</Button>
-                            </div>
-                        ) : (
-                            <div className="text-xs italic opacity-50">En attente de validation par le CS.</div>
-                        )}
-                    </div>
-                )}
-                
-                {task.status === "completed" && (
-                    <div className="space-y-3">
-                        <div className="bg-emerald-900/30 border border-emerald-800 text-emerald-200 p-3 rounded-lg text-sm">
-                            <div className="font-bold flex items-center gap-2">✅ Intervention terminée</div>
-                            <div className="mt-1 space-y-0.5">
-                                {task.validatedBy && (
-                                    <div className="text-xs">Contrôle qualité validé par : <span className="font-medium">{usersMap?.[task.validatedBy] || task.validatedBy}</span></div>
-                                )}
-                                {warrantyUntil && <div className="text-xs">Garantie jusqu'au : {warrantyUntil.toLocaleDateString()}</div>}
-                            </div>
+                    )}
+
+                    {task.biddingStartedAt && task.status === 'open' && <Countdown startedAt={task.biddingStartedAt} />}
+
+                    {task.awardedTo && (
+                        <div className="bg-sky-900/30 border border-sky-800 text-sky-200 p-3 rounded-lg text-sm flex justify-between items-center">
+                            <div>🤝 Attribuée à <b>{awardedToName}</b> pour <b>{task.awardedAmount}€</b></div>
+                            {task.awardedTo === me.email && (task.status === 'awarded' || task.status === 'verification') && (
+                                <Badge className="bg-emerald-600 text-white animate-pulse">👉 À faire par vous</Badge>
+                            )}
                         </div>
-                        
-                        {/* Display ratings */}
-                        {task.ratings && task.ratings.length > 0 ? (
-                            <div className="space-y-2 border-t border-slate-700 pt-2">
-                                <div className="text-xs font-semibold text-slate-400">Avis ({task.ratings.length})</div>
-                                {task.ratings.map((rating, i) => (
-                                    <div key={i} className="bg-slate-800/50 p-2 rounded text-sm border border-slate-700 flex justify-between items-start group">
-                                        <div>
-                                            <div className="text-amber-400 text-xs tracking-widest mb-1">
-                                                {Array(rating.stars).fill('⭐').join('')}
-                                            </div>
-                                            <p className="text-slate-300 italic">"{rating.comment}"</p>
-                                        </div>
-                                        {canVerify && onDeleteRating && (
-                                            <Button 
-                                                variant="ghost" 
-                                                size="sm" 
-                                                className="text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 p-0" 
-                                                onClick={() => onDeleteRating(task.id, i)}
-                                                title="Supprimer ce commentaire"
-                                            >
-                                                🗑️
-                                            </Button>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
-                        ) : (
-                            <div className="text-xs text-slate-500 italic">Aucun avis pour le moment.</div>
-                        )}
+                    )}
 
-                        {/* Anyone can rate if they haven't already, EXCEPT the person who did the work */}
-                        {!hasRated && !isAssignee ? (
-                             <RatingBox onSubmit={onRate} />
-                        ) : isAssignee ? (
-                             <div className="text-xs text-slate-500 italic text-center border border-slate-700 p-2 rounded">
-                                 Vous ne pouvez pas noter votre propre travail.
-                             </div>
-                        ) : (
-                             <div className="text-xs text-slate-500 italic text-center border border-slate-700 p-2 rounded">
-                                 Vous avez déjà noté cette intervention.
-                             </div>
-                        )}
-
-                        {/* Deleted Ratings History (Admin/CS Only) */}
-                        {(isAdmin || me.role === 'council') && task.deletedRatings && task.deletedRatings.length > 0 && (
-                            <div className="mt-4 p-3 border border-slate-700 border-dashed rounded-lg bg-slate-900/30">
-                                <div className="text-xs font-semibold text-slate-500 uppercase mb-2">Historique des avis supprimés</div>
-                                <ul className="space-y-2">
-                                    {task.deletedRatings.map((dr, idx) => (
-                                        <li key={idx} className="text-xs text-slate-400 bg-slate-800/50 p-2 rounded">
-                                            <div className="flex justify-between mb-1">
-                                                <span className="text-amber-700">{Array(dr.stars).fill('★').join('')}</span>
-                                                <span className="text-slate-600">{new Date(dr.deletedAt).toLocaleDateString()}</span>
+                    {task.status === 'open' && task.bids?.length > 0 && (
+                        <div className="space-y-2">
+                            <h4 className="text-xs font-semibold text-slate-400">Offres en cours</h4>
+                            <ul className="space-y-1">
+                                {task.bids.slice().sort((a,b) => a.amount - b.amount).map((b, i) => {
+                                    const bidderName = usersMap ? (usersMap[b.by] || b.by) : b.by;
+                                    return (
+                                        <li key={i} className={`flex flex-col sm:flex-row justify-between items-start sm:items-center text-sm p-2 rounded-md ${i === 0 ? 'bg-indigo-900/40 border border-indigo-800 text-indigo-100' : 'bg-slate-800/50 border border-slate-700 text-slate-400'}`}>
+                                            <div>
+                                                <span className="font-semibold text-white">{b.amount} €</span> <span className="text-slate-500 text-xs">par {bidderName}</span>
+                                                <div className="text-xs text-indigo-400/80 mt-1">🗓️ Prévu le: {new Date(b.plannedExecutionDate).toLocaleDateString()}</div>
                                             </div>
-                                            <div className="italic text-slate-500 line-through">"{dr.comment}"</div>
-                                            {isAdmin && (
-                                                <div className="mt-1 text-[10px] text-slate-600">
-                                                    Supprimé par : {dr.deletedBy}
-                                                </div>
-                                            )}
+                                            <span className="text-xs text-slate-600 mt-1 sm:mt-0">{new Date(b.at).toLocaleDateString()}</span>
                                         </li>
-                                    ))}
-                                </ul>
-                            </div>
-                        )}
-                    </div>
-                )}
-                
-                {task.status === "pending" && (
-                     <div className="bg-amber-900/30 border border-amber-800 text-amber-200 p-3 rounded-lg text-sm flex flex-col gap-3">
-                        <div className="flex items-center justify-between">
-                            <span>⏳ En attente de validations du Conseil syndical. ({task.approvals?.length || 0}/{COUNCIL_MIN_APPROVALS})</span>
+                                    );
+                                })}
+                            </ul>
                         </div>
-                        {onApprove && onReject ? (
-                            <div className="flex gap-2">
-                                <Button 
-                                    size="sm" 
-                                    onClick={onApprove} 
-                                    disabled={hasApproved && !isAdmin} 
-                                    className="bg-emerald-600 hover:bg-emerald-500 border-none text-white disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    {isAdmin ? '⚡ Forcer la validation' : '✅ Valider'}
-                                </Button>
-                                <Button size="sm" variant="destructive" onClick={onReject}>❌ Rejeter</Button>
-                            </div>
-                        ) : (
-                            <div className="text-xs italic opacity-70">
-                                Seuls les membres du Conseil Syndical et l'administrateur peuvent valider.
-                            </div>
-                        )}
-                    </div>
-                )}
+                    )}
 
-                {canDelete && (
-                    <div className="pt-3 border-t border-slate-700">
-                        <Button size="sm" variant="destructive" onClick={onDelete}>🗑️ Supprimer</Button>
-                    </div>
-                )}
+                    <BidArea />
 
-            </CardContent>
+                    {canManualAward && lowestBid && (
+                        <Button size="sm" onClick={onAward}>
+                            {isAdmin && isTimerRunning ? `⚡ Attribuer maintenant (Admin) (${lowestBid.amount} €)` : `✅ Attribuer au plus bas (${lowestBid.amount} €)`}
+                        </Button>
+                    )}
+
+                    {/* WORKER ACTIONS (AWARDED) */}
+                    {task.status === "awarded" && task.awardedTo === me.email && onRequestVerification && (
+                        <div className="flex gap-2">
+                             <Button size="sm" onClick={onRequestVerification}>🏁 J'ai fini (Demander validation)</Button>
+                        </div>
+                    )}
+
+                    {/* VERIFICATION FLOW (CS/ADMIN) */}
+                    {task.status === "verification" && (
+                         <div className="bg-fuchsia-900/30 border border-fuchsia-800 text-fuchsia-200 p-3 rounded-lg text-sm flex flex-col gap-3">
+                            <div className="flex items-center justify-between">
+                                <span className="font-bold flex items-center gap-2">🕵️ Contrôle qualité en cours</span>
+                            </div>
+                            <p className="text-xs opacity-80">Le copropriétaire indique avoir terminé. Le Conseil Syndical doit valider pour déclencher le paiement.</p>
+                            
+                            {canVerify && onRejectWork ? (
+                                <div className="flex gap-2 mt-1">
+                                    <Button size="sm" className="bg-emerald-600 hover:bg-emerald-500 border-none text-white" onClick={onComplete}>✅ Valider le travail définitif</Button>
+                                    <Button size="sm" variant="destructive" onClick={onRejectWork}>❌ Refuser (Travail incomplet)</Button>
+                                </div>
+                            ) : (
+                                <div className="text-xs italic opacity-50">En attente de validation par le CS.</div>
+                            )}
+                        </div>
+                    )}
+                    
+                    {task.status === "completed" && (
+                        <div className="space-y-3">
+                            <div className="bg-emerald-900/30 border border-emerald-800 text-emerald-200 p-3 rounded-lg text-sm">
+                                <div className="font-bold flex items-center gap-2">✅ Intervention terminée</div>
+                                <div className="mt-1 space-y-0.5">
+                                    {task.validatedBy && (
+                                        <div className="text-xs">Contrôle qualité validé par : <span className="font-medium">{usersMap?.[task.validatedBy] || task.validatedBy}</span></div>
+                                    )}
+                                    {warrantyUntil && <div className="text-xs">Garantie jusqu'au : {warrantyUntil.toLocaleDateString()}</div>}
+                                </div>
+                            </div>
+                            
+                            {/* Display ratings */}
+                            {task.ratings && task.ratings.length > 0 ? (
+                                <div className="space-y-2 border-t border-slate-700 pt-2">
+                                    <div className="text-xs font-semibold text-slate-400">Avis ({task.ratings.length})</div>
+                                    {task.ratings.map((rating, i) => (
+                                        <div key={i} className="bg-slate-800/50 p-2 rounded text-sm border border-slate-700 flex justify-between items-start group">
+                                            <div>
+                                                <div className="text-amber-400 text-xs tracking-widest mb-1">
+                                                    {Array(rating.stars).fill('⭐').join('')}
+                                                </div>
+                                                <p className="text-slate-300 italic">"{rating.comment}"</p>
+                                            </div>
+                                            {canVerify && onDeleteRating && (
+                                                <Button 
+                                                    variant="ghost" 
+                                                    size="sm" 
+                                                    className="text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 p-0" 
+                                                    onClick={() => onDeleteRating(task.id, i)}
+                                                    title="Supprimer ce commentaire"
+                                                >
+                                                    🗑️
+                                                </Button>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="text-xs text-slate-500 italic">Aucun avis pour le moment.</div>
+                            )}
+
+                            {/* Anyone can rate if they haven't already, EXCEPT the person who did the work */}
+                            {!hasRated && !isAssignee ? (
+                                 <RatingBox onSubmit={onRate} />
+                            ) : isAssignee ? (
+                                 <div className="text-xs text-slate-500 italic text-center border border-slate-700 p-2 rounded">
+                                     Vous ne pouvez pas noter votre propre travail.
+                                 </div>
+                            ) : (
+                                 <div className="text-xs text-slate-500 italic text-center border border-slate-700 p-2 rounded">
+                                     Vous avez déjà noté cette intervention.
+                                 </div>
+                            )}
+
+                            {/* Deleted Ratings History (Admin/CS Only) */}
+                            {(isAdmin || me.role === 'council') && task.deletedRatings && task.deletedRatings.length > 0 && (
+                                <div className="mt-4 p-3 border border-slate-700 border-dashed rounded-lg bg-slate-900/30">
+                                    <div className="text-xs font-semibold text-slate-500 uppercase mb-2">Historique des avis supprimés</div>
+                                    <ul className="space-y-2">
+                                        {task.deletedRatings.map((dr, idx) => (
+                                            <li key={idx} className="text-xs text-slate-400 bg-slate-800/50 p-2 rounded">
+                                                <div className="flex justify-between mb-1">
+                                                    <span className="text-amber-700">{Array(dr.stars).fill('★').join('')}</span>
+                                                    <span className="text-slate-600">{new Date(dr.deletedAt).toLocaleDateString()}</span>
+                                                </div>
+                                                <div className="italic text-slate-500 line-through">"{dr.comment}"</div>
+                                                {isAdmin && (
+                                                    <div className="mt-1 text-[10px] text-slate-600">
+                                                        Supprimé par : {dr.deletedBy}
+                                                    </div>
+                                                )}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                    
+                    {task.status === "pending" && (
+                         <div className="bg-amber-900/30 border border-amber-800 text-amber-200 p-3 rounded-lg text-sm flex flex-col gap-3">
+                            <div className="flex items-center justify-between">
+                                <span>⏳ En attente de validations du Conseil syndical. ({task.approvals?.length || 0}/{COUNCIL_MIN_APPROVALS})</span>
+                            </div>
+                            {onApprove && onReject ? (
+                                <div className="flex gap-2">
+                                    <Button 
+                                        size="sm" 
+                                        onClick={onApprove} 
+                                        disabled={hasApproved && !isAdmin} 
+                                        className="bg-emerald-600 hover:bg-emerald-500 border-none text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        {isAdmin ? '⚡ Forcer la validation' : '✅ Valider'}
+                                    </Button>
+                                    <Button size="sm" variant="destructive" onClick={onReject}>❌ Rejeter</Button>
+                                </div>
+                            ) : (
+                                <div className="text-xs italic opacity-70">
+                                    Seuls les membres du Conseil Syndical et l'administrateur peuvent valider.
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {canDelete && (
+                        <div className="pt-3 border-t border-slate-700">
+                            <Button size="sm" variant="destructive" onClick={onDelete}>🗑️ Supprimer</Button>
+                        </div>
+                    )}
+                </div>
+            )}
         </Card>
     );
 }

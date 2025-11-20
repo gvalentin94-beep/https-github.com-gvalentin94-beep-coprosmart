@@ -379,110 +379,81 @@ function CreateTaskForm({ me, onSubmit }: { me: User, onSubmit: (t: Partial<Task
     };
 
     // Style helper for compact labels
-    const LabelSm = ({ children }: { children: React.ReactNode }) => <Label className="text-[10px] uppercase tracking-wider text-slate-500 mb-1">{children}</Label>;
+    const LabelSm = ({ children }: { children: React.ReactNode }) => <Label className="text-[10px] uppercase tracking-wider text-slate-500 mb-0.5">{children}</Label>;
 
     return (
         <>
-            <div className="space-y-3">
+            <div className="space-y-2">
+                {/* Row 1: Title (Full width) */}
                 <div>
-                    <LabelSm>Titre de la demande <span className="text-rose-500">*</span></LabelSm>
-                    <Input placeholder="Ex: Ampoule grillée Hall A" value={title} onChange={(e) => setTitle(e.target.value)} className="text-sm py-1.5" />
+                    <Input placeholder="Titre de la demande (ex: Ampoule Hall A)" value={title} onChange={(e) => setTitle(e.target.value)} className="text-sm py-1.5 font-medium" />
                 </div>
 
-                {/* Category and Scope immediately below Title */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {/* Row 2: Compact Grid for Selects */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                     <div>
-                        <LabelSm>Catégorie</LabelSm>
-                        <div className="grid grid-cols-2 gap-2">
-                            {CATEGORIES.map((cat) => (
-                                <button
-                                    key={cat.id}
-                                    onClick={() => setCategory(cat.id as TaskCategory)}
-                                    className={`flex flex-col items-center justify-center p-1.5 rounded-lg border text-[10px] transition-all ${
-                                        category === cat.id ? "bg-indigo-600 border-indigo-600 text-white" : "bg-white border-slate-300 text-slate-600 hover:bg-slate-50"
-                                    }`}
-                                >
-                                    {React.cloneElement(cat.icon, { className: "h-4 w-4 mb-0.5" })}
-                                    <span>{cat.label}</span>
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                    <div>
-                        <LabelSm>Concerne</LabelSm>
-                        <div className="grid grid-cols-1 gap-2">
-                            {SCOPES.map((s) => (
-                                <button
-                                    key={s.id}
-                                    onClick={() => setScope(s.id as TaskScope)}
-                                    className={`p-2 rounded-lg border text-xs text-left transition-all ${
-                                        scope === s.id ? "bg-indigo-600 border-indigo-600 text-white" : "bg-white border-slate-300 text-slate-600 hover:bg-slate-50"
-                                    }`}
-                                >
-                                    {s.label}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                     <div>
-                        <LabelSm>Emplacement <span className="text-rose-500">*</span></LabelSm>
-                        <Select value={location} onChange={(e) => setLocation(e.target.value)} className="text-sm py-1.5">
-                            {LOCATIONS.map(l => <option key={l} value={l}>{l}</option>)}
+                         <Select value={category} onChange={(e) => setCategory(e.target.value as TaskCategory)} className="text-xs py-1.5">
+                            <option value="ampoule">💡 Lumière</option>
+                            <option value="porte">🔑 Porte</option>
+                            <option value="encombrants">📦 Encombrants</option>
+                            <option value="divers">✨ Divers</option>
                         </Select>
                     </div>
                     <div>
-                        <LabelSm>Prix de départ (€) <span className="text-rose-500">*</span></LabelSm>
-                        <div className="relative">
-                            <Input 
-                                type="number" 
-                                placeholder="15" 
-                                className="pl-8 text-sm py-1.5"
-                                value={startingPrice} 
-                                onChange={(e) => setStartingPrice(e.target.value)} 
-                            />
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 font-bold text-sm">€</span>
+                         <Select value={scope} onChange={(e) => setScope(e.target.value as TaskScope)} className="text-xs py-1.5">
+                            <option value="copro">🏢 Communs</option>
+                            <option value="apartment">🏠 Privatif</option>
+                        </Select>
+                    </div>
+                    <div>
+                        <Select value={location} onChange={(e) => setLocation(e.target.value)} className="text-xs py-1.5">
+                            {LOCATIONS.map(l => <option key={l} value={l}>📍 {l}</option>)}
+                        </Select>
+                    </div>
+                     <div className="relative">
+                        <Input 
+                            type="number" 
+                            placeholder="15" 
+                            className="pl-6 text-xs py-1.5"
+                            value={startingPrice} 
+                            onChange={(e) => setStartingPrice(e.target.value)} 
+                        />
+                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-500 font-bold text-xs">€</span>
+                    </div>
+                </div>
+
+                {/* Row 3: Details & Warranty & Photo */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 items-start">
+                    <Textarea placeholder="Détails (optionnel)..." value={details} onChange={(e) => setDetails(e.target.value)} className="text-xs py-1.5 min-h-[40px] h-10 resize-none" />
+                    
+                    <div className="flex items-center gap-2 h-10">
+                         <div className="flex bg-white border border-slate-300 rounded-lg p-0.5">
+                            {[
+                                { val: "0", label: "Sans" },
+                                { val: "30", label: "1m" },
+                                { val: "180", label: "6m" },
+                                { val: "365", label: "12m" }
+                            ].map((opt) => (
+                                <button
+                                    key={opt.val}
+                                    onClick={() => setWarranty(opt.val)}
+                                    className={`px-2 py-0.5 rounded-md text-[9px] font-bold transition-all ${
+                                        warranty === opt.val ? "bg-indigo-600 text-white" : "text-slate-500 hover:bg-slate-100"
+                                    }`}
+                                >
+                                    {opt.label}
+                                </button>
+                            ))}
                         </div>
-                        <p className="text-[10px] text-slate-500 mt-0.5">Max: {MAX_TASK_PRICE}€</p>
+                        
+                         <label className="flex-1 cursor-pointer bg-white border border-slate-300 text-slate-500 rounded-lg flex items-center justify-center px-2 h-full hover:bg-slate-50 transition-colors" title="Ajouter une photo">
+                            <span className="text-xs">📷</span>
+                            <input type="file" accept="image/*" onChange={handleFileChange} className="hidden"/>
+                        </label>
                     </div>
                 </div>
 
-                <div>
-                    <LabelSm>Détails (Optionnel)</LabelSm>
-                    <Textarea placeholder="Précisions utiles..." value={details} onChange={(e) => setDetails(e.target.value)} className="text-sm py-1.5 min-h-[60px]" />
-                </div>
-                
-                <div>
-                    <LabelSm>Photo (Optionnel)</LabelSm>
-                    <Input type="file" accept="image/*" onChange={handleFileChange} className="p-1 text-xs file:mr-4 file:py-0.5 file:px-2 file:rounded-full file:border-0 file:text-[10px] file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"/>
-                </div>
-
-                <div className="space-y-2">
-                    <LabelSm>Garantie offerte (Mois)</LabelSm>
-                    <div className="flex justify-center gap-1.5">
-                        {[
-                            { val: "0", label: "Sans" },
-                            { val: "30", label: "1 mois" },
-                            { val: "90", label: "3 mois" },
-                            { val: "180", label: "6 mois" },
-                            { val: "365", label: "12 mois" }
-                        ].map((opt) => (
-                            <button
-                                key={opt.val}
-                                onClick={() => setWarranty(opt.val)}
-                                className={`px-2.5 py-1 rounded-full text-[10px] font-medium border transition-all ${
-                                    warranty === opt.val ? "bg-emerald-600 border-emerald-600 text-white shadow-md" : "bg-white border-slate-300 text-slate-600 hover:bg-slate-100"
-                                }`}
-                            >
-                                {opt.label}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-
-                <Button className="w-full mt-2 text-sm" onClick={handlePreview}>Prévisualiser la tâche</Button>
+                <Button className="w-full h-8 text-xs mt-1" onClick={handlePreview}>Prévisualiser et Créer</Button>
             </div>
 
             {showPreview && (

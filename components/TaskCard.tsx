@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import type { Task, User, Rating, Bid } from '../types';
 import { Button, Card, CardContent, CardHeader, CardTitle, Input, Label, Badge, Textarea } from './ui';
@@ -206,6 +205,7 @@ interface TaskCardProps {
   // Verification workflow
   onRequestVerification?: () => void;
   onRejectWork?: () => void;
+  key?: React.Key;
 }
 
 export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRate, onDeleteRating, onPayApartment, onDelete, canDelete, onApprove, onReject, onRequestVerification, onRejectWork }: TaskCardProps) {

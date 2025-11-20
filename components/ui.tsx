@@ -33,9 +33,10 @@ export function Button({ children, variant = "primary", size = "md", className =
 
 // Card Components
 interface CardProps {
-  children: React.ReactNode;
+  children?: React.ReactNode;
   className?: string;
   padding?: 'none' | 'sm' | 'md';
+  key?: React.Key;
 }
 
 export function Card({ children, className = "", padding = 'md' }: CardProps) {
@@ -52,7 +53,7 @@ export function Card({ children, className = "", padding = 'md' }: CardProps) {
 }
 
 interface CardChildProps {
-  children: React.ReactNode;
+  children?: React.ReactNode;
   className?: string;
 }
 
@@ -114,7 +115,7 @@ export function Label({ children, className = "", ...props }: React.LabelHTMLAtt
 // Badge Component
 interface BadgeProps {
   variant?: 'default' | 'secondary' | 'outline' | 'destructive' | 'success';
-  children: React.ReactNode;
+  children?: React.ReactNode;
   className?: string;
   color?: string; // For dynamic colors
 }
@@ -145,4 +146,16 @@ export function Badge({ children, variant, className = "", color }: BadgeProps) 
   }
 
   return <span className={`${baseClasses} ${variantClasses} ${className}`}>{children}</span>;
+}
+
+// Section Component
+export function Section({ title, children, className = "" }: { title: string; children: React.ReactNode; className?: string }) {
+  return (
+    <section className={`space-y-4 ${className}`}>
+        <h3 className="text-xl font-bold text-white flex items-center gap-2">{title}</h3>
+        <div className="space-y-4">
+            {children}
+        </div>
+    </section>
+  );
 }

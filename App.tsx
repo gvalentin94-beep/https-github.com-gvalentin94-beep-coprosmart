@@ -2,96 +2,78 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import type { Task, User, LedgerEntry, TaskCategory, TaskScope, Rating, Bid, RegisteredUser, UserRole } from './types';
 import { useAuth, fakeApi } from './services/api';
-import { Button, Card, CardContent, CardHeader, CardTitle, Label, Input, Textarea, Select, Badge } from './components/ui';
+import { Button, Card, CardContent, CardHeader, CardTitle, Label, Input, Textarea, Select, Badge, Section } from './components/ui';
 import { TaskCard } from './components/TaskCard';
 import { LOCATIONS, CATEGORIES, SCOPES, COUNCIL_MIN_APPROVALS, ROLES, MAX_TASK_PRICE } from './constants';
 import { LoginCard } from './components/LoginCard';
 
 // --- Toast Notification System ---
 interface Toast {
-  id: number;
+  id: string;
   title: string;
   message: string;
-  type: 'info' | 'success' | 'warning';
+  type: 'info' | 'success' | 'error';
 }
 
-function Toaster({ toasts, onDismiss }: { toasts: Toast[], onDismiss: (id: number) => void }) {
+function ToastContainer({ toasts, onClose }: { toasts: Toast[]; onClose: (id: string) => void }) {
   return (
     <div className="fixed bottom-4 right-4 z-50 space-y-2 pointer-events-none">
-      {toasts.map(t => (
-        <div key={t.id} className={`pointer-events-auto w-80 p-4 rounded-lg shadow-lg border backdrop-blur-md transition-all transform translate-y-0 opacity-100 ${
-          t.type === 'success' ? 'bg-emerald-900/80 border-emerald-700 text-emerald-100' :
-          t.type === 'warning' ? 'bg-amber-900/80 border-amber-700 text-amber-100' :
-          'bg-slate-800/80 border-slate-600 text-slate-200'
-        }`}>
-          <div className="flex justify-between items-start">
-             <div>
-               <h4 className="font-bold text-sm">{t.title}</h4>
-               <p className="text-xs opacity-90 mt-1">{t.message}</p>
-             </div>
-             <button onClick={() => onDismiss(t.id)} className="text-xs hover:opacity-70">✕</button>
+      {toasts.map((t) => (
+        <div
+          key={t.id}
+          className={`pointer-events-auto w-80 p-4 rounded-lg shadow-lg border transform transition-all duration-300 translate-y-0 opacity-100 flex justify-between items-start gap-2 ${
+            t.type === 'success' ? 'bg-emerald-900/90 border-emerald-700 text-emerald-100' :
+            t.type === 'error' ? 'bg-rose-900/90 border-rose-700 text-rose-100' :
+            'bg-slate-800/90 border-slate-700 text-slate-100'
+          }`}
+        >
+          <div>
+            <h4 className="font-bold text-sm">{t.title}</h4>
+            <p className="text-xs opacity-90 mt-1">{t.message}</p>
           </div>
+          <button onClick={() => onClose(t.id)} className="text-current opacity-50 hover:opacity-100">✕</button>
         </div>
       ))}
     </div>
   );
 }
 
-// --- Components ---
+// --- Helper Components ---
 
-function TaskPreviewModal({ taskData, onConfirm, onCancel, isSubmitting }: any) {
-    const categoryLabel = CATEGORIES.find(c => c.id === taskData.category)?.label || taskData.category;
-    const scopeLabel = SCOPES.find(s => s.id === taskData.scope)?.label || taskData.scope;
-    
+function TaskPreviewModal({ task, onConfirm, onCancel }: { task: Partial<Task>; onConfirm: () => void; onCancel: () => void }) {
+    const catLabel = CATEGORIES.find(c => c.id === task.category)?.label;
+    const scopeLabel = SCOPES.find(s => s.id === task.scope)?.label;
+
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4">
-            <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-slate-900 border-slate-700 shadow-2xl">
-                <CardHeader className="border-b border-slate-700">
-                    <CardTitle className="text-xl text-white">🔍 Vérifiez votre tâche</CardTitle>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+            <Card className="w-full max-w-2xl bg-slate-900 border-slate-700 max-h-[90vh] overflow-y-auto">
+                <CardHeader>
+                    <CardTitle>🔍 Vérifiez votre demande</CardTitle>
+                    <p className="text-slate-400 text-sm">Relisez bien les informations avant de soumettre au Conseil Syndical.</p>
                 </CardHeader>
-                <CardContent className="space-y-6 pt-6">
-                    {taskData.photo && (
-                        <div className="w-full h-48 rounded-lg overflow-hidden border border-slate-700 bg-slate-800">
-                             <img src={taskData.photo} alt="Aperçu" className="w-full h-full object-cover" />
+                <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                        <div><span className="text-slate-500">Titre:</span> <div className="font-medium text-white">{task.title}</div></div>
+                        <div><span className="text-slate-500">Concerne:</span> <div className="font-medium text-white">{scopeLabel}</div></div>
+                        <div><span className="text-slate-500">Catégorie:</span> <div className="font-medium text-white">{catLabel}</div></div>
+                        <div><span className="text-slate-500">Emplacement:</span> <div className="font-medium text-white">{task.location}</div></div>
+                        <div><span className="text-slate-500">Prix départ:</span> <div className="font-medium text-indigo-400">{task.startingPrice} €</div></div>
+                        <div><span className="text-slate-500">Garantie:</span> <div className="font-medium text-white">{task.warrantyDays} jours</div></div>
+                    </div>
+                    {task.photo && (
+                        <div>
+                            <span className="text-slate-500 text-sm">Photo:</span>
+                            <img src={task.photo} alt="Aperçu" className="mt-1 h-40 rounded border border-slate-700 object-cover" />
                         </div>
                     )}
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                             <Label>Titre</Label>
-                             <p className="text-lg font-bold text-white">{taskData.title}</p>
-                        </div>
-                         <div>
-                             <Label>Prix de départ</Label>
-                             <p className="text-lg font-bold text-indigo-400">{taskData.startingPrice} €</p>
-                        </div>
-                        <div>
-                             <Label>Catégorie</Label>
-                             <p className="text-slate-300">{categoryLabel}</p>
-                        </div>
-                        <div>
-                             <Label>Concerne</Label>
-                             <p className="text-slate-300">{scopeLabel}</p>
-                        </div>
-                         <div>
-                             <Label>Emplacement</Label>
-                             <p className="text-slate-300">{taskData.location}</p>
-                        </div>
-                        <div>
-                             <Label>Garantie</Label>
-                             <p className="text-slate-300">{taskData.warrantyDays > 0 ? `${taskData.warrantyDays / 30} mois` : 'Sans garantie'}</p>
-                        </div>
-                    </div>
                     <div>
-                         <Label>Détails</Label>
-                         <p className="text-slate-300 bg-slate-800 p-3 rounded-lg">{taskData.details}</p>
+                        <span className="text-slate-500 text-sm">Détails:</span>
+                        <div className="mt-1 p-3 bg-slate-800 rounded border border-slate-700 text-slate-300 text-sm whitespace-pre-wrap">{task.details}</div>
                     </div>
 
                     <div className="flex justify-end gap-3 pt-4 border-t border-slate-700">
-                        <Button variant="ghost" onClick={onCancel}>Modifier</Button>
-                        <Button onClick={onConfirm} disabled={isSubmitting}>
-                            {isSubmitting ? 'Envoi en cours...' : 'Confirmer et soumettre'}
-                        </Button>
+                        <Button variant="outline" onClick={onCancel}>Modifier</Button>
+                        <Button onClick={onConfirm}>✅ Confirmer et soumettre</Button>
                     </div>
                 </CardContent>
             </Card>
@@ -99,417 +81,196 @@ function TaskPreviewModal({ taskData, onConfirm, onCancel, isSubmitting }: any) 
     );
 }
 
-function UserValidationQueue({ onApprove, onReject }: { onApprove: (email: string) => void, onReject: (email: string) => void }) {
-    const [pendingUsers, setPendingUsers] = useState<RegisteredUser[]>([]);
-
-    useEffect(() => {
-        fakeApi.getPendingUsers().then(setPendingUsers);
-        const interval = setInterval(() => fakeApi.getPendingUsers().then(setPendingUsers), 5000);
-        return () => clearInterval(interval);
-    }, []);
-
+function UserValidationQueue({ pendingUsers, onApprove, onReject }: { pendingUsers: RegisteredUser[], onApprove: (email: string) => void, onReject: (email: string) => void }) {
     if (pendingUsers.length === 0) return null;
 
     return (
-        <Section title="👥 Inscriptions en attente" color="rose">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {pendingUsers.map(u => (
-                    <Card key={u.email} className="border-rose-500/30 bg-rose-900/10">
-                        <CardContent className="flex flex-col gap-2 p-4">
-                            <div className="font-bold text-white">{u.firstName} {u.lastName}</div>
-                            <div className="text-sm text-rose-200">{u.email}</div>
-                            <Badge className="w-fit">{ROLES.find(r => r.id === u.role)?.label}</Badge>
-                            <div className="text-xs text-rose-300 mt-1">Résidence Watteau</div>
-                            <div className="flex gap-2 mt-2">
-                                <Button size="sm" className="bg-emerald-600 text-white border-none hover:bg-emerald-500" onClick={() => onApprove(u.email)}>Valider</Button>
+        <Card className="mb-6 border-amber-500/30 bg-amber-900/10">
+            <CardHeader>
+                <CardTitle className="text-amber-400 text-base">👥 Inscriptions en attente ({pendingUsers.length})</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <div className="space-y-2">
+                    {pendingUsers.map(u => (
+                        <div key={u.email} className="flex items-center justify-between bg-slate-800 p-3 rounded border border-slate-700">
+                            <div>
+                                <div className="font-bold text-white">{u.firstName} {u.lastName}</div>
+                                <div className="text-xs text-slate-400">{u.email} - {ROLES.find(r => r.id === u.role)?.label}</div>
+                                <div className="text-xs text-slate-500">{u.id}</div>
+                            </div>
+                            <div className="flex gap-2">
+                                <Button size="sm" className="bg-emerald-600 hover:bg-emerald-500 border-none text-white" onClick={() => onApprove(u.email)}>Accepter</Button>
                                 <Button size="sm" variant="destructive" onClick={() => onReject(u.email)}>Refuser</Button>
                             </div>
-                        </CardContent>
-                    </Card>
-                ))}
-            </div>
-        </Section>
+                        </div>
+                    ))}
+                </div>
+            </CardContent>
+        </Card>
     );
 }
 
-function Ledger({ isAdmin, onDeleteEntry, usersMap }: { isAdmin: boolean, onDeleteEntry: (idx: number) => void, usersMap: Record<string, string> }) {
-  const [entries, setEntries] = useState<(LedgerEntry & { taskTitle?: string, taskCreator?: string })[]>([]);
-
-  useEffect(() => {
-    fakeApi.readLedger().then(async (data) => {
-        const tasks = await fakeApi.readTasks();
-        const enriched = data.map((entry: any) => {
-            const task = tasks.find(t => t.id === entry.taskId);
-            return {
-                ...entry,
-                taskTitle: task?.title || 'Tâche inconnue',
-                taskCreator: task ? (usersMap[task.createdBy] || task.createdBy) : 'Inconnu'
-            };
-        });
-        setEntries(enriched);
-    });
-  }, [usersMap]);
-
+function Ledger({ entries, usersMap, onDelete, isAdmin }: { entries: LedgerEntry[], usersMap: Record<string, string>, onDelete: (idx: number) => void, isAdmin: boolean }) {
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-left text-sm text-slate-300 border-collapse">
-        <thead className="bg-slate-800 text-slate-100 uppercase tracking-wider text-xs">
-          <tr>
-            <th className="p-3 rounded-tl-lg">Date</th>
-            <th className="p-3">Type</th>
-            <th className="p-3">Tâche</th>
-            <th className="p-3">Payeur</th>
-            <th className="p-3">Bénéficiaire</th>
-            <th className="p-3 text-right">Montant</th>
-            {isAdmin && <th className="p-3 text-center rounded-tr-lg w-10">Actions</th>}
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-slate-700 bg-slate-800/50">
-          {entries.length === 0 ? (
-            <tr><td colSpan={isAdmin ? 7 : 6} className="p-4 text-center italic opacity-50">Aucune écriture comptable.</td></tr>
-          ) : (
-            entries.map((e, i) => (
-              <tr key={i} className="hover:bg-slate-700/50 transition-colors">
-                <td className="p-3">{new Date(e.at).toLocaleDateString()}</td>
-                <td className="p-3">
-                    <Badge color={e.type === 'charge_credit' ? 'indigo' : 'emerald'}>
-                        {e.type === 'charge_credit' ? 'Crédit Charges' : 'Paiement Direct'}
-                    </Badge>
-                </td>
-                <td className="p-3">
-                    <div className="font-medium text-white">{e.taskTitle}</div>
-                    <div className="text-xs text-slate-500">par {e.taskCreator}</div>
-                </td>
-                <td className="p-3">{e.payer === 'Copro' ? '🏢 Copropriété' : (usersMap[e.payer] || e.payer)}</td>
-                <td className="p-3">{usersMap[e.payee] || e.payee}</td>
-                <td className="p-3 text-right font-bold text-white">{e.amount} €</td>
-                {isAdmin && (
-                    <td className="p-3 text-center">
-                        <button onClick={() => onDeleteEntry(i)} className="text-rose-400 hover:text-rose-300 p-1 transition" title="Supprimer l'écriture">
-                            🗑️
-                        </button>
+    <Card>
+      <CardHeader><CardTitle>📒 Journal des écritures</CardTitle></CardHeader>
+      <CardContent>
+        {entries.length === 0 ? <p className="text-slate-400 italic text-center">Aucune écriture comptable.</p> : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left text-slate-300">
+              <thead className="text-xs text-slate-500 uppercase bg-slate-900/50">
+                <tr>
+                  <th className="px-2 py-3">Date</th>
+                  <th className="px-2 py-3">Type</th>
+                  <th className="px-2 py-3">Tâche / Objet</th>
+                  <th className="px-2 py-3">Payeur</th>
+                  <th className="px-2 py-3">Bénéficiaire</th>
+                  <th className="px-2 py-3 text-right">Montant</th>
+                  {isAdmin && <th className="px-2 py-3 text-center w-10">Action</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {entries.map((e, i) => (
+                  <tr key={i} className="border-b border-slate-700 hover:bg-slate-800/50">
+                    <td className="px-2 py-3">{new Date(e.at).toLocaleDateString()}</td>
+                    <td className="px-2 py-3">
+                        {e.type === 'charge_credit' 
+                            ? <Badge color="emerald">Crédit Charges</Badge> 
+                            : <Badge color="indigo">Privatif</Badge>}
                     </td>
-                )}
-              </tr>
-            ))
-          )}
-        </tbody>
-      </table>
-    </div>
+                    <td className="px-2 py-3">
+                        <div className="font-medium text-white">{e.taskTitle}</div>
+                        <div className="text-xs text-slate-500">Créée par {usersMap[e.taskCreator || ''] || e.taskCreator}</div>
+                    </td>
+                    <td className="px-2 py-3">{e.payer === 'Copro' ? '🏢 Copropriété' : (usersMap[e.payer] || e.payer)}</td>
+                    <td className="px-2 py-3">{usersMap[e.payee] || e.payee}</td>
+                    <td className="px-2 py-3 text-right font-mono text-white font-bold">{e.amount} €</td>
+                    {isAdmin && (
+                        <td className="px-2 py-3 text-center">
+                            <button onClick={() => onDelete(i)} className="text-rose-500 hover:text-rose-400" title="Supprimer">🗑️</button>
+                        </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
-function CreateTaskForm({ onCreate, isSubmitting }: { onCreate: (t: Partial<Task>) => void, isSubmitting: boolean }) {
-  const [title, setTitle] = useState("");
-  const [category, setCategory] = useState<TaskCategory>("ampoule");
-  const [scope, setScope] = useState<TaskScope>("copro");
-  const [details, setDetails] = useState("");
-  const [location, setLocation] = useState(LOCATIONS[0]);
-  const [startingPrice, setStartingPrice] = useState("");
-  const [warrantyDays, setWarrantyDays] = useState("0");
-  const [photo, setPhoto] = useState("");
-  
-  // Preview State
-  const [showPreview, setShowPreview] = useState(false);
-
-  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (file) {
-          const reader = new FileReader();
-          reader.onloadend = () => {
-              setPhoto(reader.result as string);
-          };
-          reader.readAsDataURL(file);
-      }
-  };
-
-  const handleSubmitClick = () => {
-      if (!title.trim()) { alert("Le titre est obligatoire."); return; }
-      if (!location.trim()) { alert("L'emplacement est obligatoire."); return; }
-      const price = Number(startingPrice);
-      if (!price || price <= 0) { alert("Le prix de départ doit être positif."); return; }
-      if (price > MAX_TASK_PRICE) { alert(`Le prix maximum autorisé est de ${MAX_TASK_PRICE}€.`); return; }
-      
-      setShowPreview(true);
-  };
-
-  const handleConfirmCreate = () => {
-       onCreate({
-          title,
-          category,
-          scope,
-          details,
-          location,
-          startingPrice: Number(startingPrice),
-          warrantyDays: Number(warrantyDays),
-          photo
-      });
-      setShowPreview(false);
-      // Reset form logic handled by parent usually, but here we might want to clear if successful
-      // (kept simple for now as parent handles refresh)
-  };
-
-  return (
-    <div className="space-y-4 border border-slate-700 rounded-xl p-5 bg-slate-800/50">
-      <h3 className="font-bold text-lg text-white mb-2">✨ Nouvelle demande</h3>
-      
-      {showPreview && (
-          <TaskPreviewModal 
-            taskData={{ title, category, scope, details, location, startingPrice, warrantyDays, photo }}
-            onConfirm={handleConfirmCreate}
-            onCancel={() => setShowPreview(false)}
-            isSubmitting={isSubmitting}
-          />
-      )}
-
-      <div className="space-y-1.5">
-        <Label>Titre de la demande <span className="text-rose-500">*</span></Label>
-        <Input placeholder="Ex: Remplacement ampoule Hall A" value={title} onChange={(e) => setTitle(e.target.value)} />
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-         <div className="space-y-1.5">
-            <Label>Catégorie</Label>
-            <Select value={category} onChange={(e) => setCategory(e.target.value as TaskCategory)}>
-              {CATEGORIES.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
-            </Select>
-          </div>
-          <div className="space-y-1.5">
-            <Label>Concerne</Label>
-            <Select value={scope} onChange={(e) => setScope(e.target.value as TaskScope)}>
-              {SCOPES.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
-            </Select>
-          </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-1.5">
-            <Label>Emplacement <span className="text-rose-500">*</span></Label>
-            <Select value={location} onChange={(e) => setLocation(e.target.value)}>
-                {LOCATIONS.map(l => <option key={l} value={l}>{l}</option>)}
-            </Select>
-          </div>
-          <div className="space-y-1.5">
-            <Label>Prix de départ (€) <span className="text-rose-500">*</span></Label>
-            <div className="relative">
-                <Input 
-                    type="number" 
-                    placeholder="15" 
-                    value={startingPrice} 
-                    onChange={(e) => setStartingPrice(e.target.value)} 
-                    className="pl-8"
-                />
-                <span className="absolute left-3 top-2.5 text-slate-500">€</span>
-            </div>
-            <p className="text-xs text-slate-500">Max: {MAX_TASK_PRICE}€</p>
-          </div>
-      </div>
-
-      <div className="space-y-1.5">
-         <Label>Photo (optionnel)</Label>
-         <Input type="file" accept="image/*" onChange={handlePhotoChange} className="text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-900 file:text-indigo-200 hover:file:bg-indigo-800" />
-      </div>
-
-      <div className="space-y-2">
-        <Label className="text-center block">Garantie souhaitée</Label>
-        <div className="flex flex-wrap justify-center gap-3">
-            {[
-                { val: "0", label: "Sans garantie" },
-                { val: "30", label: "1 mois" },
-                { val: "90", label: "3 mois" },
-                { val: "180", label: "6 mois" },
-                { val: "365", label: "12 mois" }
-            ].map((opt) => (
-                <label key={opt.val} className={`cursor-pointer px-3 py-2 rounded-lg border text-sm transition-all ${
-                    warrantyDays === opt.val 
-                    ? 'bg-indigo-600 border-indigo-500 text-white shadow-md shadow-indigo-900/50' 
-                    : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'
-                }`}>
-                    <input 
-                        type="radio" 
-                        name="warranty" 
-                        value={opt.val} 
-                        className="hidden" 
-                        checked={warrantyDays === opt.val} 
-                        onChange={(e) => setWarrantyDays(e.target.value)}
-                    />
-                    {opt.label}
-                </label>
-            ))}
-        </div>
-      </div>
-
-      <div className="space-y-1.5">
-        <Label>Détails</Label>
-        <Textarea placeholder="Décrivez le problème..." value={details} onChange={(e) => setDetails(e.target.value)} />
-      </div>
-
-      <Button className="w-full bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-900/20" onClick={handleSubmitClick} disabled={isSubmitting}>
-        {isSubmitting ? 'Création...' : 'Prévisualiser la tâche'}
-      </Button>
-    </div>
-  );
-}
-
-function UserDirectory({ usersMap, currentUser, onUpdateUserStatus, onUpdateUser, onDeleteRating }: any) {
-    const [users, setUsers] = useState<RegisteredUser[]>([]);
-    const [tasks, setTasks] = useState<Task[]>([]);
+function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDeleteRating }: { 
+    users: RegisteredUser[], 
+    tasks: Task[], 
+    me: User, 
+    onBan: (email: string) => void, 
+    onRestore: (email: string) => void,
+    onUpdateUser: (email: string, data: any) => void,
+    onDeleteRating: (taskId: string, ratingIdx: number) => void
+}) {
     const [editingUser, setEditingUser] = useState<RegisteredUser | null>(null);
-    const [editForm, setEditForm] = useState({ firstName: '', lastName: '', role: 'owner' });
+    const [editFirstName, setEditFirstName] = useState("");
+    const [editLastName, setEditLastName] = useState("");
+    const [editRole, setEditRole] = useState<UserRole>("owner");
 
-    const fetchUsers = async () => {
-        const allUsers = await fakeApi.getDirectory();
-        setUsers(allUsers);
-        const allTasks = await fakeApi.readTasks();
-        setTasks(allTasks);
-    };
-
-    useEffect(() => {
-        fetchUsers();
-    }, []);
-
-    const canEdit = (targetUser: RegisteredUser) => {
-        if (currentUser.role === 'admin' || currentUser.role === 'council') return true;
-        return currentUser.email === targetUser.email;
-    };
-
-    const startEdit = (u: RegisteredUser) => {
+    const handleEditClick = (u: RegisteredUser) => {
         setEditingUser(u);
-        setEditForm({ firstName: u.firstName, lastName: u.lastName, role: u.role });
+        setEditFirstName(u.firstName);
+        setEditLastName(u.lastName);
+        setEditRole(u.role);
     };
 
-    const saveEdit = async () => {
+    const handleSaveUser = () => {
         if (editingUser) {
-            await fakeApi.updateUser(editingUser.email, {
-                firstName: editForm.firstName,
-                lastName: editForm.lastName,
-                role: editForm.role as UserRole
+            onUpdateUser(editingUser.email, {
+                firstName: editFirstName,
+                lastName: editLastName,
+                role: (me.role === 'admin' || me.role === 'council') ? editRole : editingUser.role
             });
             setEditingUser(null);
-            fetchUsers();
-            if (onUpdateUser) onUpdateUser(); // Refresh parent
-        }
-    };
-    
-    const handleDeleteUser = async (email: string) => {
-        if (confirm("Voulez-vous vraiment bannir cet utilisateur ?")) {
-            await fakeApi.updateUserStatus(email, 'deleted');
-            fetchUsers();
-        }
-    };
-
-    const handleRestoreUser = async (email: string) => {
-        if (confirm("Rétablir cet utilisateur ?")) {
-            await fakeApi.updateUserStatus(email, 'active');
-            fetchUsers();
         }
     };
 
     return (
         <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-white mb-6">👥 Annuaire de la Résidence</h2>
+            <h2 className="text-2xl font-bold text-white">👥 Annuaire des Copropriétaires</h2>
             
-            {editingUser && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-                    <Card className="w-full max-w-md bg-slate-800 border-slate-700">
-                        <CardHeader><CardTitle>Modifier le profil</CardTitle></CardHeader>
-                        <CardContent className="space-y-4">
-                            <div>
-                                <Label>Prénom</Label>
-                                <Input value={editForm.firstName} onChange={e => setEditForm({...editForm, firstName: e.target.value})} />
-                            </div>
-                            <div>
-                                <Label>Nom</Label>
-                                <Input value={editForm.lastName} onChange={e => setEditForm({...editForm, lastName: e.target.value})} />
-                            </div>
-                            {(currentUser.role === 'admin' || currentUser.role === 'council') && (
-                                <div>
-                                    <Label>Rôle</Label>
-                                    <Select value={editForm.role} onChange={e => setEditForm({...editForm, role: e.target.value})}>
-                                        {ROLES.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
-                                    </Select>
-                                </div>
-                            )}
-                            <div className="flex justify-end gap-2 pt-4">
-                                <Button variant="ghost" onClick={() => setEditingUser(null)}>Annuler</Button>
-                                <Button onClick={saveEdit}>Enregistrer</Button>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
-            )}
-
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {users.map(u => {
-                    const userTasks = tasks.filter(t => t.awardedTo === u.email && t.status === 'completed');
-                    const totalEarned = userTasks.reduce((acc, t) => acc + (t.awardedAmount || 0), 0);
-                    const isMe = currentUser.email === u.email;
+                    const isMe = u.email === me.email;
+                    const canEdit = isMe || me.role === 'admin' || me.role === 'council';
                     const isDeleted = u.status === 'deleted';
-
+                    
+                    // Get completed tasks for history
+                    const history = tasks.filter(t => t.status === 'completed' && t.awardedTo === u.email);
+                    
                     return (
-                        <Card key={u.email} className={`relative overflow-hidden transition-all hover:border-indigo-500/50 ${isDeleted ? 'opacity-50 grayscale' : ''}`}>
-                            {isMe && <div className="absolute top-0 right-0 bg-indigo-600 text-white text-[10px] px-2 py-1 rounded-bl-lg">Moi</div>}
-                            
-                            <CardContent className="pt-6">
-                                <div className="flex items-center gap-4 mb-4">
-                                    <div className={`h-12 w-12 rounded-full flex items-center justify-center text-xl font-bold ${
-                                        u.role === 'admin' ? 'bg-rose-900 text-rose-200' :
-                                        u.role === 'council' ? 'bg-amber-900 text-amber-200' :
-                                        'bg-indigo-900 text-indigo-200'
-                                    }`}>
-                                        {u.firstName.charAt(0)}{u.lastName.charAt(0)}
-                                    </div>
+                        <Card key={u.email} className={isDeleted ? 'opacity-50 grayscale' : ''}>
+                            <CardContent className="p-4 space-y-3">
+                                <div className="flex justify-between items-start">
                                     <div>
-                                        <h3 className="font-bold text-white text-lg">{u.firstName} {u.lastName}</h3>
-                                        <div className="flex items-center gap-2">
-                                            <Badge variant="outline" className="text-xs">{ROLES.find(r => r.id === u.role)?.label}</Badge>
-                                            {isDeleted && <Badge variant="destructive">Banni</Badge>}
+                                        <div className="font-bold text-lg text-white">{u.firstName} {u.lastName}</div>
+                                        <div className="text-sm text-slate-400">{u.email}</div>
+                                        <div className="mt-1">
+                                            <Badge>{ROLES.find(r => r.id === u.role)?.label}</Badge>
+                                            {isDeleted && <Badge variant="destructive" className="ml-2">Banni</Badge>}
                                         </div>
                                     </div>
+                                    {canEdit && !isDeleted && (
+                                        <Button size="sm" variant="outline" onClick={() => handleEditClick(u)}>✏️</Button>
+                                    )}
                                 </div>
 
-                                <div className="space-y-3 border-t border-slate-700 pt-4">
-                                    <div className="flex justify-between text-sm">
-                                        <span className="text-slate-400">Travaux réalisés</span>
-                                        <span className="text-white font-mono">{userTasks.length}</span>
+                                {/* Admin Actions */}
+                                {(me.role === 'admin' || me.role === 'council') && !isMe && (
+                                    <div className="pt-2 border-t border-slate-700 flex gap-2">
+                                        {!isDeleted ? (
+                                             <Button size="sm" variant="destructive" className="w-full h-7 text-xs" onClick={() => onBan(u.email)}>🚫 Bannir</Button>
+                                        ) : (
+                                             me.role === 'admin' && <Button size="sm" className="w-full h-7 text-xs bg-emerald-600 border-none text-white" onClick={() => onRestore(u.email)}>♻️ Rétablir</Button>
+                                        )}
                                     </div>
-                                    <div className="flex justify-between text-sm">
-                                        <span className="text-slate-400">Total gagné</span>
-                                        <span className="text-emerald-400 font-mono">{totalEarned} €</span>
-                                    </div>
-                                    
-                                    {/* Recent Reviews */}
-                                    {userTasks.length > 0 && (
-                                        <div className="mt-4 space-y-2">
-                                            <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Derniers avis</div>
-                                            <div className="max-h-32 overflow-y-auto space-y-2 pr-1 scrollbar-thin scrollbar-thumb-slate-700">
-                                                {userTasks.map(t => (
-                                                    t.ratings?.map((r, idx) => (
-                                                        <div key={`${t.id}-${idx}`} className="bg-slate-900/50 p-2 rounded text-xs border border-slate-800">
-                                                            <div className="flex justify-between items-start mb-1">
-                                                                <span className="text-amber-400 tracking-widest">{'⭐'.repeat(r.stars)}</span>
-                                                                {(currentUser.role === 'admin' || currentUser.role === 'council') && (
-                                                                    <button onClick={() => onDeleteRating(t.id, idx)} className="text-rose-500 hover:text-rose-300">×</button>
-                                                                )}
-                                                            </div>
-                                                            <p className="text-slate-300 italic">"{r.comment}"</p>
-                                                            <div className="text-[10px] text-slate-500 mt-1 text-right">Projet: {t.title}</div>
+                                )}
+                                
+                                {/* Work History */}
+                                <div className="pt-2 border-t border-slate-700">
+                                    <div className="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wider">Travaux réalisés</div>
+                                    {history.length === 0 ? (
+                                        <p className="text-xs text-slate-600 italic">Aucun historique.</p>
+                                    ) : (
+                                        <ul className="space-y-2">
+                                            {history.map(t => (
+                                                <li key={t.id} className="text-xs bg-slate-900/30 p-2 rounded">
+                                                    <div className="flex justify-between text-slate-300">
+                                                        <span>{t.title}</span>
+                                                        <span className="font-mono text-emerald-400">+{t.awardedAmount}€</span>
+                                                    </div>
+                                                    <div className="text-slate-500 mt-0.5">{new Date(t.completionAt!).toLocaleDateString()}</div>
+                                                    {/* Ratings display in directory */}
+                                                    {t.ratings && t.ratings.length > 0 && (
+                                                        <div className="mt-1 pt-1 border-t border-slate-700/50 space-y-1">
+                                                            {t.ratings.map((r, idx) => (
+                                                                <div key={idx} className="flex justify-between items-start gap-2 group">
+                                                                    <div className="bg-slate-800/50 p-1 rounded w-full">
+                                                                        <div className="text-[10px] text-amber-400">{Array(r.stars).fill('⭐').join('')}</div>
+                                                                        <div className="text-[10px] text-slate-400 italic">"{r.comment}"</div>
+                                                                    </div>
+                                                                    {(me.role === 'admin' || me.role === 'council') && (
+                                                                         <button 
+                                                                            onClick={() => onDeleteRating(t.id, idx)}
+                                                                            className="text-rose-500 opacity-0 group-hover:opacity-100"
+                                                                            title="Supprimer avis"
+                                                                         >✖</button>
+                                                                    )}
+                                                                </div>
+                                                            ))}
                                                         </div>
-                                                    ))
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-
-                                <div className="flex gap-2 mt-4 pt-4 border-t border-slate-700 justify-end">
-                                    {canEdit(u) && !isDeleted && (
-                                        <Button size="sm" variant="ghost" onClick={() => startEdit(u)}>✏️ Modifier</Button>
-                                    )}
-                                    {(currentUser.role === 'admin' || currentUser.role === 'council') && !isMe && (
-                                        isDeleted 
-                                        ? (currentUser.role === 'admin' && <Button size="sm" onClick={() => handleRestoreUser(u.email)}>Rétablir</Button>)
-                                        : <Button size="sm" variant="destructive" onClick={() => handleDeleteUser(u.email)}>Bannir</Button>
+                                                    )}
+                                                </li>
+                                            ))}
+                                        </ul>
                                     )}
                                 </div>
                             </CardContent>
@@ -517,77 +278,324 @@ function UserDirectory({ usersMap, currentUser, onUpdateUserStatus, onUpdateUser
                     );
                 })}
             </div>
+
+            {/* Edit Modal */}
+            {editingUser && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+                    <Card className="w-full max-w-md bg-slate-800 border-slate-700">
+                        <CardHeader><CardTitle>Modifier le profil</CardTitle></CardHeader>
+                        <CardContent className="space-y-3">
+                            <div>
+                                <Label>Prénom</Label>
+                                <Input value={editFirstName} onChange={e => setEditFirstName(e.target.value)} />
+                            </div>
+                            <div>
+                                <Label>Nom</Label>
+                                <Input value={editLastName} onChange={e => setEditLastName(e.target.value)} />
+                            </div>
+                            {(me.role === 'admin' || me.role === 'council') && (
+                                <div>
+                                    <Label>Rôle</Label>
+                                    <Select value={editRole} onChange={e => setEditRole(e.target.value as UserRole)}>
+                                        {ROLES.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
+                                    </Select>
+                                </div>
+                            )}
+                            <div className="flex justify-end gap-2 mt-4">
+                                <Button variant="ghost" onClick={() => setEditingUser(null)}>Annuler</Button>
+                                <Button onClick={handleSaveUser}>Enregistrer</Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+            )}
         </div>
     );
 }
 
-function Section({ title, children, color = "indigo" }: { title: string, children: React.ReactNode, color?: string }) {
-  const colorClass = {
-      indigo: "text-indigo-300 border-indigo-500/30",
-      emerald: "text-emerald-300 border-emerald-500/30",
-      amber: "text-amber-300 border-amber-500/30",
-      rose: "text-rose-300 border-rose-500/30",
-      sky: "text-sky-300 border-sky-500/30",
-      fuchsia: "text-fuchsia-300 border-fuchsia-500/30",
-  }[color] || "text-slate-300 border-slate-600";
+function CreateTaskForm({ me, onSubmit }: { me: User, onSubmit: (t: Partial<Task>) => void }) {
+    // Form State
+    const [title, setTitle] = useState("");
+    const [category, setCategory] = useState<TaskCategory>("ampoule");
+    const [scope, setScope] = useState<TaskScope>("copro");
+    const [location, setLocation] = useState(LOCATIONS[0]);
+    const [details, setDetails] = useState("");
+    const [startingPrice, setStartingPrice] = useState("");
+    const [warranty, setWarranty] = useState("0"); // 0, 30, 90, 180, 365
+    const [photo, setPhoto] = useState<string | undefined>(undefined);
+    
+    // Preview State
+    const [showPreview, setShowPreview] = useState(false);
 
-  return (
-    <section className="space-y-4 animate-fade-in">
-      <div className={`flex items-center gap-3 pb-2 border-b ${colorClass}`}>
-        <h2 className={`text-xl font-bold uppercase tracking-wide ${colorClass.split(' ')[0]}`}>{title}</h2>
-      </div>
-      {children}
-    </section>
-  );
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setPhoto(reader.result as string);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const handlePreview = () => {
+        if (!title.trim() || !location || !startingPrice) {
+            alert("Titre, Emplacement et Prix sont obligatoires.");
+            return;
+        }
+        const price = Number(startingPrice);
+        if (isNaN(price) || price <= 0) {
+            alert("Prix invalide.");
+            return;
+        }
+        if (price > MAX_TASK_PRICE) {
+             alert(`Le prix ne peut pas dépasser ${MAX_TASK_PRICE}€.`);
+             return;
+        }
+        setShowPreview(true);
+    };
+
+    const confirmSubmit = () => {
+        onSubmit({
+            title,
+            category,
+            scope,
+            location,
+            details,
+            startingPrice: Number(startingPrice),
+            warrantyDays: Number(warranty),
+            photo
+        });
+        // Reset
+        setTitle("");
+        setDetails("");
+        setStartingPrice("");
+        setPhoto(undefined);
+        setShowPreview(false);
+    };
+
+    const taskData = {
+        title, category, scope, location, details, startingPrice: Number(startingPrice), warrantyDays: Number(warranty), photo
+    };
+
+    return (
+        <>
+            <div className="space-y-4">
+                <div className="space-y-1.5">
+                    <Label>Titre de la demande <span className="text-rose-500">*</span></Label>
+                    <Input placeholder="Ex: Ampoule grillée Hall A" value={title} onChange={(e) => setTitle(e.target.value)} />
+                </div>
+
+                {/* Category and Scope immediately below Title */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                        <Label>Catégorie</Label>
+                        <div className="grid grid-cols-2 gap-2">
+                            {CATEGORIES.map((cat) => (
+                                <button
+                                    key={cat.id}
+                                    onClick={() => setCategory(cat.id as TaskCategory)}
+                                    className={`flex flex-col items-center justify-center p-2 rounded-lg border text-xs transition-all ${
+                                        category === cat.id ? "bg-indigo-600 border-indigo-600 text-white" : "bg-white border-slate-300 text-slate-600 hover:bg-slate-50"
+                                    }`}
+                                >
+                                    {cat.icon}
+                                    <span className="mt-1">{cat.label}</span>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                    <div className="space-y-1.5">
+                        <Label>Concerne</Label>
+                        <div className="grid grid-cols-1 gap-2">
+                            {SCOPES.map((s) => (
+                                <button
+                                    key={s.id}
+                                    onClick={() => setScope(s.id as TaskScope)}
+                                    className={`p-3 rounded-lg border text-sm text-left transition-all ${
+                                        scope === s.id ? "bg-indigo-600 border-indigo-600 text-white" : "bg-white border-slate-300 text-slate-600 hover:bg-slate-50"
+                                    }`}
+                                >
+                                    {s.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                     <div className="space-y-1.5">
+                        <Label>Emplacement <span className="text-rose-500">*</span></Label>
+                        <Select value={location} onChange={(e) => setLocation(e.target.value)}>
+                            {LOCATIONS.map(l => <option key={l} value={l}>{l}</option>)}
+                        </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                        <Label>Prix de départ (€) <span className="text-rose-500">*</span></Label>
+                        <div className="relative">
+                            <Input 
+                                type="number" 
+                                placeholder="15" 
+                                className="pl-8"
+                                value={startingPrice} 
+                                onChange={(e) => setStartingPrice(e.target.value)} 
+                            />
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 font-bold">€</span>
+                        </div>
+                        <p className="text-xs text-slate-500">Max: {MAX_TASK_PRICE}€</p>
+                    </div>
+                </div>
+
+                <div className="space-y-1.5">
+                    <Label>Détails (Optionnel)</Label>
+                    <Textarea placeholder="Précisions utiles..." value={details} onChange={(e) => setDetails(e.target.value)} />
+                </div>
+                
+                <div className="space-y-1.5">
+                    <Label>Photo (Optionnel)</Label>
+                    <Input type="file" accept="image/*" onChange={handleFileChange} className="p-1 file:mr-4 file:py-1 file:px-4 file:rounded-full file:border-0 file:text-xs file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"/>
+                </div>
+
+                <div className="space-y-3">
+                    <Label className="text-center block">Garantie offerte (Mois)</Label>
+                    <div className="flex justify-center gap-2">
+                        {[
+                            { val: "0", label: "Sans" },
+                            { val: "30", label: "1 mois" },
+                            { val: "90", label: "3 mois" },
+                            { val: "180", label: "6 mois" },
+                            { val: "365", label: "12 mois" }
+                        ].map((opt) => (
+                            <button
+                                key={opt.val}
+                                onClick={() => setWarranty(opt.val)}
+                                className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                                    warranty === opt.val ? "bg-emerald-600 border-emerald-600 text-white shadow-md" : "bg-white border-slate-300 text-slate-600 hover:bg-slate-100"
+                                }`}
+                            >
+                                {opt.label}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                <Button className="w-full mt-4" onClick={handlePreview}>Prévisualiser la tâche</Button>
+            </div>
+
+            {showPreview && (
+                <TaskPreviewModal 
+                    task={taskData} 
+                    onConfirm={confirmSubmit} 
+                    onCancel={() => setShowPreview(false)} 
+                />
+            )}
+        </>
+    );
 }
 
-function Dashboard({ me, onLogout }: { me: User, onLogout: () => void }) {
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [usersMap, setUsersMap] = useState<Record<string, string>>({});
-  const [toasts, setToasts] = useState<Toast[]>([]);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [view, setView] = useState<'home' | 'directory' | 'ledger'>('home');
+// --- Main Dashboard Component ---
 
-  const addToast = (title: string, message: string, type: 'info' | 'success' | 'warning' = 'info') => {
-    const id = Date.now();
-    setToasts(prev => [...prev, { id, title, message, type }]);
-    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 5000);
+function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
+  const [view, setView] = useState<'home' | 'directory' | 'ledger'>('home');
+  
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [ledger, setLedger] = useState<LedgerEntry[]>([]);
+  const [pendingUsers, setPendingUsers] = useState<RegisteredUser[]>([]);
+  const [directoryUsers, setDirectoryUsers] = useState<RegisteredUser[]>([]);
+  const [usersMap, setUsersMap] = useState<Record<string, string>>({});
+  
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const addToast = (title: string, message: string, type: Toast['type'] = 'info') => {
+    const id = Math.random().toString(36).substring(2, 9);
+    setToasts((prev) => [...prev, { id, title, message, type }]);
+    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 4000);
+  };
+
+  // --- Email Notification via API ---
+  const notify = async (recipients: string[], subject: string, message: string) => {
+      // Visual feedback
+      addToast("Notification", `Email envoyé pour : ${subject}`, "info");
+
+      // Send via API (Serverless)
+      try {
+          await fetch('/api/send-email', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                  to: recipients,
+                  subject: `[CoproSmart] ${subject}`,
+                  html: `<div style="font-family: sans-serif;">
+                            <h2 style="color: #4f46e5;">CoproSmart Notification</h2>
+                            <p>${message}</p>
+                            <hr/>
+                            <p style="font-size: 12px; color: #888;">Ceci est une notification automatique.</p>
+                         </div>`
+              })
+          });
+      } catch (e) {
+          console.error("Failed to send email via API", e);
+      }
   };
   
-  const refreshData = async () => {
+  // Helper to get emails by role
+  const getEmailsByRole = (roles: UserRole[]) => {
+      return directoryUsers.filter(u => roles.includes(u.role)).map(u => u.email);
+  }
+
+  // Load Data
+  const loadData = useCallback(async () => {
+    try {
       const t = await fakeApi.readTasks();
       setTasks(t);
-      // Build user map
-      const users = await fakeApi.getDirectory();
-      const map: Record<string, string> = {};
-      users.forEach(u => { map[u.email] = `${u.firstName} ${u.lastName}`; });
-      setUsersMap(map);
-  };
+      const l = await fakeApi.readLedger();
+      setLedger(l);
+      
+      // Admin/Council specific data
+      if (user.role === 'admin' || user.role === 'council') {
+          const pu = await fakeApi.getPendingUsers();
+          setPendingUsers(pu);
+      }
+      
+      // Directory for names and emails
+      const dir = await fakeApi.getDirectory();
+      setDirectoryUsers(dir);
+      
+      // Build map email -> Name
+      const mapping: Record<string, string> = {};
+      dir.forEach(u => { mapping[u.email] = `${u.firstName} ${u.lastName.toUpperCase()}`; });
+      setUsersMap(mapping);
+
+    } catch (e) {
+      console.error(e);
+    }
+  }, [user.role]);
 
   useEffect(() => {
-    refreshData();
-    const interval = setInterval(refreshData, 5000); // Poll every 5s
+    loadData();
+    const interval = setInterval(loadData, 5000); // Polling for updates
     return () => clearInterval(interval);
-  }, []);
+  }, [loadData]);
 
-  // Auto-award Cron (Simulated) - Check every 5s
+  // --- AUTO AWARD LOGIC ---
   useEffect(() => {
-      const checkAutoAward = async () => {
-          const currentTasks = await fakeApi.readTasks();
+      const interval = setInterval(() => {
           let changed = false;
-          const now = new Date().getTime();
-
-          const updatedTasks = currentTasks.map(t => {
+          const newTasks = tasks.map(t => {
+              // Check 24h timeout for Open tasks
               if (t.status === 'open' && t.biddingStartedAt && t.bids.length > 0) {
-                  const deadline = new Date(t.biddingStartedAt).getTime() + 24 * 60 * 60 * 1000; // 24h
-                  if (now > deadline) {
-                      // Time's up! Award to lowest bidder
+                  const endTime = new Date(t.biddingStartedAt).getTime() + 24 * 60 * 60 * 1000;
+                  const now = new Date().getTime();
+                  
+                  if (now > endTime) {
+                      // Time is up! Auto-award to lowest bidder
                       const lowestBid = t.bids.reduce((min, b) => b.amount < min.amount ? b : min, t.bids[0]);
-                      changed = true;
-                      // Notify
-                      notify([lowestBid.by], "Tâche attribuée", `Bravo, vous avez remporté la tâche "${t.title}" !`);
-                      notify(['council', 'admin'], "Attribution automatique", `La tâche "${t.title}" a été attribuée à ${lowestBid.by}.`);
                       
+                      // Send emails
+                      notify([lowestBid.by], "Félicitations ! Tâche attribuée", `Vous avez remporté la tâche "${t.title}" pour ${lowestBid.amount}€.`);
+                      const councilEmails = getEmailsByRole(['council', 'admin']);
+                      notify(councilEmails, "Attribution automatique", `La tâche "${t.title}" a été attribuée à ${lowestBid.by}.`);
+
+                      changed = true;
                       return {
                           ...t,
                           status: 'awarded',
@@ -600,441 +608,467 @@ function Dashboard({ me, onLogout }: { me: User, onLogout: () => void }) {
           });
 
           if (changed) {
-              await fakeApi.writeTasks(updatedTasks);
-              setTasks(updatedTasks);
+              setTasks(newTasks);
+              fakeApi.writeTasks(newTasks);
           }
-      };
-      const timer = setInterval(checkAutoAward, 5000);
-      return () => clearInterval(timer);
-  }, []);
 
-  // --- ACTIONS ---
+      }, 5000); 
+      return () => clearInterval(interval);
+  }, [tasks]);
 
-  const notify = async (recipients: string[], subject: string, message: string) => {
-    // Visual notification
-    addToast(`📧 Envoi Email`, `À: ${recipients.join(', ')} - ${subject}`, 'info');
-    
-    // Real API call (Backend)
-    // Map roles to emails if needed, but here we assume recipients are emails or role-keywords handled by backend or simple simulation
-    // For this prototype, if recipient is a role, we pick actual emails from usersMap keys if we had full user objects, 
-    // but for now we just send the role string to the API which acts as a placeholder or actual distribution list.
-    try {
-        await fetch('/api/send-email', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ to: recipients, subject, html: `<p>${message}</p>` })
-        });
-    } catch (e) {
-        console.error("Failed to send email", e);
-    }
-  };
 
-  const handleCreateTask = async (t: Partial<Task>) => {
-    setIsSubmitting(true);
+  // --- Handlers ---
+
+  const handleCreateTask = async (taskData: Partial<Task>) => {
     const newTask: Task = {
       id: Math.random().toString(36).substr(2, 9),
-      title: t.title!,
-      category: t.category!,
-      scope: t.scope!,
-      details: t.details || "",
-      location: t.location!,
-      startingPrice: t.startingPrice!,
-      warrantyDays: t.warrantyDays!,
-      status: 'pending',
-      createdBy: me.email,
+      title: taskData.title!,
+      category: taskData.category!,
+      scope: taskData.scope!,
+      details: taskData.details || "",
+      location: taskData.location!,
+      startingPrice: taskData.startingPrice!,
+      warrantyDays: taskData.warrantyDays || 0,
+      status: 'pending', // Admin tasks are now also pending by default, forcing a conscious "force validate" action
+      createdBy: user.email,
       createdAt: new Date().toISOString(),
       bids: [],
       ratings: [],
       approvals: [],
       rejections: [],
-      photo: t.photo
+      photo: taskData.photo
     };
 
-    // If Admin/Council creates it, they auto-approve it
-    if (me.role === 'admin' || me.role === 'council') {
-        newTask.approvals.push({ by: me.email, at: new Date().toISOString() });
+    // Auto-approve for council members creating tasks
+    if (user.role === 'council' || user.role === 'admin') {
+        newTask.approvals.push({ by: user.email, at: new Date().toISOString() });
     }
 
-    // Admin-created tasks are NOT auto-opened anymore (as requested), 
-    // they go to pending so Admin can choose to "Force Validate" manually or let CS vote.
-
-    await fakeApi.writeTasks([...tasks, newTask]);
-    await refreshData();
-    addToast("Succès", "Votre demande a été créée et envoyée pour validation.", "success");
-    
-    notify(['council', 'admin'], "Nouvelle tâche à valider", `Une nouvelle tâche "${newTask.title}" est en attente.`);
-    
-    setIsSubmitting(false);
-  };
-
-  const handleBid = async (taskId: string, bid: Omit<Bid, 'by' | 'at'>) => {
-    const updatedTasks = tasks.map(t => {
-      if (t.id === taskId) {
-        // Check rules: 1 bid per user max, unless they were the first bidder (allow 2nd)
-        const myBids = t.bids.filter(b => b.by === me.email);
-        const isFirstBidder = t.bids.length > 0 && t.bids[0].by === me.email;
-        
-        if (isFirstBidder) {
-            if (myBids.length >= 2) throw new Error("Vous avez déjà utilisé vos 2 offres autorisées (Bonus 1er enchérisseur).");
-        } else {
-            if (myBids.length >= 1) throw new Error("Une seule offre autorisée par copropriétaire.");
-        }
-
-        // Start Countdown if it's the VERY first bid overall
-        let biddingStart = t.biddingStartedAt;
-        if (t.bids.length === 0) {
-             biddingStart = new Date().toISOString();
-        }
-
-        const newBid: Bid = { ...bid, by: me.email, at: new Date().toISOString() };
-        
-        // Notifications
-        notify(t.bids.map(b => b.by).concat([t.createdBy, 'council']), "Nouvelle enchère", `Une nouvelle offre de ${bid.amount}€ a été faite sur "${t.title}".`);
-
-        return { ...t, bids: [...t.bids, newBid], biddingStartedAt: biddingStart };
-      }
-      return t;
-    });
-    
-    try {
-        await fakeApi.writeTasks(updatedTasks);
-        refreshData();
-        addToast("Offre enregistrée", `Vous vous êtes positionné à ${bid.amount}€`, "success");
-    } catch (e: any) {
-        addToast("Erreur", e.message, "warning");
-    }
-  };
-
-  const handleAward = async (taskId: string) => {
-    const t = tasks.find(x => x.id === taskId);
-    if (!t) return;
-    
-    // Admin can force award anytime. Creator must wait for timer.
-    // Logic is handled in UI enablement, here we just execute.
-
-    const lowestBid = t.bids.reduce((min, b) => b.amount < min.amount ? b : min, t.bids[0]);
-    const updatedTasks = tasks.map(task => 
-      task.id === taskId ? { ...task, status: 'awarded' as const, awardedTo: lowestBid.by, awardedAmount: lowestBid.amount } : task
-    );
-    await fakeApi.writeTasks(updatedTasks);
-    refreshData();
-    addToast("Attribution effectuée", `Tâche attribuée à ${lowestBid.by}`, "success");
-    notify([lowestBid.by], "Félicitations", `La tâche "${t.title}" vous a été attribuée.`);
-  };
-
-  // Step 1: Worker requests verification
-  const handleRequestVerification = async (taskId: string) => {
-      const updatedTasks = tasks.map(t => t.id === taskId ? { ...t, status: 'verification' as const } : t);
-      await fakeApi.writeTasks(updatedTasks);
-      refreshData();
-      addToast("Envoyé pour vérification", "Le Conseil Syndical a été notifié.", "info");
-      notify(['council', 'admin'], "Vérification demandée", `Le travail sur "${updatedTasks.find(t=>t.id===taskId)?.title}" est terminé. Merci de vérifier.`);
-  };
-
-  // Step 2a: CS Rejects work
-  const handleRejectWork = async (taskId: string) => {
-      const t = tasks.find(x => x.id === taskId);
-      if (!t) return;
-      const updatedTasks = tasks.map(task => task.id === taskId ? { ...task, status: 'awarded' as const } : task);
-      await fakeApi.writeTasks(updatedTasks);
-      refreshData();
-      addToast("Travail refusé", "La tâche est retournée au copropriétaire.", "warning");
-      if (t.awardedTo) notify([t.awardedTo], "Travail refusé", `Votre travail sur "${t.title}" a été jugé incomplet. Merci de le reprendre.`);
-  };
-
-  // Step 2b: CS Validates work (Completion)
-  const handleComplete = async (taskId: string) => {
-    const t = tasks.find(x => x.id === taskId);
-    if (!t || !t.awardedTo || !t.awardedAmount) return;
-
-    const updatedTasks = tasks.map(task => 
-      task.id === taskId ? { 
-          ...task, 
-          status: 'completed' as const, 
-          completionAt: new Date().toISOString(),
-          validatedBy: me.email // Record who validated it
-      } : task
-    );
-    
-    // Ledger Entry
-    const entry: LedgerEntry = {
-        taskId: t.id,
-        type: t.scope === 'copro' ? 'charge_credit' : 'apartment_payment',
-        payer: t.scope === 'copro' ? 'Copro' : t.createdBy,
-        payee: t.awardedTo,
-        amount: t.awardedAmount,
-        at: new Date().toISOString()
-    };
-
-    await fakeApi.writeTasks(updatedTasks);
-    const currentLedger = await fakeApi.readLedger();
-    await fakeApi.writeLedger([...currentLedger, entry]);
-    
-    refreshData();
-    addToast("Terminé", "Tâche clôturée et écriture comptable générée.", "success");
-    notify(['council', 'admin'], "Intervention validée", `La tâche "${t.title}" est terminée et validée.`);
+    const newTasks = [newTask, ...tasks];
+    setTasks(newTasks);
+    await fakeApi.writeTasks(newTasks);
+    addToast("Succès", "Tâche créée et soumise.", "success");
   };
 
   const handleApprove = async (taskId: string) => {
-      const updatedTasks = tasks.map(t => {
+      const newTasks = tasks.map(t => {
           if (t.id === taskId) {
-              const newApprovals = [...t.approvals, { by: me.email, at: new Date().toISOString() }];
-              // Admin force or enough votes
-              if (me.role === 'admin' || newApprovals.length >= COUNCIL_MIN_APPROVALS) {
-                   // Open the task
-                   notify(['owner'], "Nouvelle opportunité", `La tâche "${t.title}" est ouverte aux offres !`);
-                   return { ...t, status: 'open' as const, approvals: newApprovals };
+              const alreadyApproved = t.approvals.some(a => a.by === user.email);
+              // Admin force validation OR normal council vote
+              const forceValidate = user.role === 'admin';
+              
+              const newApprovals = alreadyApproved ? t.approvals : [...t.approvals, { by: user.email, at: new Date().toISOString() }];
+              
+              // Check if we reached threshold OR if admin forced it
+              if (newApprovals.length >= COUNCIL_MIN_APPROVALS || forceValidate) {
+                  notify(getEmailsByRole(['owner', 'council', 'admin']), "Nouvelle offre disponible", `La tâche "${t.title}" est ouverte aux offres !`);
+                  return { ...t, approvals: newApprovals, status: 'open' } as Task;
+              } else {
+                  return { ...t, approvals: newApprovals };
               }
-              return { ...t, approvals: newApprovals };
           }
           return t;
       });
-      await fakeApi.writeTasks(updatedTasks);
-      refreshData();
+      setTasks(newTasks);
+      await fakeApi.writeTasks(newTasks);
   };
 
   const handleReject = async (taskId: string) => {
-      const updatedTasks = tasks.map(t => t.id === taskId ? { ...t, status: 'rejected' as const, rejections: [...t.rejections, { by: me.email, at: new Date().toISOString() }] } : t);
-      await fakeApi.writeTasks(updatedTasks);
-      refreshData();
-      const t = tasks.find(x => x.id === taskId);
-      if (t) notify([t.createdBy], "Tâche refusée", `Votre demande "${t.title}" a été refusée.`);
-  };
-  
-  const handleDelete = async (taskId: string) => {
-      if (me.role !== 'admin') return; // Double security
-      if (!confirm("Êtes-vous sûr de vouloir supprimer cette tâche définitivement ?")) return;
-      const newTasks = tasks.filter(t => t.id !== taskId);
-      await fakeApi.writeTasks(newTasks);
-      refreshData();
-      addToast("Supprimé", "La tâche a été effacée.", "warning");
-  };
-
-  const handleDeleteLedgerEntry = async (idx: number) => {
-      if (me.role !== 'admin') return;
-      await fakeApi.deleteLedgerEntry(idx);
-      refreshData();
-      addToast("Supprimé", "Ligne comptable effacée.", "warning");
-  };
-
-  const handleRate = async (taskId: string, rating: Omit<Rating, 'at' | 'byHash'>) => {
-      const updatedTasks = tasks.map(t => {
+       const newTasks = tasks.map(t => {
           if (t.id === taskId) {
-              const newRating: Rating = { ...rating, at: new Date().toISOString(), byHash: me.id };
-              return { ...t, ratings: [...(t.ratings || []), newRating] };
+              return { ...t, status: 'rejected', rejections: [...t.rejections, { by: user.email, at: new Date().toISOString() }] } as Task;
           }
           return t;
       });
-      await fakeApi.writeTasks(updatedTasks);
-      refreshData();
+      setTasks(newTasks);
+      await fakeApi.writeTasks(newTasks);
+  };
+
+  const handleBid = async (taskId: string, bidData: Omit<Bid, 'by' | 'at'>) => {
+      const newTasks = tasks.map(t => {
+          if (t.id === taskId) {
+              const newBid: Bid = { ...bidData, by: user.email, at: new Date().toISOString() };
+              const updatedTask = { ...t, bids: [...t.bids, newBid] };
+              
+              // Start 24h timer if this is the FIRST bid
+              if (!updatedTask.biddingStartedAt) {
+                  updatedTask.biddingStartedAt = new Date().toISOString();
+              }
+              
+              notify(getEmailsByRole(['owner', 'council', 'admin']), "Nouvelle enchère", `Nouvelle offre de ${bidData.amount}€ sur "${t.title}".`);
+              return updatedTask;
+          }
+          return t;
+      });
+      setTasks(newTasks);
+      await fakeApi.writeTasks(newTasks);
+      addToast("Offre enregistrée", "Votre positionnement a été pris en compte.", "success");
+  };
+
+  const handleAward = async (taskId: string) => {
+      const newTasks = tasks.map(t => {
+          if (t.id === taskId) {
+              const lowestBid = t.bids.reduce((min, b) => b.amount < min.amount ? b : min, t.bids[0]);
+              notify([lowestBid.by], "Tâche attribuée", `Félicitations, vous avez remporté la tâche "${t.title}".`);
+              return { ...t, status: 'awarded', awardedTo: lowestBid.by, awardedAmount: lowestBid.amount } as Task;
+          }
+          return t;
+      });
+      setTasks(newTasks);
+      await fakeApi.writeTasks(newTasks);
+  };
+
+  // --- Workflow: Verification & Completion ---
+
+  const handleRequestVerification = async (taskId: string) => {
+      const newTasks = tasks.map(t => {
+          if (t.id === taskId) {
+              notify(getEmailsByRole(['council', 'admin']), "Vérification demandée", `Le copropriétaire a terminé "${t.title}". Merci de vérifier.`);
+              return { ...t, status: 'verification' } as Task;
+          }
+          return t;
+      });
+      setTasks(newTasks);
+      await fakeApi.writeTasks(newTasks);
+  };
+
+  const handleRejectWork = async (taskId: string) => {
+      const newTasks = tasks.map(t => {
+          if (t.id === taskId) {
+               notify([t.awardedTo!], "Travail refusé", `Le CS a refusé votre travail sur "${t.title}". Merci de corriger.`);
+               return { ...t, status: 'awarded' } as Task; // Back to awarded
+          }
+          return t;
+      });
+      setTasks(newTasks);
+      await fakeApi.writeTasks(newTasks);
+  };
+
+  const handleComplete = async (taskId: string) => {
+      // 1. Update Task
+      let amount = 0;
+      let payer = "";
+      let payee = "";
+      let taskTitle = "";
+      let taskCreator = "";
+      let type: "charge_credit" | "apartment_payment" = "charge_credit";
+
+      const newTasks = tasks.map(t => {
+          if (t.id === taskId) {
+              amount = t.awardedAmount || 0;
+              payee = t.awardedTo || "";
+              payer = t.scope === 'copro' ? 'Copro' : t.createdBy;
+              taskTitle = t.title;
+              taskCreator = t.createdBy;
+              type = t.scope === 'copro' ? 'charge_credit' : 'apartment_payment';
+              
+              return { 
+                  ...t, 
+                  status: 'completed', 
+                  completionAt: new Date().toISOString(),
+                  validatedBy: user.email // Track who validated
+              } as Task;
+          }
+          return t;
+      });
+      setTasks(newTasks);
+      await fakeApi.writeTasks(newTasks);
+
+      // 2. Add to Ledger
+      const newEntry: LedgerEntry = {
+          taskId,
+          type,
+          payer,
+          payee,
+          amount,
+          at: new Date().toISOString(),
+          taskTitle: taskTitle,    // NEW: Add details for ledger visibility
+          taskCreator: taskCreator // NEW
+      };
+      const newLedger = [...ledger, newEntry];
+      setLedger(newLedger);
+      await fakeApi.writeLedger(newLedger);
+
+      notify([payee], "Paiement validé", `Votre travail sur "${taskTitle}" a été validé. ${amount}€ crédités.`);
+  };
+
+  const handleRate = async (taskId: string, rating: Omit<Rating, 'at' | 'byHash'>) => {
+      const newTasks = tasks.map(t => {
+          if (t.id === taskId) {
+              const newRating = { ...rating, at: new Date().toISOString(), byHash: user.id };
+              return { ...t, ratings: [...(t.ratings || []), newRating] } as Task;
+          }
+          return t;
+      });
+      setTasks(newTasks);
+      await fakeApi.writeTasks(newTasks);
       addToast("Merci", "Votre avis a été enregistré.", "success");
   };
 
-  const handleDeleteRating = async (taskId: string, index: number) => {
-      if (me.role !== 'admin' && me.role !== 'council') return;
-      if (!confirm("Supprimer ce commentaire ?")) return;
-      await fakeApi.deleteRating(taskId, index);
-      refreshData();
-      addToast("Supprimé", "Le commentaire a été retiré.", "info");
+  const handleDeleteRating = async (taskId: string, ratingIndex: number) => {
+      await fakeApi.deleteRating(taskId, ratingIndex);
+      loadData();
+      addToast("Supprimé", "Le commentaire a été supprimé.", "info");
+  }
+
+  const handleDelete = async (taskId: string) => {
+      if (user.role !== 'admin') return; // Security
+      if (confirm("Êtes-vous sûr de vouloir supprimer cette tâche ?")) {
+          const newTasks = tasks.filter(t => t.id !== taskId);
+          setTasks(newTasks);
+          await fakeApi.writeTasks(newTasks);
+          addToast("Supprimé", "Tâche supprimée.", "info");
+      }
   };
+  
+  const handleDeleteLedgerEntry = async (idx: number) => {
+      if (user.role !== 'admin') return;
+      if (confirm("Supprimer cette écriture comptable ?")) {
+          await fakeApi.deleteLedgerEntry(idx);
+          loadData();
+      }
+  }
 
-  // --- VIEWS ---
+  // --- User Validation Handlers ---
+  const handleApproveUser = async (email: string) => {
+      await fakeApi.approveUser(email);
+      setPendingUsers(prev => prev.filter(u => u.email !== email));
+      notify([email], "Compte validé", "Bienvenue sur CoproSmart ! Votre compte a été validé par le Conseil Syndical.");
+      loadData();
+  };
+  const handleRejectUser = async (email: string) => {
+      await fakeApi.rejectUser(email);
+      setPendingUsers(prev => prev.filter(u => u.email !== email));
+      loadData();
+  };
+  const handleBanUser = async (email: string) => {
+      if (confirm(`Bannir ${email} ?`)) {
+          await fakeApi.updateUserStatus(email, 'deleted');
+          loadData();
+      }
+  }
+  const handleRestoreUser = async (email: string) => {
+      await fakeApi.updateUserStatus(email, 'active');
+      loadData();
+  }
+  const handleUpdateUser = async (email: string, data: any) => {
+      await fakeApi.updateUser(email, data);
+      loadData();
+  }
 
-  const pendingTasks = tasks.filter(t => t.status === 'pending');
-  const openTasks = tasks.filter(t => t.status === 'open');
-  // "In Progress" = Awarded OR Verification
-  const activeTasks = tasks.filter(t => t.status === 'awarded' || t.status === 'verification');
-  const completedTasks = tasks.filter(t => t.status === 'completed');
 
-  const canValidate = me.role === 'admin' || me.role === 'council';
+  // --- View Logic ---
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-200 font-sans selection:bg-indigo-500/30">
-      <Toaster toasts={toasts} onDismiss={id => setToasts(prev => prev.filter(t => t.id !== id))} />
-      
-      {/* Sticky Header */}
-      <header className="sticky top-0 z-40 w-full bg-slate-900/90 backdrop-blur-md border-b border-slate-700 shadow-sm">
-          <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
-             {/* Clickable Logo */}
-             <div onClick={() => setView('home')} className="cursor-pointer group">
-               <h1 className="text-2xl font-extrabold text-white tracking-tight group-hover:text-indigo-400 transition-colors">CoproSmart</h1>
-               <p className="text-xs text-slate-400 -mt-1">Gestion Collaborative</p>
-             </div>
+    <div className="min-h-screen bg-slate-900 text-slate-200 font-sans selection:bg-indigo-500/30 flex flex-col">
+      {/* --- Sticky Header --- */}
+      <header className="sticky top-0 z-40 w-full backdrop-blur-lg bg-slate-900/80 border-b border-slate-700">
+        <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
+             <button onClick={() => setView('home')} className="flex flex-col items-start focus:outline-none group">
+                <h1 className="text-2xl font-black tracking-tighter text-white group-hover:text-indigo-400 transition-colors">
+                    CoproSmart
+                </h1>
+                <span className="text-[10px] font-medium text-indigo-400 uppercase tracking-widest">Gestion Collaborative</span>
+            </button>
+            
+            {/* Navigation Links */}
+            <nav className="hidden md:flex items-center gap-6">
+                <button onClick={() => setView('home')} className={`text-sm font-medium transition-colors ${view === 'home' ? 'text-white' : 'text-slate-400 hover:text-white'}`}>Accueil</button>
+                <button onClick={() => setView('directory')} className={`text-sm font-medium transition-colors ${view === 'directory' ? 'text-white' : 'text-slate-400 hover:text-white'}`}>👥 Annuaire</button>
+                {(user.role === 'admin' || user.role === 'council') && (
+                    <button onClick={() => setView('ledger')} className={`text-sm font-medium transition-colors ${view === 'ledger' ? 'text-white' : 'text-slate-400 hover:text-white'}`}>📒 Écritures</button>
+                )}
+            </nav>
 
-             <div className="flex items-center gap-4">
-                 {/* Navigation */}
-                 <nav className="hidden md:flex items-center gap-1 mr-4">
-                   <Button variant={view === 'home' ? 'secondary' : 'ghost'} onClick={() => setView('home')} size="sm">
-                     🏠 Accueil
-                   </Button>
-                   <Button variant={view === 'directory' ? 'secondary' : 'ghost'} onClick={() => setView('directory')} size="sm">
-                     👥 Annuaire
-                   </Button>
-                   {(me.role === 'admin' || me.role === 'council') && (
-                     <Button variant={view === 'ledger' ? 'secondary' : 'ghost'} onClick={() => setView('ledger')} size="sm">
-                       📒 Écritures
-                     </Button>
-                   )}
-                </nav>
-
-                {/* User Info */}
+            <div className="flex items-center gap-4">
                 <div className="text-right hidden sm:block">
-                    <div className="text-sm font-bold text-white">{me.firstName} {me.lastName.toUpperCase()}</div>
-                    <div className="text-xs text-slate-400">{me.email}</div>
+                    <div className="text-sm font-bold text-white">{user.firstName} {user.lastName.toUpperCase()}</div>
+                    <div className="text-xs text-slate-400">{user.email}</div>
                 </div>
-                <Button variant="outline" size="sm" onClick={onLogout} className="text-xs border-slate-600">Déconnexion</Button>
-             </div>
-          </div>
-          
-          {/* Mobile Nav (Simplified) */}
-          <div className="md:hidden flex justify-around border-t border-slate-800 p-2 bg-slate-900">
-               <button onClick={() => setView('home')} className={`text-xs font-bold ${view === 'home' ? 'text-indigo-400' : 'text-slate-500'}`}>Accueil</button>
-               <button onClick={() => setView('directory')} className={`text-xs font-bold ${view === 'directory' ? 'text-indigo-400' : 'text-slate-500'}`}>Annuaire</button>
-               {(me.role === 'admin' || me.role === 'council') && (
-                   <button onClick={() => setView('ledger')} className={`text-xs font-bold ${view === 'ledger' ? 'text-indigo-400' : 'text-slate-500'}`}>Écritures</button>
-               )}
-          </div>
+                <Button variant="ghost" size="sm" onClick={onLogout} title="Déconnexion">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-rose-400">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9" />
+                    </svg>
+                </Button>
+            </div>
+        </div>
       </header>
 
-      <main className="max-w-5xl mx-auto p-4 pb-20 space-y-8">
+      {/* --- Mobile Navigation Bar (Bottom) --- */}
+       <div className="md:hidden fixed bottom-0 left-0 w-full bg-slate-900 border-t border-slate-700 flex justify-around py-3 z-40 pb-safe">
+           <button onClick={() => setView('home')} className={`flex flex-col items-center ${view === 'home' ? 'text-indigo-400' : 'text-slate-500'}`}>
+               <span className="text-xl">🏠</span><span className="text-[10px]">Accueil</span>
+           </button>
+           <button onClick={() => setView('directory')} className={`flex flex-col items-center ${view === 'directory' ? 'text-indigo-400' : 'text-slate-500'}`}>
+               <span className="text-xl">👥</span><span className="text-[10px]">Annuaire</span>
+           </button>
+            {(user.role === 'admin' || user.role === 'council') && (
+                 <button onClick={() => setView('ledger')} className={`flex flex-col items-center ${view === 'ledger' ? 'text-indigo-400' : 'text-slate-500'}`}>
+                    <span className="text-xl">📒</span><span className="text-[10px]">Compta</span>
+                </button>
+            )}
+       </div>
+
+
+      <main className="flex-grow max-w-5xl mx-auto w-full p-4 pb-24 md:pb-8 space-y-8">
         
-        {view === 'home' && (
-            <>
-                {/* Validation Queue for Admin/CS + View Only for Owners */}
-                {pendingTasks.length > 0 && (
-                     <Section title="⏳ En attente de validation" color="amber">
-                        <div className="grid gap-4 md:grid-cols-2">
-                            {pendingTasks.map(t => (
-                                <TaskCard 
-                                    key={t.id} task={t} me={me} usersMap={usersMap}
-                                    onBid={() => {}} onAward={() => {}} onComplete={() => {}} onRate={() => {}} onPayApartment={() => {}}
-                                    onApprove={canValidate ? () => handleApprove(t.id) : undefined}
-                                    onReject={canValidate ? () => handleReject(t.id) : undefined}
-                                    onDelete={() => handleDelete(t.id)}
-                                    canDelete={me.role === 'admin'}
-                                />
-                            ))}
-                        </div>
-                     </Section>
-                )}
-
-                {/* User Approvals (CS Only) */}
-                {(me.role === 'admin' || me.role === 'council') && (
-                    <UserValidationQueue 
-                        onApprove={fakeApi.approveUser} 
-                        onReject={fakeApi.rejectUser} 
-                    />
-                )}
-
-                {/* Create Task */}
-                <Section title="✨ Nouvelle tâche" color="indigo">
-                   <CreateTaskForm onCreate={handleCreateTask} isSubmitting={isSubmitting} />
-                </Section>
-
-                {/* Open Tasks */}
-                <Section title="📢 Offres ouvertes" color="indigo">
-                    {openTasks.length === 0 ? <p className="text-slate-500 italic">Aucune offre en cours.</p> : (
-                        <div className="grid gap-4 md:grid-cols-2">
-                            {openTasks.map(t => (
-                                <TaskCard 
-                                    key={t.id} task={t} me={me} usersMap={usersMap}
-                                    onBid={(b) => handleBid(t.id, b)}
-                                    onAward={() => handleAward(t.id)}
-                                    onComplete={() => handleComplete(t.id)}
-                                    onRate={(r) => handleRate(t.id, r)}
-                                    onPayApartment={() => {}}
-                                    onDelete={() => handleDelete(t.id)}
-                                    canDelete={me.role === 'admin'}
-                                />
-                            ))}
-                        </div>
-                    )}
-                </Section>
-
-                {/* Active Tasks (Awarded + Verification) - Visible to ALL */}
-                <Section title="🏗️ Travaux en cours" color="sky">
-                    {activeTasks.length === 0 ? <p className="text-slate-500 italic">Aucun chantier en cours.</p> : (
-                        <div className="grid gap-4 md:grid-cols-2">
-                            {activeTasks.map(t => (
-                                <TaskCard 
-                                    key={t.id} task={t} me={me} usersMap={usersMap}
-                                    onBid={() => {}}
-                                    onAward={() => {}}
-                                    onComplete={() => handleComplete(t.id)}
-                                    onRequestVerification={() => handleRequestVerification(t.id)}
-                                    onRejectWork={() => handleRejectWork(t.id)}
-                                    onRate={() => {}}
-                                    onPayApartment={() => {}}
-                                    onDelete={() => handleDelete(t.id)}
-                                    canDelete={me.role === 'admin'}
-                                />
-                            ))}
-                        </div>
-                    )}
-                </Section>
-
-                {/* Completed History */}
-                <Section title="✅ Historique terminé" color="emerald">
-                    <div className="grid gap-4 md:grid-cols-2 opacity-80 hover:opacity-100 transition-opacity">
-                         {completedTasks.slice(0, 10).map(t => (
-                                <TaskCard 
-                                    key={t.id} task={t} me={me} usersMap={usersMap}
-                                    onBid={() => {}}
-                                    onAward={() => {}}
-                                    onComplete={() => {}}
-                                    onRate={(r) => handleRate(t.id, r)}
-                                    onDeleteRating={handleDeleteRating}
-                                    onPayApartment={() => {}}
-                                    onDelete={() => handleDelete(t.id)}
-                                    canDelete={me.role === 'admin'}
-                                />
-                         ))}
-                    </div>
-                </Section>
-            </>
+        {/* USER VALIDATION QUEUE (Always visible if pending users exist) */}
+        {(user.role === 'council' || user.role === 'admin') && pendingUsers.length > 0 && (
+            <UserValidationQueue pendingUsers={pendingUsers} onApprove={handleApproveUser} onReject={handleRejectUser} />
         )}
 
         {view === 'directory' && (
             <UserDirectory 
-                usersMap={usersMap} 
-                currentUser={me} 
-                onUpdateUserStatus={refreshData} 
-                onUpdateUser={refreshData} 
+                users={directoryUsers} 
+                tasks={tasks}
+                me={user} 
+                onBan={handleBanUser} 
+                onRestore={handleRestoreUser} 
+                onUpdateUser={handleUpdateUser}
                 onDeleteRating={handleDeleteRating}
             />
         )}
 
-        {view === 'ledger' && (me.role === 'admin' || me.role === 'council') && (
-             <Section title="📒 Journal des écritures" color="fuchsia">
-                <Ledger isAdmin={me.role === 'admin'} onDeleteEntry={handleDeleteLedgerEntry} usersMap={usersMap} />
-             </Section>
+        {view === 'ledger' && (
+            <Ledger entries={ledger} usersMap={usersMap} onDelete={handleDeleteLedgerEntry} isAdmin={user.role === 'admin'} />
+        )}
+
+        {view === 'home' && (
+            <>
+                {/* 1. NEW TASK SECTION */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div className="lg:col-span-1">
+                        <Card className="border-indigo-500/30 bg-indigo-900/10 sticky top-24">
+                            <CardHeader>
+                                <CardTitle className="text-indigo-300 text-base">✨ Nouvelle tâche</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <CreateTaskForm me={user} onSubmit={handleCreateTask} />
+                            </CardContent>
+                        </Card>
+                    </div>
+
+                    <div className="lg:col-span-2 space-y-8">
+                        
+                         {/* 2. PENDING VALIDATION (Visible to all, Actionable by CS/Admin) */}
+                        {tasks.some(t => t.status === 'pending') && (
+                            <Section title="⏳ En attente de validation">
+                                {tasks.filter(t => t.status === 'pending').map(t => (
+                                    <TaskCard 
+                                        key={t.id} task={t} me={user} usersMap={usersMap}
+                                        onBid={() => {}} onAward={() => {}} onComplete={() => {}} onRate={() => {}} onPayApartment={() => {}} onDelete={() => handleDelete(t.id)}
+                                        canDelete={user.role === 'admin'}
+                                        onApprove={() => handleApprove(t.id)}
+                                        onReject={() => handleReject(t.id)}
+                                    />
+                                ))}
+                            </Section>
+                        )}
+
+                        {/* 3. OPEN OFFERS */}
+                        <Section title="🔥 Offres ouvertes">
+                             {tasks.filter(t => t.status === 'open').length === 0 ? (
+                                <p className="text-slate-500 italic">Aucune offre en cours.</p>
+                             ) : (
+                                tasks.filter(t => t.status === 'open').map(t => (
+                                    <TaskCard 
+                                        key={t.id} task={t} me={user} usersMap={usersMap}
+                                        onBid={(bid) => handleBid(t.id, bid)} 
+                                        onAward={() => handleAward(t.id)} 
+                                        onComplete={() => {}} 
+                                        onRate={() => {}} onPayApartment={() => {}} onDelete={() => handleDelete(t.id)}
+                                        canDelete={user.role === 'admin'}
+                                    />
+                                ))
+                             )}
+                        </Section>
+
+                        {/* 4. WORKS IN PROGRESS (Awarded & Verification) */}
+                        <Section title="🏗️ Travaux en cours">
+                            {tasks.filter(t => t.status === 'awarded' || t.status === 'verification').length === 0 ? (
+                                <p className="text-slate-500 italic">Aucun chantier en cours.</p>
+                             ) : (
+                                tasks.filter(t => t.status === 'awarded' || t.status === 'verification').map(t => (
+                                    <TaskCard 
+                                        key={t.id} task={t} me={user} usersMap={usersMap}
+                                        onBid={() => {}} onAward={() => {}} 
+                                        onComplete={() => handleComplete(t.id)} 
+                                        onRate={() => {}} onPayApartment={() => {}} onDelete={() => handleDelete(t.id)}
+                                        canDelete={user.role === 'admin'}
+                                        onRequestVerification={() => handleRequestVerification(t.id)}
+                                        onRejectWork={() => handleRejectWork(t.id)}
+                                    />
+                                ))
+                             )}
+                        </Section>
+
+                         {/* 5. COMPLETED HISTORY */}
+                        <Section title="✅ Historique terminé">
+                            {tasks.filter(t => t.status === 'completed').sort((a,b) => new Date(b.completionAt!).getTime() - new Date(a.completionAt!).getTime()).map(t => (
+                                <TaskCard 
+                                    key={t.id} task={t} me={user} usersMap={usersMap}
+                                    onBid={() => {}} onAward={() => {}} onComplete={() => {}} 
+                                    onRate={(r) => handleRate(t.id, r)} 
+                                    onDeleteRating={handleDeleteRating}
+                                    onPayApartment={() => {}} onDelete={() => handleDelete(t.id)}
+                                    canDelete={user.role === 'admin'}
+                                />
+                            ))}
+                        </Section>
+                    </div>
+                </div>
+            </>
         )}
 
       </main>
-      
-      <footer className="border-t border-slate-800 mt-12 py-8 text-center text-slate-500 text-sm bg-slate-900">
-        <p>CoproSmart v0.1.0 — Gestion collaborative de résidence</p>
+
+      {/* --- Footer --- */}
+      <footer className="border-t border-slate-800 bg-slate-900/50 py-8 mt-auto">
+          <div className="max-w-4xl mx-auto px-4 text-center space-y-4">
+              <div className="text-indigo-500 font-black tracking-tight text-lg">CoproSmart</div>
+              <p className="text-slate-400 text-sm leading-relaxed">
+                CoproSmart permet aux copropriétaires de réduire collectivement les charges communes en réalisant eux-mêmes les petits travaux des parties communes : une ampoule à changer, une porte à régler, des encombrants à évacuer… Les charges diminuent pour tous, et celui qui intervient bénéficie d’un crédit supplémentaire sur ses propres charges.
+              </p>
+              <p className="text-slate-300 font-medium">Simple, local, gagnant-gagnant.</p>
+              <div className="text-xs text-slate-600 pt-4">
+                  v0.1.0 • Résidence Watteau
+              </div>
+          </div>
       </footer>
+      
+      <ToastContainer toasts={toasts} onClose={(id) => setToasts(prev => prev.filter(t => t.id !== id))} />
     </div>
   );
 }
 
 export default function App() {
   const { user, setUser } = useAuth();
-  
-  return (
-    <div className="bg-slate-900 min-h-screen">
-      {!user ? (
-        <div className="min-h-screen flex flex-col items-center justify-center p-4 pt-10 overflow-y-auto items-start">
-            <div className="mb-8 text-center">
-                <h1 className="text-4xl font-extrabold text-white tracking-tight mb-2">CoproSmart</h1>
-                <p className="text-lg text-indigo-300 font-medium">Gestion Collaborative</p>
-            </div>
-            <LoginCard onLogin={setUser} />
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-4 relative overflow-hidden pt-10 overflow-y-auto items-start">
+        {/* Background decoration */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+             <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] rounded-full bg-indigo-900/20 blur-[100px]"></div>
+             <div className="absolute top-[20%] right-[10%] w-[30%] h-[30%] rounded-full bg-rose-900/20 blur-[80px]"></div>
         </div>
-      ) : (
-        <Dashboard me={user} onLogout={() => { fakeApi.logout(); setUser(null); }} />
-      )}
-    </div>
-  );
+
+        <div className="w-full max-w-md z-10 mb-8 text-center">
+            <h1 className="text-4xl font-black tracking-tighter text-white mb-2">CoproSmart</h1>
+            <p className="text-lg text-indigo-300 font-medium">On réduit les charges de votre copropriété.</p>
+            <p className="text-slate-400">C'est simple, local, gagnant-gagnant.</p>
+        </div>
+        
+        <div className="w-full max-w-md z-10">
+             <LoginCard onLogin={setUser} />
+        </div>
+        
+        <div className="mt-8 text-center text-xs text-slate-600 z-10 max-w-sm">
+            Une initiative pour valoriser le travail local et réduire les coûts de gestion.
+        </div>
+      </div>
+    );
+  }
+
+  return <Dashboard user={user} onLogout={() => setUser(null)} />;
 }

@@ -83,4 +83,6 @@ export interface LedgerEntry {
   payee: string;
   amount: number;
   at: string;
+  taskTitle?: string;
+  taskCreator?: string;
 }

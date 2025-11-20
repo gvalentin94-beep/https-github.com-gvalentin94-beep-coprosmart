@@ -74,11 +74,12 @@ function TaskPreviewModal({ task, onConfirm, onCancel }: { task: Partial<Task>; 
                 <CardContent className="space-y-6 pt-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
                         <div><span className="text-slate-500 uppercase text-xs font-bold tracking-wider">Titre</span> <div className="font-medium text-white text-lg">{task.title}</div></div>
-                        <div><span className="text-slate-500 uppercase text-xs font-bold tracking-wider">Catégorie</span> <div className="font-medium text-white">{catLabel}</div></div>
-
-                        <div><span className="text-slate-500 uppercase text-xs font-bold tracking-wider">Concerne</span> <div className="font-medium text-white flex items-center gap-2">{task.scope === 'copro' ? '🏢' : '🏠'} {scopeLabel}</div></div>
-                        <div><span className="text-slate-500 uppercase text-xs font-bold tracking-wider">Prix départ</span> <div className="font-mono text-xl text-indigo-400 font-bold">{task.startingPrice} €</div></div>
                         
+                         {/* REORDERED: Category & Scope right below Title */}
+                        <div><span className="text-slate-500 uppercase text-xs font-bold tracking-wider">Catégorie</span> <div className="font-medium text-white">{catLabel}</div></div>
+                        <div><span className="text-slate-500 uppercase text-xs font-bold tracking-wider">Concerne</span> <div className="font-medium text-white flex items-center gap-2">{task.scope === 'copro' ? '🏢' : '🏠'} {scopeLabel}</div></div>
+                        
+                        <div><span className="text-slate-500 uppercase text-xs font-bold tracking-wider">Prix départ</span> <div className="font-mono text-xl text-indigo-400 font-bold">{task.startingPrice} €</div></div>
                         <div><span className="text-slate-500 uppercase text-xs font-bold tracking-wider">Emplacement</span> <div className="font-medium text-white">{task.location}</div></div>
                         <div><span className="text-slate-500 uppercase text-xs font-bold tracking-wider">Garantie</span> <div className="font-medium text-white">{task.warrantyDays} jours</div></div>
                     </div>
@@ -372,7 +373,7 @@ function CreateTaskPage({ me, onSubmit, onCancel }: { me: User, onSubmit: (t: Pa
 
     const handlePreview = () => {
         if (!title.trim() || !location || !startingPrice || !category || !scope) {
-            alert("Merci de remplir tous les champs obligatoires (Titre, Catégorie, Type, Emplacement, Prix).");
+            alert("Merci de remplir tous les champs obligatoires (Titre, Catégorie, Concerne, Emplacement, Prix).");
             return;
         }
         const price = Number(startingPrice);
@@ -828,11 +829,9 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
                 <h1 className="text-2xl md:text-3xl font-black tracking-tighter text-white leading-none">
                     CoproSmart.
                 </h1>
-                <div className="w-full flex justify-between text-[0.65rem] md:text-[0.8rem] font-bold text-white tracking-wide leading-none mt-1">
-                    <span>Simple.</span>
-                    <span>Local.</span>
-                    <span>Gagnant-gagnant.</span>
-                </div>
+                <span className="text-xs font-medium text-white/90 mt-0.5 tracking-wide leading-none">
+                    Simple. Local. Gagnant-gagnant.
+                </span>
             </button>
             
             {/* Create Task Button - Moved to Right of Logo */}
@@ -1037,9 +1036,9 @@ export default function App() {
             <h1 className="text-6xl md:text-7xl font-black tracking-tighter text-white leading-none w-full text-center">
                 CoproSmart.
             </h1>
-            <div className="w-full flex justify-between px-1 text-lg md:text-xl font-bold text-white mt-2">
-                 <span>On</span> <span>réduit</span> <span>nos</span> <span>charges</span> <span>de</span> <span>copropriété.</span>
-            </div>
+            <p className="text-lg md:text-xl font-medium text-white mt-2 text-center">
+                On réduit nos charges de copropriété.
+            </p>
         </div>
         
         <div className="w-full max-w-md z-10 mx-auto shadow-2xl shadow-indigo-900/20 rounded-2xl">

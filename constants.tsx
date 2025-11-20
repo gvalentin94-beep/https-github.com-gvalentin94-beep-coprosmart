@@ -1,3 +1,4 @@
+
 import React from 'react';
 
 export const COUNCIL_MIN_APPROVALS = 2;
@@ -11,16 +12,17 @@ export const ROLES = [
 
 export const LOCATIONS = ["Bâtiment A", "Bâtiment B", "Caves", "Parking", "Extérieurs"];
 
+// COLORS DEFINED HERE FOR CATEGORIES
 export const CATEGORIES = [
-  { id: "ampoule", label: "Ampoule / Lumière", icon: <LightbulbIcon /> },
-  { id: "porte", label: "Porte / Serrure", icon: <KeyIcon /> },
-  { id: "encombrants", label: "Encombrants", icon: <ArchiveBoxIcon /> },
-  { id: "divers", label: "Divers", icon: <SparklesIcon /> },
+  { id: "ampoule", label: "Ampoule / Lumière", icon: <LightbulbIcon />, colorClass: "text-amber-400 bg-amber-400/10 border-amber-400/20" },
+  { id: "porte", label: "Porte / Serrure", icon: <KeyIcon />, colorClass: "text-sky-400 bg-sky-400/10 border-sky-400/20" },
+  { id: "encombrants", label: "Encombrants", icon: <ArchiveBoxIcon />, colorClass: "text-rose-400 bg-rose-400/10 border-rose-400/20" },
+  { id: "divers", label: "Divers", icon: <SparklesIcon />, colorClass: "text-fuchsia-400 bg-fuchsia-400/10 border-fuchsia-400/20" },
 ];
 
 export const SCOPES = [
-  { id: "copro", label: "Parties communes (crédit charges)" },
-  { id: "apartment", label: "Partie privative (paiement de la main à la main)" },
+  { id: "copro", label: "Parties communes (crédit charges)", icon: <BuildingOfficeIcon /> },
+  { id: "apartment", label: "Partie privative (main à la main)", icon: <HomeIcon /> },
 ];
 
 export const TASK_STATUS_CONFIG: { [key: string]: { label: string; color: string; icon: React.ReactElement<{ className?: string }> } } = {
@@ -77,14 +79,23 @@ export function ClockIcon({ className = "h-5 w-5" }: { className?: string }) {
 export function ScaleIcon({ className = "h-5 w-5" }: { className?: string }) {
     return (
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v17.25m0 0c-1.472 0-2.882.265-4.185.75M12 20.25c1.472 0 2.882.265 4.185.75M18.75 20.25c-1.472 0-2.882.265-4.185.75M12 20.25v-1.5m0 1.5c-1.472 0-2.882.265-4.185.75M12 20.25c-1.472 0-2.882.265-4.185.75M6 13.5V12m6 1.5v-1.5m-6 0h12m-6 0v1.5m0-1.5V12m0 1.5v-1.5m6-1.5v1.5m-6-1.5V9m6 1.5V9m-6 3h12M9 9V6m6 3V6m-6 0h6m4.5 3.75l-1.5-1.5m0 0l-1.5 1.5m1.5-1.5V3m-3 0v3m-3-3v3m-3 0V3m-3 0v3" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v17.25m0 0c-1.472 0-2.882.265-4.185.75M12 20.25c1.472 0 2.882.265 4.185.75M18.75 20.25c-1.472 0-2.882.265-4.185.75M12 20.25v-1.5m0 1.5c-1.472 0-2.882.265-4.185.75M12 20.25c-1.472 0-2.882.265-4.185.75M6 13.5V12m6 1.5v-1.5m-6 0h-6a.75.75 0 0 1 0-1.5h6v-1.5a.75.75 0 0 1 0-1.5h-6v-1.5a.75.75 0 0 1 0-1.5h6z" />
         </svg>
     );
 }
+
 export function CheckBadgeIcon({ className = "h-5 w-5" }: { className?: string }) {
     return (
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 0 1-1.043 3.296 3.745 3.745 0 0 1-3.296 1.043A3.745 3.745 0 0 1 12 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 0 1-3.296-1.043 3.745 3.745 0 0 1-1.043-3.296A3.745 3.745 0 0 1 3 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 0 1 1.043-3.296 3.745 3.745 0 0 1 3.296-1.043A3.745 3.745 0 0 1 12 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 0 1 3.296 1.043 3.745 3.745 0 0 1 1.043 3.296A3.745 3.745 0 0 1 21 12Z" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 0 1-1.043 3.296 3.745 3.745 0 0 1-3.296 1.043A3.745 3.745 0 0 1 12 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 0 1-3.296-1.043 3.745 3.745 0 0 1-1.043-3.296A3.745 3.745 0 0 1 3 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 0 1 1.043-3.296 3.746 3.746 0 0 1 3.296-1.043A3.746 3.746 0 0 1 12 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 0 1 3.296 1.043 3.746 3.746 0 0 1 1.043 3.296A3.745 3.745 0 0 1 21 12Z" />
+        </svg>
+    );
+}
+
+export function MagnifyingGlassIcon({ className = "h-5 w-5" }: { className?: string }) {
+    return (
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
         </svg>
     );
 }
@@ -105,18 +116,35 @@ export function XCircleIcon({ className = "h-5 w-5" }: { className?: string }) {
     );
 }
 
-export function PlusIcon({ className = "h-5 w-5" }: { className?: string }) {
+export function BuildingOfficeIcon({ className = "h-5 w-5" }: { className?: string }) {
     return (
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" />
         </svg>
     );
 }
 
-export function MagnifyingGlassIcon({ className = "h-5 w-5" }: { className?: string }) {
+export function HomeIcon({ className = "h-5 w-5" }: { className?: string }) {
     return (
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
+        </svg>
+    );
+}
+
+export function MapPinIcon({ className = "h-5 w-5" }: { className?: string }) {
+    return (
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
+        </svg>
+    );
+}
+
+export function ShieldCheckIcon({ className = "h-5 w-5" }: { className?: string }) {
+    return (
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 0 1-1.043 3.296 3.745 3.745 0 0 1-3.296 1.043A3.745 3.745 0 0 1 12 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 0 1-3.296-1.043 3.745 3.745 0 0 1-1.043-3.296A3.745 3.745 0 0 1 3 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 0 1 1.043-3.296 3.746 3.746 0 0 1 3.296-1.043A3.746 3.746 0 0 1 12 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 0 1 3.296 1.043 3.746 3.746 0 0 1 1.043 3.296A3.745 3.745 0 0 1 21 12Z" />
         </svg>
     );
 }

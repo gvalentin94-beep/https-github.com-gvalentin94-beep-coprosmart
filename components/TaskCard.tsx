@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import type { Task, User, Rating, Bid } from '../types';
 import { Button, Card, Input, Label, Badge, Textarea } from './ui';
-import { CATEGORIES, TASK_STATUS_CONFIG, COUNCIL_MIN_APPROVALS } from '../constants';
+import { CATEGORIES, TASK_STATUS_CONFIG, SCOPES, MapPinIcon, ShieldCheckIcon } from '../constants';
 
 // --- Sub-components defined in the same file to keep file count low ---
 
@@ -225,11 +225,9 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
     
     const statusConfig = TASK_STATUS_CONFIG[task.status];
     const categoryInfo = CATEGORIES.find(c => c.id === task.category);
+    const scopeInfo = SCOPES.find(s => s.id === task.scope);
+    
     const lowestBid = task.bids?.length > 0 ? task.bids.reduce((min, b) => b.amount < min.amount ? b : min, task.bids[0]) : null;
-
-    const warrantyUntil = task.completionAt && task.warrantyDays
-        ? new Date(new Date(task.completionAt).getTime() + task.warrantyDays * 24 * 3600 * 1000)
-        : null;
 
     const style = statusClasses[statusConfig.color] || { border: 'border-slate-600', text: 'text-slate-400', bg: 'bg-slate-800' };
     
@@ -299,18 +297,35 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                         </div>
                         
                         <div className="flex flex-col min-w-0 gap-1">
+                            {/* MAIN LINE: Title and Badges inline */}
                             <div className="flex flex-wrap items-center gap-2">
-                                <h3 className="font-bold text-sm md:text-base text-white truncate leading-tight">{task.title}</h3>
-                                {categoryInfo && <Badge className="bg-slate-700 text-slate-300 border-slate-600 hidden md:inline-flex">{categoryInfo.label}</Badge>}
-                            </div>
-                            
-                            {/* Badges Row */}
-                            <div className="flex flex-wrap items-center gap-2 text-[10px] md:text-xs">
-                                <Badge className="bg-slate-900/50 text-slate-400 border-slate-700">📍 {task.location}</Badge>
-                                {task.warrantyDays > 0 && <Badge className="bg-emerald-900/20 text-emerald-400 border-emerald-800">🛡️ {task.warrantyDays}j</Badge>}
-                                <Badge className="bg-slate-900/50 text-slate-400 border-slate-700">{task.scope === 'copro' ? 'Communs' : 'Privé'}</Badge>
+                                <h3 className="font-bold text-sm md:text-base text-white truncate leading-tight mr-2">{task.title}</h3>
+                                
+                                <Badge className="bg-slate-900/50 text-slate-400 border-slate-700 gap-1">
+                                    <MapPinIcon className="w-3 h-3" /> {task.location}
+                                </Badge>
+                                
+                                {categoryInfo && (
+                                    <Badge className={`${categoryInfo.colorClass} gap-1`}>
+                                        {React.cloneElement(categoryInfo.icon, { className: 'w-3 h-3' })}
+                                        {categoryInfo.label}
+                                    </Badge>
+                                )}
+                                
+                                {scopeInfo && (
+                                    <Badge className="bg-slate-800 text-slate-400 border-slate-700 gap-1">
+                                        {React.cloneElement(scopeInfo.icon, { className: 'w-3 h-3' })}
+                                        {scopeInfo.label}
+                                    </Badge>
+                                )}
+
+                                {task.warrantyDays > 0 && (
+                                    <Badge className="bg-emerald-900/20 text-emerald-400 border-emerald-800 gap-1">
+                                        <ShieldCheckIcon className="w-3 h-3" /> {task.warrantyDays}j
+                                    </Badge>
+                                )}
+
                                 {task.biddingStartedAt && task.status === 'open' && <Countdown startedAt={task.biddingStartedAt} />}
-                                {task.status !== 'completed' && <span className="text-slate-500 ml-1">par {creatorName}</span>}
                             </div>
                             
                             {/* INLINE VALIDATION INFO FOR COMPLETED TASKS */}
@@ -322,6 +337,7 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                                     )}
                                 </div>
                             )}
+                            {task.status !== 'completed' && <span className="text-[10px] text-slate-500">par {creatorName}</span>}
                         </div>
                     </div>
 

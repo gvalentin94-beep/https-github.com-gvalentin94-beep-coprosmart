@@ -424,7 +424,7 @@ function CreateTaskPage({ me, onSubmit, onCancel }: { me: User, onSubmit: (t: Pa
                                         <div 
                                             key={c.id}
                                             onClick={() => setCategory(c.id as TaskCategory)}
-                                            className={`cursor-pointer rounded-xl border p-2 flex flex-col items-center text-center gap-1 transition-all ${category === c.id ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700'}`}
+                                            className={`cursor-pointer rounded-xl border p-2 flex flex-col items-center text-center gap-1 transition-all ${category === c.id ? `${c.colorClass} border-2 ring-2 ring-offset-2 ring-offset-slate-900` : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700'}`}
                                         >
                                             <div className="scale-110">{React.cloneElement(c.icon, { className: "h-5 w-5" })}</div>
                                             <span className="text-[10px] font-medium">{c.label}</span>
@@ -439,9 +439,9 @@ function CreateTaskPage({ me, onSubmit, onCancel }: { me: User, onSubmit: (t: Pa
                                         <div 
                                             key={s.id}
                                             onClick={() => setScope(s.id as TaskScope)}
-                                            className={`cursor-pointer rounded-xl border p-2 flex flex-col items-center text-center gap-1 transition-all ${scope === s.id ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700'}`}
+                                            className={`cursor-pointer rounded-xl border p-2 flex flex-col items-center text-center gap-1 transition-all ${scope === s.id ? 'bg-indigo-600 border-indigo-500 text-white ring-2 ring-offset-2 ring-offset-slate-900' : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700'}`}
                                         >
-                                            <span className="text-xl">{s.id === 'copro' ? '🏢' : '🏠'}</span>
+                                            <div className="scale-110">{React.cloneElement(s.icon, { className: "h-5 w-5" })}</div>
                                             <span className="text-[10px] font-bold">{s.id === 'copro' ? 'Parties Communes' : 'Privatif'}</span>
                                         </div>
                                     ))}
@@ -829,7 +829,7 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
                 <h1 className="text-2xl md:text-3xl font-black tracking-tighter text-white leading-none">
                     CoproSmart.
                 </h1>
-                <span className="text-xs font-medium text-white/90 mt-0.5 tracking-wide leading-none">
+                <span className="text-[10px] font-black tracking-tighter text-white mt-0.5 leading-none">
                     Simple. Local. Gagnant-gagnant.
                 </span>
             </button>
@@ -1036,7 +1036,7 @@ export default function App() {
             <h1 className="text-6xl md:text-7xl font-black tracking-tighter text-white leading-none w-full text-center">
                 CoproSmart.
             </h1>
-            <p className="text-lg md:text-xl font-medium text-white mt-2 text-center">
+            <p className="text-lg md:text-xl font-black tracking-tighter text-white mt-2 text-center">
                 On réduit nos charges de copropriété.
             </p>
         </div>

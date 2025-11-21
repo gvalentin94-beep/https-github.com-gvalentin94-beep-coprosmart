@@ -136,14 +136,14 @@ function RatingBox({ onSubmit }: RatingBoxProps) {
 
     if (!open) {
         return (
-            <Button size="sm" variant="outline" className="w-full border-dashed border-slate-600 text-slate-400 hover:text-white hover:border-slate-500" onClick={() => setOpen(true)}>
-                ⭐ Noter l'intervention
+            <Button size="sm" variant="outline" className="bg-slate-800 border-slate-600 text-amber-400 hover:text-amber-300 hover:border-amber-500 hover:bg-slate-700 shadow-sm" onClick={(e) => { e.stopPropagation(); setOpen(true); }}>
+                ⭐ Noter
             </Button>
         );
     }
 
     return (
-        <div className="border border-slate-700 rounded-xl p-4 space-y-3 bg-slate-900/50 mt-2">
+        <div className="border border-slate-700 rounded-xl p-4 space-y-3 bg-slate-900/90 mt-2 relative z-10 shadow-xl animate-in slide-in-from-top-2">
             <div className="space-y-1">
                 <Label>Note (1 à 5)</Label>
                 <div className="flex gap-2">
@@ -154,7 +154,7 @@ function RatingBox({ onSubmit }: RatingBoxProps) {
             </div>
             <div className="space-y-1">
                 <Label>Commentaire</Label>
-                <Textarea value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Intervention rapide et soignée..." className="bg-slate-950 border-slate-800" />
+                <Textarea value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Intervention rapide et soignée..." className="bg-slate-950 border-slate-800 text-white" />
             </div>
             <div className="flex justify-end gap-2">
                 <Button variant="ghost" size="sm" onClick={() => setOpen(false)}>Annuler</Button>
@@ -288,6 +288,18 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
         );
     }
 
+    // Determine Quality Control Text
+    let qualityStatusNode = <span className="italic opacity-50">En attente</span>;
+    if (task.status === 'completed' && validatorName) {
+        qualityStatusNode = <span>✅ Validé par <span className="text-emerald-400 font-medium">{validatorName}</span></span>;
+    } else if (task.status === 'rejected' && rejectorName) {
+        qualityStatusNode = <span>❌ Rejeté par <span className="text-rose-400 font-medium">{rejectorName}</span></span>;
+    } else if (task.status === 'verification') {
+        qualityStatusNode = <span className="text-fuchsia-400 font-medium">À vérifier (Contrôle demandé)</span>;
+    } else if (task.status === 'awarded') {
+        qualityStatusNode = <span className="text-sky-400">Travaux en cours</span>;
+    }
+
     return (
         <Card className={`transition-all duration-300 border-l-[4px] ${style.border} bg-slate-800 hover:bg-slate-800/80`}>
             <div className="p-3 md:p-4">
@@ -300,7 +312,7 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                             {React.cloneElement(statusConfig.icon, { className: 'h-4 w-4' })}
                         </div>
                         
-                        <div className="flex flex-col min-w-0 gap-1">
+                        <div className="flex flex-col min-w-0 gap-1 w-full">
                             {/* MAIN LINE: Title and Badges inline */}
                             <div className="flex flex-wrap items-center gap-2">
                                 <h3 className="font-bold text-sm md:text-base text-white truncate leading-tight mr-2">{task.title}</h3>
@@ -333,30 +345,18 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                                 {task.biddingStartedAt && task.status === 'open' && <Countdown startedAt={task.biddingStartedAt} />}
                             </div>
                             
-                            {/* INLINE INFO FOR COMPLETED/REJECTED TASKS */}
-                            {(task.status === 'completed' || task.status === 'rejected') && (
-                                <div className="text-[10px] text-slate-400 mt-1 flex flex-wrap gap-1 items-center">
-                                    <span>Créé par <span className="text-slate-300">{creatorName}</span></span>
-                                    <span className="text-slate-600">•</span>
+                            {/* ALWAYS VISIBLE TRACEABILITY LINE */}
+                            <div className="text-[11px] text-slate-400 mt-1.5 flex flex-wrap gap-2 items-center">
+                                <span>Créé par <span className="text-slate-300">{creatorName}</span></span>
+                                <span className="text-slate-600">•</span>
+                                {task.awardedTo ? (
                                     <span>Attribué à <span className="text-slate-300">{awardedToName}</span></span>
-                                    <span className="text-slate-600">•</span>
-                                    
-                                    {task.status === 'completed' && (
-                                        validatorName ? (
-                                            <span>✅ Contrôle qualité validé par <span className="text-emerald-400 font-medium">{validatorName}</span></span>
-                                        ) : (
-                                            <span>✅ Terminé</span>
-                                        )
-                                    )}
-
-                                    {task.status === 'rejected' && (
-                                        <span className="flex items-center gap-1">
-                                            ❌ Rejeté par <span className="text-rose-400 font-medium">{rejectorName}</span>
-                                        </span>
-                                    )}
-                                </div>
-                            )}
-                            {task.status !== 'completed' && task.status !== 'rejected' && <span className="text-[10px] text-slate-500">par {creatorName}</span>}
+                                ) : (
+                                    <span className="italic opacity-50">Non attribué</span>
+                                )}
+                                <span className="text-slate-600">•</span>
+                                <span>Contrôle qualité : {qualityStatusNode}</span>
+                            </div>
                         </div>
                     </div>
 
@@ -368,6 +368,11 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                         </div>
                         
                         {ActionButton}
+
+                        {/* Rating Trigger for Completed tasks */}
+                        {task.status === 'completed' && !hasRated && !isAssignee && (
+                            <RatingBox onSubmit={onRate} />
+                        )}
                         
                         <button onClick={() => setShowDetails(!showDetails)} className="text-xs text-slate-500 hover:text-white underline whitespace-nowrap ml-2">
                             {showDetails ? 'Masquer' : 'Détails'}
@@ -398,13 +403,6 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                             </div>
                         </div>
                         
-                        {/* Additional Info Block (History, bids, etc) */}
-                        {task.awardedTo && (
-                            <div className="text-xs text-slate-400">
-                                Attribué à <b className="text-slate-300">{awardedToName}</b> pour {task.awardedAmount}€
-                            </div>
-                        )}
-
                         {/* Bids List (Only if Open) */}
                         {task.status === 'open' && task.bids?.length > 0 && (
                              <div className="space-y-2">
@@ -418,7 +416,7 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                              </div>
                         )}
 
-                        {/* Ratings Section */}
+                        {/* Ratings List */}
                         {task.status === 'completed' && (
                             <div className="border-t border-slate-800 pt-2">
                                 {task.ratings?.map((r, i) => (
@@ -445,7 +443,6 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                                         ))}
                                     </div>
                                 )}
-                                {!hasRated && !isAssignee && <RatingBox onSubmit={onRate} />}
                             </div>
                         )}
 

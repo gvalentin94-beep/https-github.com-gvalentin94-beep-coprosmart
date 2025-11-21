@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import type { Task, LedgerEntry, User, RegisteredUser, UserRole, TaskCategory, TaskScope, Bid, Rating } from './types';
 import { useAuth, api } from './services/api';
@@ -94,6 +93,7 @@ function TaskPreviewModal({ task, onConfirm, onCancel }: { task: Partial<Task>; 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
                         <div><span className="text-slate-500 uppercase text-xs font-bold tracking-wider">Titre</span> <div className="font-medium text-white text-lg">{task.title}</div></div>
                         
+                         {/* REORDERED: Category & Scope right below Title */}
                         <div><span className="text-slate-500 uppercase text-xs font-bold tracking-wider">Catégorie</span> <div className="font-medium text-white">{catInfo?.label}</div></div>
                         <div><span className="text-slate-500 uppercase text-xs font-bold tracking-wider">Concerne</span> <div className="font-medium text-white flex items-center gap-2">{scopeInfo?.label}</div></div>
                         
@@ -262,21 +262,32 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onCre
 
     const handleSaveUser = () => {
         if (editingUser) {
-            const updates: any = { email: editEmail };
+            const updates: any = {
+                email: editEmail
+            };
+            
+            // Logic:
+            // Admin: Can edit everything
+            // Council: Can edit Name/Role/Email of OWNERS. Can edit Name/Email of self. Cannot edit other Council/Admin.
+            // Owner: Can edit Email of self.
+            
             const isMe = editingUser.id === me.id;
             const isAdmin = me.role === 'admin';
             const isCouncil = me.role === 'council';
             
+            // Permission to edit details
             if (isAdmin) {
                  updates.firstName = editFirstName;
                  updates.lastName = editLastName;
                  updates.role = editRole;
             } else if (isCouncil) {
+                // If editing self, can change names but not role (usually) - allowing role change for self might demote them
                 if (isMe) {
                     updates.firstName = editFirstName;
                     updates.lastName = editLastName;
                     updates.role = editRole;
                 } else {
+                    // Editing others - only if target is Owner
                     if (editingUser.role === 'owner') {
                         updates.firstName = editFirstName;
                         updates.lastName = editLastName;
@@ -285,6 +296,7 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onCre
                 }
             }
 
+            // Only current user can update password (security)
             if (newPassword.trim() && isMe) {
                 updates.password = newPassword.trim();
             }
@@ -330,10 +342,12 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onCre
                     const targetIsAdmin = u.role === 'admin';
                     const targetIsCouncil = u.role === 'council';
 
+                    // PERMISSIONS LOGIC
                     let canEdit = false;
                     if (isAdmin) canEdit = true;
                     else if (isMe) canEdit = true;
                     else if (isCouncil) {
+                        // Council can edit non-council/non-admin
                         if (!targetIsAdmin && !targetIsCouncil) canEdit = true;
                     }
 
@@ -365,6 +379,7 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onCre
                                     {isDeleted && <Badge variant="destructive">Banni</Badge>}
                                 </div>
 
+                                {/* Admin Actions - HIDDEN for Admin Target */}
                                 {isAdmin && !isMe && !targetIsAdmin && (
                                     <div className="pt-3 border-t border-slate-700/50 flex gap-2">
                                         {!isDeleted ? (
@@ -375,6 +390,7 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onCre
                                     </div>
                                 )}
                                 
+                                {/* Work History */}
                                 <div className="pt-3 border-t border-slate-700/50">
                                     <div className="text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-wider">Derniers travaux</div>
                                     {history.length === 0 ? (
@@ -389,12 +405,14 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onCre
                                                     </div>
                                                     <div className="flex justify-between items-center">
                                                         <span className="text-slate-600">{new Date(t.completionAt!).toLocaleDateString()}</span>
+                                                        {/* Ratings */}
                                                         {t.ratings && t.ratings.length > 0 && (
                                                             <div className="flex gap-0.5">
                                                                 {Array(Math.round(t.ratings.reduce((a,b)=>a+b.stars,0)/t.ratings.length)).fill(0).map((_,i)=><span key={i} className="text-[8px]">⭐</span>)}
                                                             </div>
                                                         )}
                                                     </div>
+                                                    {/* Comments display */}
                                                     {t.ratings && t.ratings.length > 0 && t.ratings.map((r, idx) => (
                                                         r.comment && (
                                                             <div key={idx} className="mt-1 pt-1 border-t border-slate-800 text-[10px] text-slate-500 italic flex justify-between group">
@@ -407,6 +425,7 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onCre
                                                     ))}
                                                 </li>
                                             ))}
+                                            {history.length > 3 && <li className="text-[10px] text-center text-slate-600">et {history.length - 3} autres...</li>}
                                         </ul>
                                     )}
                                 </div>
@@ -416,6 +435,7 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onCre
                 })}
             </div>
 
+            {/* Edit Modal */}
             {editingUser && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
                     <Card className="w-full max-w-md bg-slate-900 border-slate-700">
@@ -426,6 +446,9 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onCre
                                 <Input 
                                     value={editFirstName} 
                                     onChange={e => setEditFirstName(e.target.value)} 
+                                    // Disabled if I'm owner (except if editing self?) 
+                                    // Requirement: Copro cannot edit their name. Only CS/Admin.
+                                    // me.role check
                                     disabled={!(me.role === 'admin' || me.role === 'council')}
                                     className="disabled:opacity-50 disabled:cursor-not-allowed"
                                 />
@@ -441,13 +464,22 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onCre
                             </div>
                             <div className="space-y-1.5">
                                 <Label>Email de contact</Label>
-                                <Input value={editEmail} onChange={e => setEditEmail(e.target.value)} />
+                                <Input 
+                                    value={editEmail} 
+                                    onChange={e => setEditEmail(e.target.value)} 
+                                />
                             </div>
                             
+                            {/* Password Change: Only visible if editing own profile */}
                             {editingUser.id === me.id && (
                                 <div className="space-y-1.5 bg-slate-800/50 p-3 rounded border border-slate-700">
                                     <Label>Nouveau mot de passe (optionnel)</Label>
-                                    <Input type="password" placeholder="Laisser vide pour ne pas changer" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
+                                    <Input 
+                                        type="password"
+                                        placeholder="Laisser vide pour ne pas changer"
+                                        value={newPassword} 
+                                        onChange={e => setNewPassword(e.target.value)} 
+                                    />
                                 </div>
                             )}
 
@@ -455,6 +487,7 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onCre
                                 <div className="space-y-1.5">
                                     <Label>Rôle</Label>
                                     <Select value={editRole} onChange={e => setEditRole(e.target.value as UserRole)}>
+                                        {/* CS cannot give admin role */}
                                         {ROLES.filter(r => {
                                             if (me.role === 'council') return r.id !== 'admin';
                                             return true;
@@ -471,6 +504,7 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onCre
                 </div>
             )}
             
+            {/* Create Modal */}
             {creatingUser && (
                  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
                     <Card className="w-full max-w-md bg-slate-900 border-slate-700">
@@ -699,32 +733,42 @@ function CreateTaskPage({ me, onSubmit, onCancel }: { me: User, onSubmit: (t: Pa
     );
 }
 
-function SharedFooter({ onCGU, onLegal }: { onCGU: () => void; onLegal: () => void }) {
-  return (
-    <footer className="border-t border-slate-800 bg-slate-950 py-8 mt-auto">
-      <div className="max-w-6xl mx-auto px-4 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-slate-500">
-        <div className="flex gap-6">
-          <button onClick={onCGU} className="hover:text-slate-300 transition-colors">Conditions Générales</button>
-          <button onClick={onLegal} className="hover:text-slate-300 transition-colors">Mentions Légales</button>
-        </div>
-        <div>
-          CoproSmart v0.1.3 • Résidence Watteau
-        </div>
-      </div>
-    </footer>
-  );
-}
-
 // --- Main Dashboard Component ---
+
+function SharedFooter({ onCGU, onLegal }: { onCGU: () => void, onLegal: () => void }) {
+    return (
+      <footer className="border-t border-slate-800 bg-slate-950 py-12 mt-auto">
+          <div className="max-w-4xl mx-auto px-4 text-center space-y-6">
+              <div className="flex items-center justify-center gap-2 opacity-50 grayscale hover:grayscale-0 transition-all duration-500">
+                  <span className="text-2xl">🏢</span>
+                  <span className="font-black text-xl tracking-tight text-white">CoproSmart.</span>
+              </div>
+              
+              <div className="flex justify-center gap-6 text-xs text-slate-500 pt-4">
+                  <button onClick={onCGU} className="hover:text-white underline">Conditions Générales d'Utilisation</button>
+                  <button onClick={onLegal} className="hover:text-white underline">Mentions Légales</button>
+              </div>
+
+              <div className="text-xs text-slate-700 pt-4 border-t border-slate-900 w-24 mx-auto mt-8">
+                  v0.1.3
+              </div>
+          </div>
+      </footer>
+    );
+}
 
 function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
   const [view, setView] = useState<'home' | 'create-task' | 'directory' | 'ledger'>('home');
+  
   const [tasks, setTasks] = useState<Task[]>([]);
   const [ledger, setLedger] = useState<LedgerEntry[]>([]);
   const [pendingUsers, setPendingUsers] = useState<RegisteredUser[]>([]);
   const [directoryUsers, setDirectoryUsers] = useState<RegisteredUser[]>([]);
   const [usersMap, setUsersMap] = useState<Record<string, string>>({});
+  
   const [toasts, setToasts] = useState<Toast[]>([]);
+  
+  // States for Legal Modals
   const [showCGU, setShowCGU] = useState(false);
   const [showLegal, setShowLegal] = useState(false);
 
@@ -734,9 +778,11 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
     setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 4000);
   };
 
+  // Generate Random Messages
   const randomOpenMessage = useMemo(() => OPEN_EMPTY_MESSAGES[Math.floor(Math.random() * OPEN_EMPTY_MESSAGES.length)], [view]);
   const randomProgressMessage = useMemo(() => PROGRESS_EMPTY_MESSAGES[Math.floor(Math.random() * PROGRESS_EMPTY_MESSAGES.length)], [view]);
 
+  // Email Notification
   const notify = async (recipients: string[], subject: string, message: string) => {
       addToast("Notification", `Email envoyé pour : ${subject}`, "info");
       try {
@@ -754,6 +800,7 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
   
   const getEmailsByRole = (roles: UserRole[]) => directoryUsers.filter(u => roles.includes(u.role)).map(u => u.email);
 
+  // Load Data
   const loadData = useCallback(async () => {
     try {
       const t = await api.readTasks();
@@ -763,10 +810,14 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
       if (user.role === 'admin' || user.role === 'council') {
           setPendingUsers(await api.getPendingUsers());
       }
+      
+      // Get ALL users for mapping names
       const allUsers = await api.getAllUsers();
       const mapping: Record<string, string> = {};
       allUsers.forEach(u => { mapping[u.email] = `${u.firstName} ${u.lastName.toUpperCase()}`; });
       setUsersMap(mapping);
+
+      // Get Directory users for the list
       const dir = await api.getDirectory();
       setDirectoryUsers(dir);
     } catch (e) { console.error(e); }
@@ -778,6 +829,7 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
     return () => clearInterval(interval);
   }, [loadData]);
 
+  // Auto Award (Runs locally on one client - race condition acceptable for now or moved to edge function later)
   useEffect(() => {
       const interval = setInterval(() => {
           tasks.forEach(async t => {
@@ -785,6 +837,7 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
                   const endTime = new Date(t.biddingStartedAt).getTime() + 24 * 60 * 60 * 1000;
                   if (new Date().getTime() > endTime) {
                       const lowestBid = t.bids.reduce((min, b) => b.amount < min.amount ? b : min, t.bids[0]);
+                      // Call API to update status
                       await api.updateTaskStatus(t.id, 'awarded', { awardedTo: lowestBid.userId, awardedAmount: lowestBid.amount });
                       notify([lowestBid.by], "Félicitations ! Tâche attribuée", `Vous avez remporté la tâche "${t.title}" pour ${lowestBid.amount}€.`);
                       notify(getEmailsByRole(['council', 'admin']), "Attribution automatique", `La tâche "${t.title}" a été attribuée à ${lowestBid.by}.`);
@@ -796,8 +849,29 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
       return () => clearInterval(interval);
   }, [tasks, loadData]);
 
+  // Handlers
   const handleCreateTask = async (taskData: Partial<Task>) => {
-    await api.createTask({ ...taskData, status: 'pending' }, user.id);
+    // If council or admin created it, it's auto-approved if we want logic here, 
+    // but API handles basic insert. We need to add approval manually if policy dictates.
+    // Current policy: Admin created -> pending (admin force validates). Council created -> pending (needs 1 more).
+    // However, `api.createTask` just inserts.
+    // We will insert, then if role is council/admin, we insert an approval too.
+    
+    await api.createTask({
+        ...taskData,
+        status: 'pending' // Always pending initially
+    }, user.id);
+    
+    // If user is council/admin, add self-approval immediately
+    if (user.role === 'council' || user.role === 'admin') {
+         // We need the task ID. But `createTask` returns void. 
+         // Refetch to find the task? Or change API to return ID.
+         // For simplicity in this step without changing API return type massively:
+         // We skip auto-approve for now OR we assume user will approve it in list.
+         // Actually, let's rely on the UI "Validations" list. The user will see it and approve it.
+         // That's safer.
+    }
+
     addToast("Succès", "Tâche créée et soumise.", "success");
     setView('home');
     loadData();
@@ -805,11 +879,17 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
 
   const handleApprove = async (taskId: string) => {
       await api.addApproval(taskId, user.id);
+      
+      // Check if we should open the task
+      // Optimistically check local state or refetch. 
+      // Let's refetch single task or just loadData.
+      // To be faster, we can check current task state + 1.
       const t = tasks.find(x => x.id === taskId);
       if (t) {
          const approvals = t.approvals.length + 1;
          if (approvals >= COUNCIL_MIN_APPROVALS || user.role === 'admin') {
-             await api.updateTaskStatus(taskId, 'open', { biddingStartedAt: t.biddingStartedAt });
+             // Open it
+             await api.updateTaskStatus(taskId, 'open', { biddingStartedAt: t.biddingStartedAt }); // Keep existing or null
              notify(getEmailsByRole(['owner', 'council', 'admin']), "Nouvelle offre disponible", `La tâche "${t.title}" est ouverte aux offres !`);
          }
       }
@@ -824,6 +904,7 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
 
   const handleBid = async (taskId: string, bidData: Omit<Bid, 'by' | 'at'>) => {
       await api.addBid(taskId, bidData, user.id);
+      // Update biddingStartedAt if first bid
       const t = tasks.find(x => x.id === taskId);
       if (t && !t.biddingStartedAt) {
           await api.updateTaskStatus(taskId, 'open', { biddingStartedAt: new Date().toISOString() });
@@ -862,14 +943,17 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
       if (!t) return;
 
       await api.updateTaskStatus(taskId, 'completed', { validatedBy: user.id });
+      
+      // Create Ledger Entry
       const entry = {
           taskId,
           type: t.scope === 'copro' ? 'charge_credit' : 'apartment_payment',
-          payerId: t.scope === 'copro' ? null : t.createdById, 
+          payerId: t.scope === 'copro' ? null : t.createdById, // assuming createdById available in Task from DB mapping
           payeeId: t.awardedToId, 
           amount: t.awardedAmount
       };
       await api.createLedgerEntry(entry);
+
       notify([t.awardedTo!], "Paiement validé", `Votre travail sur "${t.title}" a été validé. ${t.awardedAmount}€ crédités.`);
       loadData();
   };
@@ -918,6 +1002,7 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
       }
   }
 
+  // --- View Logic ---
   return (
     <div className="min-h-screen bg-slate-950 text-slate-200 font-sans selection:bg-indigo-500/30 flex flex-col">
       {/* --- Sticky Header --- */}
@@ -932,12 +1017,14 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
                 </span>
             </button>
             
+            {/* Create Task Button - Moved to Right of Logo */}
             {view !== 'create-task' && (
                 <Button onClick={() => setView('create-task')} className="ml-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold shadow-lg shadow-indigo-500/20 rounded-full px-4 sm:px-6 py-2">
                     + <span className="hidden sm:inline">Nouvelle Tâche</span>
                 </Button>
             )}
             
+            {/* Desktop Navigation */}
             <nav className="hidden md:flex items-center gap-8 flex-1 justify-end mr-8">
                 <button onClick={() => setView('home')} className={`text-sm font-bold transition-colors ${view === 'home' ? 'text-white' : 'text-slate-400 hover:text-white'}`}>Accueil</button>
                 <button onClick={() => setView('directory')} className={`text-sm font-bold transition-colors ${view === 'directory' ? 'text-white' : 'text-slate-400 hover:text-white'}`}>Annuaire</button>
@@ -963,6 +1050,7 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
         </div>
       </header>
 
+      {/* --- Mobile Navigation Bar --- */}
        <div className="md:hidden fixed bottom-0 left-0 w-full bg-slate-900/90 backdrop-blur-md border-t border-slate-800 flex justify-around py-3 z-50 pb-safe">
            <button onClick={() => setView('home')} className={`flex flex-col items-center ${view === 'home' ? 'text-indigo-400' : 'text-slate-500'}`}>
                <span className="text-2xl">🏠</span><span className="text-[9px] font-bold mt-1">Accueil</span>
@@ -980,7 +1068,10 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
             )}
        </div>
 
+
       <main className="flex-grow max-w-6xl mx-auto w-full p-4 pb-24 md:pb-12 space-y-8">
+        
+        {/* USER VALIDATION (Global) */}
         {(user && (user.role === 'council' || user.role === 'admin')) && pendingUsers.length > 0 && (
             <UserValidationQueue pendingUsers={pendingUsers} onApprove={handleApproveUser} onReject={handleRejectUser} />
         )}
@@ -990,7 +1081,16 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
         )}
 
         {view === 'directory' && user && (
-            <UserDirectory users={directoryUsers} tasks={tasks} me={user} onBan={handleBanUser} onRestore={handleRestoreUser} onUpdateUser={handleUpdateUser} onCreateUser={handleCreateUser} onDeleteRating={handleDeleteRating} />
+            <UserDirectory 
+                users={directoryUsers} 
+                tasks={tasks} 
+                me={user} 
+                onBan={handleBanUser} 
+                onRestore={handleRestoreUser} 
+                onUpdateUser={handleUpdateUser} 
+                onCreateUser={handleCreateUser}
+                onDeleteRating={handleDeleteRating} 
+            />
         )}
 
         {view === 'ledger' && user && (
@@ -999,8 +1099,11 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
 
         {view === 'home' && user && (
             <div className="space-y-10 animate-in fade-in duration-500 pt-6">
+                
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
                     <div className="lg:col-span-12 space-y-12">
+                        
+                        {/* PENDING VALIDATION */}
                         {tasks.some(t => t.status === 'pending') && (
                             <Section title="⏳ En attente de validation">
                                 <div className="grid grid-cols-1 gap-3">
@@ -1020,6 +1123,7 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
                             </Section>
                         )}
 
+                        {/* OPEN OFFERS */}
                         <Section title="🔥 Offres ouvertes">
                              {tasks.filter(t => t.status === 'open').length === 0 ? (
                                 <div className="bg-slate-900/30 border border-slate-800 rounded-xl p-8 text-center">
@@ -1030,8 +1134,10 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
                                     {tasks.filter(t => t.status === 'open').map(t => (
                                         <TaskCard 
                                             key={t.id} task={t} me={user} usersMap={usersMap}
-                                            onBid={(bid) => handleBid(t.id, bid)} onAward={() => handleAward(t.id)} 
-                                            onComplete={() => {}} onRate={() => {}} onPayApartment={() => {}} onDelete={() => handleDelete(t.id)}
+                                            onBid={(bid) => handleBid(t.id, bid)} 
+                                            onAward={() => handleAward(t.id)} 
+                                            onComplete={() => {}} 
+                                            onRate={() => {}} onPayApartment={() => {}} onDelete={() => handleDelete(t.id)}
                                             canDelete={user.role === 'admin'}
                                         />
                                     ))}
@@ -1039,6 +1145,7 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
                              )}
                         </Section>
 
+                        {/* WORKS IN PROGRESS */}
                         <Section title="🏗️ Travaux en cours">
                             {tasks.filter(t => t.status === 'awarded' || t.status === 'verification').length === 0 ? (
                                 <div className="bg-slate-900/30 border border-slate-800 rounded-xl p-8 text-center">
@@ -1061,6 +1168,7 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
                              )}
                         </Section>
 
+                         {/* COMPLETED HISTORY */}
                         <Section title="✅ Travaux terminés">
                             {tasks.filter(t => t.status === 'completed' || t.status === 'rejected').length === 0 ? (
                                 <p className="text-slate-500 italic pl-2">Aucun historique pour le moment.</p>
@@ -1070,7 +1178,8 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
                                         <TaskCard 
                                             key={t.id} task={t} me={user} usersMap={usersMap}
                                             onBid={() => {}} onAward={() => {}} onComplete={() => {}} 
-                                            onRate={(r) => handleRate(t.id, r)} onDeleteRating={handleDeleteRating}
+                                            onRate={(r) => handleRate(t.id, r)} 
+                                            onDeleteRating={handleDeleteRating}
                                             onPayApartment={() => {}} onDelete={() => handleDelete(t.id)}
                                             canDelete={user.role === 'admin'}
                                         />
@@ -1082,8 +1191,8 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
                 </div>
             </div>
         )}
-        
-        {/* Password Change Modal */}
+
+        {/* CGU Modal */}
         {showCGU && (
           <InfoModal title="Conditions Générales d'Utilisation" onClose={() => setShowCGU(false)}>
               <p>Bienvenue sur CoproSmart.</p>
@@ -1098,6 +1207,7 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
           </InfoModal>
         )}
 
+        {/* Legal Modal */}
         {showLegal && (
           <InfoModal title="Mentions Légales" onClose={() => setShowLegal(false)}>
               <p><b>Éditeur du service :</b></p>
@@ -1112,29 +1222,21 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
               <p>Conformément au RGPD, vous disposez d'un droit d'accès, de rectification et de suppression de vos données. Pour exercer ce droit, contactez le Conseil Syndical.</p>
           </InfoModal>
         )}
+
       </main>
 
+      {/* --- Shared Footer for Dashboard --- */}
       {user && <SharedFooter onCGU={() => setShowCGU(true)} onLegal={() => setShowLegal(true)} />}
+
       <ToastContainer toasts={toasts} onClose={(id) => setToasts(prev => prev.filter(t => t.id !== id))} />
     </div>
   );
 }
 
 export default function App() {
-  const { user, setUser, loading, recoveryMode, setRecoveryMode } = useAuth();
+  const { user, setUser, loading } = useAuth();
   const [showCGU, setShowCGU] = useState(false);
   const [showLegal, setShowLegal] = useState(false);
-  const [newPassword, setNewPassword] = useState("");
-
-  const handlePasswordChange = async () => {
-      try {
-          await api.resetPassword(newPassword);
-          alert("Mot de passe changé avec succès !");
-          setRecoveryMode(false);
-      } catch (e: any) {
-          alert("Erreur: " + e.message);
-      }
-  };
 
   if (loading) {
     return (
@@ -1143,23 +1245,6 @@ export default function App() {
         <div className="text-slate-400 animate-pulse">Chargement...</div>
       </div>
     );
-  }
-
-  if (recoveryMode) {
-      return (
-        <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
-            <Card className="w-full max-w-md bg-slate-800 border-slate-700">
-                <CardHeader><CardTitle className="text-white">Nouveau mot de passe</CardTitle></CardHeader>
-                <CardContent className="space-y-4">
-                    <div className="space-y-1.5">
-                        <Label className="text-slate-300">Entrez votre nouveau mot de passe</Label>
-                        <Input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
-                    </div>
-                    <Button className="w-full" onClick={handlePasswordChange}>Valider</Button>
-                </CardContent>
-            </Card>
-        </div>
-      );
   }
 
   if (!user) {
@@ -1183,6 +1268,7 @@ export default function App() {
              <LoginCard onLogin={setUser} />
         </div>
         
+        {/* Specific Login Footer as requested */}
         <div className="w-full max-w-4xl mx-auto mt-12 mb-8 text-center space-y-6 z-10">
             <p className="text-slate-400 text-sm leading-relaxed max-w-2xl mx-auto">
                 CoproSmart permet aux copropriétaires de réduire collectivement les charges communes en réalisant eux-mêmes les petits travaux des parties communes : une ampoule à changer, une porte à régler, des encombrants à évacuer… Les charges diminuent pour tous, et celui qui intervient bénéficie d’un crédit supplémentaire sur ses propres charges. <span className="font-black tracking-tighter text-white">simple. local. gagnant-gagnant.</span>
@@ -1198,6 +1284,7 @@ export default function App() {
             </div>
         </div>
 
+         {/* CGU Modal */}
         {showCGU && (
           <InfoModal title="Conditions Générales d'Utilisation" onClose={() => setShowCGU(false)}>
               <p>Bienvenue sur CoproSmart.</p>
@@ -1212,6 +1299,7 @@ export default function App() {
           </InfoModal>
         )}
 
+        {/* Legal Modal */}
         {showLegal && (
           <InfoModal title="Mentions Légales" onClose={() => setShowLegal(false)}>
               <p><b>Éditeur du service :</b></p>

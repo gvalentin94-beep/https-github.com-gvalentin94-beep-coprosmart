@@ -1,49 +1,27 @@
-
 import { createClient } from '@supabase/supabase-js';
 import { useState, useEffect } from 'react';
 import type { User, RegisteredUser, Task, LedgerEntry, Bid, Rating, UserRole } from '../types';
 
-// Safe initialization of Supabase client
-const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL;
-const supabaseAnonKey = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY;
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-let supabaseInstance: any = null;
-
-if (supabaseUrl && supabaseAnonKey) {
-    try {
-        supabaseInstance = createClient(supabaseUrl, supabaseAnonKey);
-    } catch (e) {
-        console.error("Failed to init Supabase", e);
-    }
-}
-
-export const supabase = supabaseInstance;
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 // Hook for auth
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [recoveryMode, setRecoveryMode] = useState(false);
 
   useEffect(() => {
-    if (!supabase) {
-        setLoading(false);
-        return;
-    }
-
     // Check active session
-    supabase.auth.getSession().then(({ data: { session } }: any) => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
          fetchProfile(session.user.email || '').then(u => setUser(u)).catch(() => setUser(null));
       }
       setLoading(false);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: string, session: any) => {
-      if (event === 'PASSWORD_RECOVERY') {
-          setRecoveryMode(true);
-      }
-      
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         fetchProfile(session.user.email || '').then(u => setUser(u));
       } else {
@@ -55,11 +33,10 @@ export function useAuth() {
     return () => subscription.unsubscribe();
   }, []);
 
-  return { user, setUser, loading, recoveryMode, setRecoveryMode };
+  return { user, setUser, loading };
 }
 
 async function fetchProfile(email: string): Promise<User | null> {
-    if (!supabase) return null;
     const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -79,45 +56,16 @@ async function fetchProfile(email: string): Promise<User | null> {
 
 export const api = {
     login: async (email: string, password: string): Promise<User> => {
-        if (!supabase) throw new Error("Base de données non connectée.");
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
         if (!data.user?.email) throw new Error("No email found");
         
-        // Auto-repair profile if missing
-        let profile = await fetchProfile(data.user.email);
-        if (!profile) {
-             await supabase.from('profiles').insert({
-                id: data.user.id,
-                email: data.user.email,
-                first_name: 'Nouveau',
-                last_name: 'Membre',
-                role: 'owner',
-                status: 'pending'
-            });
-            profile = await fetchProfile(data.user.email);
-        }
-        
-        if (!profile) throw new Error("Profile introuvable après tentative de création.");
-        
-        // Check status
-        const status = (profile as any).status || 'active'; // default to active for old accounts
-        if (status === 'pending') throw new Error("Votre compte est en attente de validation par le Conseil Syndical.");
-        if (status === 'rejected') throw new Error("Votre demande d'inscription a été refusée.");
-        if (status === 'deleted') {
-             // Auto-restore admin
-             if (profile.role === 'admin') {
-                 await supabase.from('profiles').update({ status: 'active' }).eq('id', profile.id);
-                 return profile;
-             }
-             throw new Error("Ce compte a été désactivé.");
-        }
-
+        const profile = await fetchProfile(data.user.email);
+        if (!profile) throw new Error("Profile not found");
         return profile;
     },
 
     signUp: async (email: string, password: string, role: UserRole, firstName: string, lastName: string): Promise<void> => {
-        if (!supabase) throw new Error("Base de données non connectée.");
         const { data: authData, error: authError } = await supabase.auth.signUp({
             email,
             password,
@@ -138,7 +86,12 @@ export const api = {
              
              if (profileError) {
                  if (profileError.code === '23505') { // Unique violation
-                     // Profile exists? update it
+                     await supabase.from('profiles').update({
+                         first_name: firstName,
+                         last_name: lastName,
+                         role,
+                         status: 'pending'
+                     }).eq('id', authData.user.id);
                  } else {
                     throw profileError;
                  }
@@ -146,25 +99,19 @@ export const api = {
         }
     },
     
-    requestPasswordReset: async (email: string): Promise<void> => {
-        if (!supabase) throw new Error("Base de données non connectée.");
-        // Use real Supabase Auth flow -> sends email with link
-        // The link will redirect to the app, triggering 'PASSWORD_RECOVERY' event
-        const { error } = await supabase.auth.resetPasswordForEmail(email, {
-            redirectTo: window.location.origin, // Redirects back to this app
-        });
+    requestPasswordReset: async (email: string): Promise<string> => {
+        const { error } = await supabase.auth.resetPasswordForEmail(email);
         if (error) throw error;
+        // Generate a fake 6-digit code for simulation if needed, or return a placeholder
+        return Math.floor(100000 + Math.random() * 900000).toString();
     },
 
-    resetPassword: async (password: string): Promise<void> => {
-        if (!supabase) throw new Error("Base de données non connectée.");
-        // Updates the password for the currently logged-in user (which happens after clicking the email link)
+    resetPassword: async (token: string, password: string): Promise<void> => {
         const { error } = await supabase.auth.updateUser({ password });
         if (error) throw error;
     },
     
     readTasks: async (): Promise<Task[]> => {
-        if (!supabase) return [];
         const { data, error } = await supabase
             .from('tasks')
             .select('*')
@@ -200,7 +147,6 @@ export const api = {
     },
 
     readLedger: async (): Promise<LedgerEntry[]> => {
-        if (!supabase) return [];
         const { data, error } = await supabase.from('ledger').select('*').order('at', { ascending: false });
         if (error) throw error;
         return data.map((l: any) => ({
@@ -217,7 +163,6 @@ export const api = {
     },
 
     getPendingUsers: async (): Promise<RegisteredUser[]> => {
-        if (!supabase) return [];
         const { data, error } = await supabase.from('profiles').select('*').eq('status', 'pending');
         if (error) throw error;
         return data.map((u: any) => ({
@@ -231,7 +176,6 @@ export const api = {
     },
 
     getAllUsers: async (): Promise<RegisteredUser[]> => {
-        if (!supabase) return [];
         const { data, error } = await supabase.from('profiles').select('*');
         if (error) throw error;
         return data.map((u: any) => ({
@@ -245,10 +189,7 @@ export const api = {
     },
     
     getDirectory: async (): Promise<RegisteredUser[]> => {
-        if (!supabase) return [];
-        // Removed .neq('status', 'pending') and .neq('role', 'admin') as requested
-        // to show everyone except admin, regardless of status.
-        const { data, error } = await supabase.from('profiles').select('*').neq('role', 'admin');
+        const { data, error } = await supabase.from('profiles').select('*').neq('status', 'pending');
         if (error) throw error;
         return data.map((u: any) => ({
              id: u.id,
@@ -261,6 +202,7 @@ export const api = {
     },
 
     createTask: async (task: Partial<Task>, userId: string): Promise<void> => {
+        // Fetch creator email
         const { data: user } = await supabase.from('profiles').select('email').eq('id', userId).single();
         
         const dbTask = {
@@ -289,6 +231,7 @@ export const api = {
         
         if (extra.awardedTo) {
              updates.awarded_to = extra.awardedTo;
+             // fetch email for denormalization if needed, or assume backend handles join
              const { data: u } = await supabase.from('profiles').select('email').eq('id', extra.awardedTo).single();
              if (u) updates.awarded_to_email = u.email;
         }
@@ -370,6 +313,7 @@ export const api = {
     },
 
     createLedgerEntry: async (entry: any): Promise<void> => {
+        // Resolve emails if IDs are passed (from App.tsx)
         let payerEmail = entry.payer;
         let payeeEmail = entry.payee;
         
@@ -385,6 +329,7 @@ export const api = {
              if (u) payeeEmail = u.email;
         }
 
+        // Fetch task info if not provided
         let tTitle = entry.taskTitle;
         let tCreator = entry.taskCreator;
         if (!tTitle && entry.taskId) {
@@ -415,20 +360,11 @@ export const api = {
     },
 
     approveUser: async (email: string): Promise<void> => {
-        // Check if update works
-        const { count, error } = await supabase.from('profiles').update({ status: 'active' }).eq('email', email).select('', { count: 'exact' });
-        if (error) throw error;
-        if (count === 0) {
-             throw new Error("Droit insuffisant pour valider cet utilisateur (RLS).");
-        }
+        await supabase.from('profiles').update({ status: 'active' }).eq('email', email);
     },
 
     rejectUser: async (email: string): Promise<void> => {
-        const { count, error } = await supabase.from('profiles').update({ status: 'rejected' }).eq('email', email).select('', { count: 'exact' });
-        if (error) throw error;
-        if (count === 0) {
-             throw new Error("Droit insuffisant pour rejeter cet utilisateur (RLS).");
-        }
+         await supabase.from('profiles').update({ status: 'rejected' }).eq('email', email);
     },
 
     updateUserStatus: async (email: string, status: string): Promise<void> => {
@@ -461,10 +397,8 @@ export const api = {
         });
         
         if (error) {
-            if (error.message.includes("violates foreign key constraint") || error.message.includes("violates row-level security")) {
-                // This happens because we can't insert into 'profiles' if there is no 'auth.users' record.
-                // Supabase restriction: profiles must match an auth user.
-                throw new Error("Impossible de créer une fiche manuelle sans compte Auth associé (Restriction Supabase). Le résident doit s'inscrire lui-même.");
+            if (error.message.includes("violates foreign key constraint")) {
+                throw new Error("Impossible de créer une fiche sans compte Auth associé (Restriction Base de Données).");
             }
             throw error;
         }

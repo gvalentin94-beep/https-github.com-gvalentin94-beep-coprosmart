@@ -994,7 +994,7 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
                         </Section>
 
                          {/* COMPLETED HISTORY - RESTORED FULL VIEW */}
-                        <Section title="✅ Historique terminé">
+                        <Section title="✅ Travaux terminés">
                             {tasks.filter(t => t.status === 'completed' || t.status === 'rejected').length === 0 ? (
                                 <p className="text-slate-500 italic pl-2">Aucun historique pour le moment.</p>
                             ) : (

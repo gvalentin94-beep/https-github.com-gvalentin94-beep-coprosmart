@@ -635,6 +635,10 @@ function SharedFooter({ onCGU, onLegal }: { onCGU: () => void, onLegal: () => vo
                   <span className="text-2xl">🏢</span>
                   <span className="font-black text-xl tracking-tight text-white">CoproSmart.</span>
               </div>
+              <p className="text-slate-500 text-sm leading-relaxed max-w-2xl mx-auto">
+                CoproSmart permet aux copropriétaires de réduire collectivement les charges communes en réalisant eux-mêmes les petits travaux des parties communes : une ampoule à changer, une porte à régler, des encombrants à évacuer… Les charges diminuent pour tous, et celui qui intervient bénéficie d’un crédit supplémentaire sur ses propres charges.
+              </p>
+              <p className="text-slate-400 font-bold text-sm uppercase tracking-widest">Simple. Local. Gagnant-gagnant.</p>
               
               <div className="flex justify-center gap-6 text-xs text-slate-500 pt-4">
                   <button onClick={onCGU} className="hover:text-white underline">Conditions Générales d'Utilisation</button>
@@ -917,12 +921,9 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
             </nav>
 
             <div className="flex items-center gap-4">
-                <div className="text-right hidden lg:flex flex-col items-end border-l border-slate-800 pl-4 ml-2 gap-0.5">
+                <div className="text-right hidden lg:block border-l border-slate-800 pl-4 ml-2">
                     <div className="text-sm font-bold text-white">{user?.firstName} {user?.lastName.toUpperCase()}</div>
                     <div className="text-xs text-slate-500">{user?.email}</div>
-                    <Badge className={`mt-1 text-[10px] px-2 h-5 ${user.role === 'owner' ? 'bg-slate-800 text-slate-400 border-slate-700' : user.role === 'council' ? 'bg-amber-900/40 text-amber-200 border-amber-800' : 'bg-rose-900/40 text-rose-200 border-rose-800'}`}>
-                        {ROLES.find(r => r.id === user.role)?.label}
-                    </Badge>
                 </div>
                 <Button variant="ghost" size="sm" onClick={onLogout} title="Déconnexion" className="text-slate-400 hover:text-rose-500 hover:bg-slate-800 rounded-full w-10 h-10 p-0">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
@@ -1099,8 +1100,8 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
 
       </main>
 
-      {/* --- Shared Footer for Dashboard --- */}
-      {user && <SharedFooter onCGU={() => setShowCGU(true)} onLegal={() => setShowLegal(true)} />}
+      {/* --- Footer --- */}
+      <SharedFooter onCGU={() => setShowCGU(true)} onLegal={() => setShowLegal(true)} />
 
       <ToastContainer toasts={toasts} onClose={(id) => setToasts(prev => prev.filter(t => t.id !== id))} />
     </div>
@@ -1142,21 +1143,7 @@ export default function App() {
              <LoginCard onLogin={setUser} />
         </div>
         
-        {/* Specific Login Footer as requested */}
-        <div className="w-full max-w-4xl mx-auto mt-12 mb-8 text-center space-y-6 z-10">
-            <p className="text-slate-400 text-sm leading-relaxed max-w-2xl mx-auto">
-                CoproSmart permet aux copropriétaires de réduire collectivement les charges communes en réalisant eux-mêmes les petits travaux des parties communes : une ampoule à changer, une porte à régler, des encombrants à évacuer… Les charges diminuent pour tous, et celui qui intervient bénéficie d’un crédit supplémentaire sur ses propres charges. Simple, local, gagnant-gagnant.
-            </p>
-            
-            <div className="flex justify-center gap-6 text-xs text-slate-500">
-                <button onClick={() => setShowCGU(true)} className="hover:text-white underline">Conditions Générales d'Utilisation</button>
-                <button onClick={() => setShowLegal(true)} className="hover:text-white underline">Mentions Légales</button>
-            </div>
-
-            <div className="text-xs text-slate-700 pt-4 border-t border-slate-900 w-24 mx-auto">
-                v0.1.3
-            </div>
-        </div>
+        <SharedFooter onCGU={() => setShowCGU(true)} onLegal={() => setShowLegal(true)} />
 
          {/* CGU Modal */}
         {showCGU && (

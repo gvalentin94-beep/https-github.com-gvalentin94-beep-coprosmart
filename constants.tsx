@@ -12,6 +12,15 @@ export const ROLES = [
 
 export const LOCATIONS = ["Bâtiment A", "Bâtiment B", "Caves", "Parking", "Extérieurs"];
 
+// RATING LEGEND
+export const RATING_LEGEND: { [key: number]: string } = {
+    1: "Insatisfaisant - Travail à reprendre",
+    2: "Moyen - Des défauts visibles",
+    3: "Correct - Conforme aux attentes",
+    4: "Très bon - Soigné et rapide",
+    5: "Excellent - Au-delà des attentes"
+};
+
 // COLORS: Neutral backgrounds (slate-800), Colored Text/Icons/Borders
 export const CATEGORIES = [
   { id: "ampoule", label: "Ampoule / Lumière", icon: <LightbulbIcon />, colorClass: "text-amber-400 bg-slate-800 border-slate-700" },
@@ -36,7 +45,7 @@ export const TASK_STATUS_CONFIG: { [key: string]: { label: string; color: string
   pending: { label: "En validation", color: "amber", icon: <ClockIcon className="h-4 w-4" /> },
   open: { label: "Offres ouvertes", color: "indigo", icon: <ScaleIcon className="h-4 w-4" /> },
   awarded: { label: "Attribuée", color: "sky", icon: <CheckBadgeIcon className="h-4 w-4" /> },
-  verification: { label: "Attente contrôle qualité", color: "fuchsia", icon: <MagnifyingGlassIcon className="h-4 w-4" /> },
+  verification: { label: "Tâche terminée - Attente contrôle", color: "fuchsia", icon: <MagnifyingGlassIcon className="h-4 w-4" /> },
   completed: { label: "Terminée", color: "emerald", icon: <CheckCircleIcon className="h-4 w-4" /> },
   rejected: { label: "Rejetée", color: "rose", icon: <XCircleIcon className="h-4 w-4" /> },
 };

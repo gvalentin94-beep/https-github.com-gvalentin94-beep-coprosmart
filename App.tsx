@@ -60,30 +60,8 @@ function ToastContainer({ toasts, onClose }: { toasts: Toast[]; onClose: (id: st
 
 // --- Helper Components ---
 
-function SharedFooter({ onCGU, onLegal }: { onCGU: () => void, onLegal: () => void }) {
-    return (
-      <footer className="border-t border-slate-800 bg-slate-950 py-12 mt-auto">
-          <div className="max-w-4xl mx-auto px-4 text-center space-y-6">
-              <div className="flex items-center justify-center gap-2 opacity-50 grayscale hover:grayscale-0 transition-all duration-500">
-                  <span className="text-2xl">🏢</span>
-                  <span className="font-black text-xl tracking-tight text-white">CoproSmart.</span>
-              </div>
-              <p className="text-slate-500 text-sm leading-relaxed max-w-2xl mx-auto">
-                CoproSmart permet aux copropriétaires de réduire collectivement les charges communes en réalisant eux-mêmes les petits travaux des parties communes : une ampoule à changer, une porte à régler, des encombrants à évacuer… Les charges diminuent pour tous, et celui qui intervient bénéficie d’un crédit supplémentaire sur ses propres charges.
-                <span className="block mt-2 font-black tracking-tighter lowercase text-slate-400">simple. local. gagnant-gagnant.</span>
-              </p>
-              
-              <div className="flex justify-center gap-6 text-xs text-slate-500 pt-4">
-                  <button onClick={onCGU} className="hover:text-white underline">Conditions Générales d'Utilisation</button>
-                  <button onClick={onLegal} className="hover:text-white underline">Mentions Légales</button>
-              </div>
-
-              <div className="text-xs text-slate-700 pt-4 border-t border-slate-900 w-24 mx-auto mt-8">
-                  v0.1.3
-              </div>
-          </div>
-      </footer>
-    );
+function SharedFooter() {
+    return null; // Not used anymore, we use specific footer for login
 }
 
 function InfoModal({ title, children, onClose }: { title: string; children: React.ReactNode; onClose: () => void }) {
@@ -263,6 +241,8 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDel
     onAddUser: (user: { firstName: string, lastName: string, email: string, role: UserRole }) => void
 }) {
     const [editingUser, setEditingUser] = useState<RegisteredUser | null>(null);
+    const [expandedUser, setExpandedUser] = useState<string | null>(null); // New state for accordion
+
     const [editFirstName, setEditFirstName] = useState("");
     const [editLastName, setEditLastName] = useState("");
     const [editEmail, setEditEmail] = useState("");
@@ -345,6 +325,13 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDel
 
                     const isDeleted = u.status === 'deleted';
                     const history = tasks.filter(t => t.status === 'completed' && t.awardedTo === u.email);
+                    const totalTasks = history.length;
+                    
+                    // Calculate Average Rating
+                    const allRatings = history.flatMap(t => t.ratings);
+                    const avgRating = allRatings.length > 0 
+                        ? (allRatings.reduce((acc, r) => acc + r.stars, 0) / allRatings.length).toFixed(1)
+                        : null;
                     
                     return (
                         <Card key={u.email} className={`border-slate-700 bg-slate-800/50 hover:border-slate-600 transition-all ${isDeleted ? 'opacity-50 grayscale' : ''}`}>
@@ -370,6 +357,18 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDel
                                     </Badge>
                                     {isDeleted && <Badge variant="destructive">Banni</Badge>}
                                 </div>
+                                
+                                {/* SUMMARY STATS */}
+                                <div className="flex justify-between items-center bg-slate-900/30 p-3 rounded-lg border border-slate-700/50">
+                                    <div className="text-center flex-1 border-r border-slate-700/50">
+                                        <div className="text-xl font-bold text-amber-400">{avgRating ? avgRating : '-'} <span className="text-xs text-slate-500 font-normal">/5</span></div>
+                                        <div className="text-[10px] text-slate-500 uppercase">Moyenne</div>
+                                    </div>
+                                    <div className="text-center flex-1">
+                                        <div className="text-xl font-bold text-white">{totalTasks}</div>
+                                        <div className="text-[10px] text-slate-500 uppercase">Travaux</div>
+                                    </div>
+                                </div>
 
                                 {/* Ban Actions */}
                                 {canBan && (
@@ -382,46 +381,41 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDel
                                     </div>
                                 )}
                                 
-                                {/* Work History */}
-                                <div className="pt-3 border-t border-slate-700/50">
-                                    <div className="text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-wider">Derniers travaux</div>
-                                    {history.length === 0 ? (
-                                        <p className="text-xs text-slate-600 italic">Aucun historique.</p>
-                                    ) : (
-                                        <ul className="space-y-2">
-                                            {history.slice(0, 3).map(t => (
-                                                <li key={t.id} className="text-xs bg-slate-900/50 p-2 rounded border border-slate-800">
-                                                    <div className="flex justify-between text-slate-300 mb-1">
-                                                        <span className="truncate pr-2">{t.title}</span>
-                                                        <span className="font-mono text-emerald-400 font-bold">+{t.awardedAmount}€</span>
-                                                    </div>
-                                                    <div className="flex justify-between items-center">
-                                                        <span className="text-slate-600">{new Date(t.completionAt!).toLocaleDateString()}</span>
-                                                        {/* Ratings */}
-                                                        {t.ratings && t.ratings.length > 0 && (
-                                                            <div className="flex gap-0.5">
-                                                                {Array(Math.round(t.ratings.reduce((a,b)=>a+b.stars,0)/t.ratings.length)).fill(0).map((_,i)=><span key={i} className="text-[8px]">⭐</span>)}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                    {/* Comments display */}
-                                                    {t.ratings && t.ratings.length > 0 && t.ratings.map((r, idx) => (
-                                                        r.comment && (
-                                                            <div key={idx} className="mt-1 pt-1 border-t border-slate-800 text-[10px] text-slate-500 italic flex justify-between group">
-                                                                <span className="truncate">"{r.comment}"</span>
-                                                                {/* Council/Admin can delete comments */}
-                                                                {(me.role === 'admin' || me.role === 'council') && (
-                                                                    <button onClick={() => onDeleteRating(t.id, idx)} className="text-rose-500 opacity-0 group-hover:opacity-100 px-1">×</button>
-                                                                )}
-                                                            </div>
-                                                        )
-                                                    ))}
-                                                </li>
-                                            ))}
-                                            {history.length > 3 && <li className="text-[10px] text-center text-slate-600">et {history.length - 3} autres...</li>}
-                                        </ul>
-                                    )}
-                                </div>
+                                {/* Work History (Accordion) */}
+                                {history.length > 0 && (
+                                    <div className="pt-3 border-t border-slate-700/50">
+                                        <button 
+                                            onClick={() => setExpandedUser(expandedUser === u.email ? null : u.email)}
+                                            className="w-full text-xs text-indigo-400 hover:text-indigo-300 flex items-center justify-center gap-2 py-1"
+                                        >
+                                            {expandedUser === u.email ? 'Masquer les détails' : 'Voir l\'historique détaillé'}
+                                            <span>{expandedUser === u.email ? '▲' : '▼'}</span>
+                                        </button>
+                                        
+                                        {expandedUser === u.email && (
+                                            <ul className="space-y-2 mt-3 animate-in fade-in slide-in-from-top-2 duration-200">
+                                                {history.map(t => (
+                                                    <li key={t.id} className="text-xs bg-slate-900/50 p-2 rounded border border-slate-800">
+                                                        <div className="flex justify-between text-slate-300 mb-1">
+                                                            <span className="truncate pr-2 font-medium">{t.title}</span>
+                                                            <span className="font-mono text-emerald-400 font-bold">+{t.awardedAmount}€</span>
+                                                        </div>
+                                                        <div className="flex justify-between items-center">
+                                                            <span className="text-slate-600">{new Date(t.completionAt!).toLocaleDateString()}</span>
+                                                            {/* Ratings */}
+                                                            {t.ratings && t.ratings.length > 0 && (
+                                                                <div className="flex gap-0.5 items-center bg-slate-950/50 px-1.5 py-0.5 rounded">
+                                                                    <span className="text-amber-400 font-bold mr-1">{t.ratings[0].stars}</span>
+                                                                    {Array(t.ratings[0].stars).fill(0).map((_,i)=><span key={i} className="text-[8px]">⭐</span>)}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        )}
+                                    </div>
+                                )}
                             </CardContent>
                         </Card>
                     );
@@ -1196,7 +1190,7 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
       </main>
 
       {/* --- Footer --- */}
-      <SharedFooter onCGU={() => setShowCGU(true)} onLegal={() => setShowLegal(true)} />
+      <SharedFooter />
 
       <ToastContainer toasts={toasts} onClose={(id) => setToasts(prev => prev.filter(t => t.id !== id))} />
     </div>

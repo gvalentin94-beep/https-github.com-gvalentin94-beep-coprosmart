@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import type { Task, User, Rating, Bid } from '../types';
 import { Button, Card, Input, Label, Badge, Textarea } from './ui';
-import { CATEGORIES, TASK_STATUS_CONFIG, SCOPES, WARRANTY_OPTIONS, MapPinIcon } from '../constants';
+import { CATEGORIES, TASK_STATUS_CONFIG, SCOPES, WARRANTY_OPTIONS, MapPinIcon, RATING_LEGEND } from '../constants';
 
 // --- Sub-components defined in the same file to keep file count low ---
 
@@ -132,7 +132,6 @@ interface RatingBoxProps {
 function RatingBox({ onSubmit }: RatingBoxProps) {
     const [open, setOpen] = useState(false);
     const [stars, setStars] = useState(5);
-    const [comment, setComment] = useState("");
 
     if (!open) {
         return (
@@ -143,22 +142,28 @@ function RatingBox({ onSubmit }: RatingBoxProps) {
     }
 
     return (
-        <div className="border border-slate-700 rounded-xl p-4 space-y-3 bg-slate-900/90 mt-2 relative z-10 shadow-xl animate-in slide-in-from-top-2">
+        <div className="border border-slate-700 rounded-xl p-4 space-y-3 bg-slate-900/90 mt-2 relative z-10 shadow-xl animate-in slide-in-from-top-2 max-w-sm ml-auto">
             <div className="space-y-1">
-                <Label>Note (1 à 5)</Label>
-                <div className="flex gap-2">
+                <Label className="text-center block">Quelle est votre appréciation ?</Label>
+                <div className="flex justify-center gap-2 py-2">
                     {[1,2,3,4,5].map(s => (
-                        <button key={s} onClick={() => setStars(s)} className={`text-2xl transition-transform hover:scale-110 ${s <= stars ? 'grayscale-0' : 'grayscale opacity-30'}`}>⭐</button>
+                        <button 
+                            key={s} 
+                            onClick={() => setStars(s)} 
+                            className={`text-2xl transition-transform hover:scale-125 p-1 ${s <= stars ? 'grayscale-0 scale-110' : 'grayscale opacity-40'}`}
+                            title={RATING_LEGEND[s]}
+                        >
+                            ⭐
+                        </button>
                     ))}
                 </div>
+                <p className="text-sm text-center font-medium text-indigo-300 min-h-[20px] animate-in fade-in duration-200">
+                    {RATING_LEGEND[stars]}
+                </p>
             </div>
-            <div className="space-y-1">
-                <Label>Commentaire</Label>
-                <Textarea value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Intervention rapide et soignée..." className="bg-slate-950 border-slate-800 text-white" />
-            </div>
-            <div className="flex justify-end gap-2">
+            <div className="flex justify-end gap-2 pt-2">
                 <Button variant="ghost" size="sm" onClick={() => setOpen(false)}>Annuler</Button>
-                <Button size="sm" onClick={() => { onSubmit({ stars, comment }); setOpen(false); }}>Envoyer avis</Button>
+                <Button size="sm" onClick={() => { onSubmit({ stars, comment: "" }); setOpen(false); }}>Valider la note</Button>
             </div>
         </div>
     );
@@ -300,6 +305,9 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
         qualityStatusNode = <span className="text-sky-400">Travaux en cours</span>;
     }
 
+    // Check if we are in the "Completed History" list to show the detailed summary line
+    const isHistoryView = task.status === 'completed' || task.status === 'rejected';
+
     return (
         <Card className={`transition-all duration-300 border-l-[4px] ${style.border} bg-slate-800 hover:bg-slate-800/80`}>
             <div className="p-3 md:p-4">
@@ -346,17 +354,24 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                             </div>
                             
                             {/* ALWAYS VISIBLE TRACEABILITY LINE */}
-                            <div className="text-[11px] text-slate-400 mt-1.5 flex flex-wrap gap-2 items-center">
-                                <span>Créé par <span className="text-slate-300">{creatorName}</span></span>
-                                <span className="text-slate-600">•</span>
-                                {task.awardedTo ? (
-                                    <span>Attribué à <span className="text-slate-300">{awardedToName}</span></span>
-                                ) : (
-                                    <span className="italic opacity-50">Non attribué</span>
-                                )}
-                                <span className="text-slate-600">•</span>
-                                <span>Contrôle qualité : {qualityStatusNode}</span>
-                            </div>
+                            {isHistoryView ? (
+                                <div className="text-[11px] text-slate-400 mt-1.5 flex flex-wrap gap-2 items-center">
+                                    <span>Créé par <span className="text-slate-300">{creatorName}</span></span>
+                                    <span className="text-slate-600">•</span>
+                                    {task.awardedTo ? (
+                                        <span>Attribué à <span className="text-slate-300">{awardedToName}</span></span>
+                                    ) : (
+                                        <span className="italic opacity-50">Non attribué</span>
+                                    )}
+                                    <span className="text-slate-600">•</span>
+                                    <span>{qualityStatusNode}</span>
+                                </div>
+                            ) : (
+                                // Default simple subtitle for active tasks
+                                <div className="text-[11px] text-slate-400 mt-1.5">
+                                    {task.details.substring(0, 60)}{task.details.length > 60 && '...'}
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -422,8 +437,8 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                                 {task.ratings?.map((r, i) => (
                                     <div key={i} className="bg-slate-950/50 p-2 rounded mb-2 text-sm flex justify-between group">
                                         <div>
-                                            <div className="text-amber-400 text-xs tracking-widest">{Array(r.stars).fill('⭐').join('')}</div>
-                                            <p className="text-slate-300 italic">"{r.comment}"</p>
+                                            <div className="text-amber-400 text-xs tracking-widest" title={RATING_LEGEND[r.stars]}>{Array(r.stars).fill('⭐').join('')}</div>
+                                            {r.comment && <p className="text-slate-300 italic">"{r.comment}"</p>}
                                         </div>
                                         {canDelete && onDeleteRating && (
                                             <button onClick={() => onDeleteRating(task.id, i)} className="text-rose-500 opacity-0 group-hover:opacity-100">Supprimer</button>

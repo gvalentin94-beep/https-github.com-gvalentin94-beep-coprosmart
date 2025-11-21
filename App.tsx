@@ -438,14 +438,16 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDel
                                 <Label>Prénom</Label>
                                 <Input 
                                     value={editFirstName} 
-                                    onChange={e => setEditFirstName(e.target.value)} 
+                                    onChange={e => setEditFirstName(e.target.value)}
+                                    disabled={me.role === 'owner' && editingUser.id === me.id} 
                                 />
                             </div>
                             <div className="space-y-1.5">
                                 <Label>Nom</Label>
                                 <Input 
                                     value={editLastName} 
-                                    onChange={e => setEditLastName(e.target.value)} 
+                                    onChange={e => setEditLastName(e.target.value)}
+                                    disabled={me.role === 'owner' && editingUser.id === me.id}
                                 />
                             </div>
                             <div className="space-y-1.5">
@@ -830,25 +832,15 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
 
   // Handlers
   const handleCreateTask = async (taskData: Partial<Task>) => {
-    // If council or admin created it, it's auto-approved if we want logic here, 
-    // but API handles basic insert. We need to add approval manually if policy dictates.
-    // Current policy: Admin created -> pending (admin force validates). Council created -> pending (needs 1 more).
-    // However, `api.createTask` just inserts.
-    // We will insert, then if role is council/admin, we insert an approval too.
     
-    await api.createTask({
+    const taskId = await api.createTask({
         ...taskData,
         status: 'pending' // Always pending initially
     }, user.id);
     
-    // If user is council/admin, add self-approval immediately
+    // If user is council or admin, add self-approval immediately
     if (user.role === 'council' || user.role === 'admin') {
-         // We need the task ID. But `createTask` returns void. 
-         // Refetch to find the task? Or change API to return ID.
-         // For simplicity in this step without changing API return type massively:
-         // We skip auto-approve for now OR we assume user will approve it in list.
-         // Actually, let's rely on the UI "Validations" list. The user will see it and approve it.
-         // That's safer.
+         await api.addApproval(taskId, user.id);
     }
 
     addToast("Succès", "Tâche créée et soumise.", "success");

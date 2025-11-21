@@ -240,8 +240,12 @@ export const api = {
     },
 
     requestPasswordReset: async (email: string): Promise<string> => {
-        // In a real Supabase app, you'd use supabase.auth.resetPasswordForEmail(email)
-        return "SIMULATED_TOKEN_123";
+        if (!supabaseUrl) return "SIMULATED";
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+            redirectTo: window.location.origin,
+        });
+        if (error) throw error;
+        return "LINK_SENT";
     },
 
     resetPassword: async (token: string, newPass: string): Promise<void> => {
@@ -283,8 +287,8 @@ export const api = {
         return data.map(mapTask);
     },
 
-    createTask: async (task: Partial<Task>, userId: string): Promise<void> => {
-        const { error } = await supabase.from('tasks').insert({
+    createTask: async (task: Partial<Task>, userId: string): Promise<string> => {
+        const { data, error } = await supabase.from('tasks').insert({
             title: task.title,
             category: task.category,
             scope: task.scope,
@@ -295,8 +299,10 @@ export const api = {
             status: task.status, // usually pending
             created_by: userId,
             photo: task.photo
-        });
+        }).select('id').single();
+        
         if (error) throw error;
+        return data.id;
     },
 
     updateTaskStatus: async (taskId: string, status: string, extras: any = {}): Promise<void> => {

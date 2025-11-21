@@ -128,6 +128,20 @@ function TaskPreviewModal({ task, onConfirm, onCancel }: { task: Partial<Task>; 
 }
 
 function UserValidationQueue({ pendingUsers, onApprove, onReject }: { pendingUsers: RegisteredUser[], onApprove: (email: string) => void, onReject: (email: string) => void }) {
+    const [processing, setProcessing] = useState<string | null>(null);
+
+    const handleAction = async (email: string, action: 'approve' | 'reject') => {
+        setProcessing(email);
+        try {
+            if (action === 'approve') await onApprove(email);
+            else await onReject(email);
+        } catch (e: any) {
+            alert(e.message || "Erreur");
+        } finally {
+            setProcessing(null);
+        }
+    };
+
     if (pendingUsers.length === 0) return null;
 
     return (
@@ -146,8 +160,12 @@ function UserValidationQueue({ pendingUsers, onApprove, onReject }: { pendingUse
                                 <div className="text-xs text-slate-400">{u.email} • <span className="text-amber-200">{ROLES.find(r => r.id === u.role)?.label}</span></div>
                             </div>
                             <div className="flex gap-2 w-full sm:w-auto">
-                                <Button size="sm" className="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-500 border-none text-white" onClick={() => onApprove(u.email)}>Accepter</Button>
-                                <Button size="sm" variant="destructive" className="flex-1 sm:flex-none" onClick={() => onReject(u.email)}>Refuser</Button>
+                                <Button size="sm" disabled={processing === u.email} className="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-500 border-none text-white" onClick={() => handleAction(u.email, 'approve')}>
+                                    {processing === u.email ? '...' : 'Accepter'}
+                                </Button>
+                                <Button size="sm" disabled={processing === u.email} variant="destructive" className="flex-1 sm:flex-none" onClick={() => handleAction(u.email, 'reject')}>
+                                     {processing === u.email ? '...' : 'Refuser'}
+                                </Button>
                             </div>
                         </div>
                     ))}
@@ -220,22 +238,31 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDel
     const [editingUser, setEditingUser] = useState<RegisteredUser | null>(null);
     const [editFirstName, setEditFirstName] = useState("");
     const [editLastName, setEditLastName] = useState("");
+    const [editEmail, setEditEmail] = useState("");
     const [editRole, setEditRole] = useState<UserRole>("owner");
 
     const handleEditClick = (u: RegisteredUser) => {
         setEditingUser(u);
         setEditFirstName(u.firstName || "");
         setEditLastName(u.lastName || "");
+        setEditEmail(u.email || "");
         setEditRole(u.role);
     };
 
     const handleSaveUser = () => {
         if (editingUser) {
-            onUpdateUser(editingUser.email, {
-                firstName: editFirstName,
-                lastName: editLastName,
-                role: (me.role === 'admin' || me.role === 'council') ? editRole : editingUser.role
-            });
+            const updates: any = {
+                email: editEmail
+            };
+            
+            // Only admin/council can update names/role
+            if (me.role === 'admin' || me.role === 'council') {
+                updates.firstName = editFirstName;
+                updates.lastName = editLastName;
+                updates.role = editRole;
+            }
+            
+            onUpdateUser(editingUser.email, updates);
             setEditingUser(null);
         }
     };
@@ -250,7 +277,8 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDel
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {users.map(u => {
                     const isMe = u.email === me.email;
-                    const canEdit = me.role === 'admin' || me.role === 'council';
+                    const isAdminOrCouncil = me.role === 'admin' || me.role === 'council';
+                    const canEdit = isAdminOrCouncil || isMe;
                     const isDeleted = u.status === 'deleted';
                     const history = tasks.filter(t => t.status === 'completed' && t.awardedTo === u.email);
                     
@@ -280,7 +308,7 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDel
                                 </div>
 
                                 {/* Admin Actions */}
-                                {(me.role === 'admin' || me.role === 'council') && !isMe && (
+                                {isAdminOrCouncil && !isMe && (
                                     <div className="pt-3 border-t border-slate-700/50 flex gap-2">
                                         {!isDeleted ? (
                                              <Button size="sm" variant="destructive" className="w-full h-8 text-xs opacity-80 hover:opacity-100" onClick={() => onBan(u.email)}>🚫 Bannir</Button>
@@ -317,7 +345,7 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDel
                                                         r.comment && (
                                                             <div key={idx} className="mt-1 pt-1 border-t border-slate-800 text-[10px] text-slate-500 italic flex justify-between group">
                                                                 <span className="truncate">"{r.comment}"</span>
-                                                                {(me.role === 'admin' || me.role === 'council') && (
+                                                                {isAdminOrCouncil && (
                                                                     <button onClick={() => onDeleteRating(t.id, idx)} className="text-rose-500 opacity-0 group-hover:opacity-100 px-1">×</button>
                                                                 )}
                                                             </div>
@@ -343,11 +371,28 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDel
                         <CardContent className="space-y-4">
                             <div className="space-y-1.5">
                                 <Label>Prénom</Label>
-                                <Input value={editFirstName} onChange={e => setEditFirstName(e.target.value)} />
+                                <Input 
+                                    value={editFirstName} 
+                                    onChange={e => setEditFirstName(e.target.value)} 
+                                    disabled={!(me.role === 'admin' || me.role === 'council')}
+                                    className="disabled:opacity-50 disabled:cursor-not-allowed"
+                                />
                             </div>
                             <div className="space-y-1.5">
                                 <Label>Nom</Label>
-                                <Input value={editLastName} onChange={e => setEditLastName(e.target.value)} />
+                                <Input 
+                                    value={editLastName} 
+                                    onChange={e => setEditLastName(e.target.value)} 
+                                    disabled={!(me.role === 'admin' || me.role === 'council')}
+                                    className="disabled:opacity-50 disabled:cursor-not-allowed"
+                                />
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label>Email de contact</Label>
+                                <Input 
+                                    value={editEmail} 
+                                    onChange={e => setEditEmail(e.target.value)} 
+                                />
                             </div>
                             {(me.role === 'admin' || me.role === 'council') && (
                                 <div className="space-y-1.5">
@@ -430,7 +475,7 @@ function CreateTaskPage({ me, onSubmit, onCancel }: { me: User, onSubmit: (t: Pa
                             <Input 
                                 placeholder="Ex: Remplacer ampoule Hall A, Évacuer carton..." 
                                 value={title} onChange={(e) => setTitle(e.target.value)} 
-                                className="h-12 text-lg" 
+                                className="h-12 text-lg !bg-white !text-slate-900" 
                             />
                         </div>
                         
@@ -471,7 +516,7 @@ function CreateTaskPage({ me, onSubmit, onCancel }: { me: User, onSubmit: (t: Pa
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2">
                                 <Label className="text-base text-white">Emplacement <span className="text-rose-500">*</span></Label>
-                                <Select value={location} onChange={(e) => setLocation(e.target.value)} className="h-12">
+                                <Select value={location} onChange={(e) => setLocation(e.target.value)} className="h-12 !bg-white !text-slate-900">
                                     {LOCATIONS.map(l => <option key={l} value={l}>📍 {l}</option>)}
                                 </Select>
                             </div>
@@ -483,7 +528,7 @@ function CreateTaskPage({ me, onSubmit, onCancel }: { me: User, onSubmit: (t: Pa
                                     <Input 
                                         type="number" 
                                         placeholder="15" 
-                                        className="pl-10 h-12 text-lg font-mono font-bold"
+                                        className="pl-10 h-12 text-lg font-mono font-bold !bg-white !text-slate-900"
                                         value={startingPrice} 
                                         onChange={(e) => setStartingPrice(e.target.value)} 
                                     />
@@ -520,7 +565,7 @@ function CreateTaskPage({ me, onSubmit, onCancel }: { me: User, onSubmit: (t: Pa
                             <Textarea 
                                 placeholder="Décrivez précisément ce qu'il y a à faire..." 
                                 value={details} onChange={(e) => setDetails(e.target.value)} 
-                                className="h-32 resize-none" 
+                                className="h-32 resize-none !bg-white !text-slate-900" 
                             />
                         </div>
                         <div className="space-y-2">
@@ -993,7 +1038,7 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
               </div>
 
               <div className="text-xs text-slate-700 pt-4 border-t border-slate-900 w-24 mx-auto mt-8">
-                  v0.1.0
+                  v0.1.3
               </div>
           </div>
       </footer>

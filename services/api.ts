@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import type { Task, LedgerEntry, User, UserRole, RegisteredUser, UserStatus, Bid, Rating, Approval, Rejection, DeletedRating, TaskCategory, TaskScope } from '../types';
@@ -406,14 +405,38 @@ export const api = {
     },
     
     approveUser: async (email: string): Promise<void> => {
-        await supabase.from('profiles').update({ status: 'active' }).eq('email', email);
+        // Using data array to verify if update happened (RLS might block it silently)
+        const { data, error } = await supabase
+            .from('profiles')
+            .update({ status: 'active' })
+            .eq('email', email)
+            .select();
+        
+        if (error) throw error;
+        // If no data returned, it means row wasn't found or RLS blocked update
+        if (!data || data.length === 0) throw new Error("Droit insuffisant pour valider cet utilisateur.");
     },
     
     rejectUser: async (email: string): Promise<void> => {
-        await supabase.from('profiles').update({ status: 'rejected' }).eq('email', email);
+        // Check if trying to reject admin
+        const { data: user } = await supabase.from('profiles').select('role').eq('email', email).single();
+        if (user?.role === 'admin') throw new Error("Impossible de rejeter l'administrateur.");
+
+        const { data, error } = await supabase
+            .from('profiles')
+            .update({ status: 'rejected' })
+            .eq('email', email)
+            .select();
+
+        if (error) throw error;
+        if (!data || data.length === 0) throw new Error("Droit insuffisant pour rejeter cet utilisateur.");
     },
 
     updateUserStatus: async (email: string, status: UserStatus): Promise<void> => {
+        const { data: user } = await supabase.from('profiles').select('role').eq('email', email).single();
+        if (user?.role === 'admin' && (status === 'rejected' || status === 'deleted')) {
+             throw new Error("Impossible de supprimer l'administrateur.");
+        }
         await supabase.from('profiles').update({ status }).eq('email', email);
     },
 
@@ -435,6 +458,7 @@ export const api = {
         if (updates.firstName) map.first_name = updates.firstName;
         if (updates.lastName) map.last_name = updates.lastName;
         if (updates.role) map.role = updates.role;
+        if (updates.email) map.email = updates.email; // Update display email
         await supabase.from('profiles').update(map).eq('email', email);
     }
 };

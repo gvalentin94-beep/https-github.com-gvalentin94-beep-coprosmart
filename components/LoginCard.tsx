@@ -32,11 +32,18 @@ export function LoginCard({ onLogin }: LoginCardProps) {
 
   // Helper to extract real error message from Supabase objects
   const getErrorMessage = (e: any) => {
-      if (typeof e === 'string') return e;
-      if (e instanceof Error) return e.message;
-      if (e?.message) return e.message;
-      if (e?.error_description) return e.error_description;
-      return "Une erreur est survenue (" + JSON.stringify(e) + ")";
+      let msg = "";
+      if (typeof e === 'string') msg = e;
+      else if (e instanceof Error) msg = e.message;
+      else if (e?.message) msg = e.message;
+      else if (e?.error_description) msg = e.error_description;
+      else msg = "Une erreur est survenue (" + JSON.stringify(e) + ")";
+
+      // Friendly translation for RLS error
+      if (msg.includes("row-level security")) {
+          return "⚠️ Configuration requise : Vous devez exécuter les scripts SQL de sécurité dans Supabase pour autoriser l'inscription.";
+      }
+      return msg;
   };
 
   const resetFields = () => {
@@ -184,7 +191,7 @@ export function LoginCard({ onLogin }: LoginCardProps) {
                         onChange={(e) => setPassword(e.target.value)} 
                     />
                 </div>
-                {err && <p className="text-sm text-rose-400">{err}</p>}
+                {err && <p className="text-sm text-rose-400 bg-rose-900/20 p-2 rounded border border-rose-900/50">{err}</p>}
                 <Button className="w-full mt-2" onClick={handleLogin}>Continuer</Button>
                 <Button variant="outline" className="w-full bg-transparent border-slate-500 text-slate-200 hover:bg-slate-700 mt-2" onClick={() => switchTo('signUp')}>
                     Créer un compte
@@ -257,7 +264,7 @@ export function LoginCard({ onLogin }: LoginCardProps) {
                         {ROLES.filter(r => r.id !== 'admin').map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
                     </Select>
                 </div>
-                {err && <p className="text-sm text-rose-400">{err}</p>}
+                {err && <p className="text-sm text-rose-400 bg-rose-900/20 p-2 rounded border border-rose-900/50">{err}</p>}
                 <Button className="w-full mt-2" onClick={handleSignUp}>Créer mon compte</Button>
                 <Button variant="outline" className="w-full bg-transparent border-slate-500 text-slate-200 hover:bg-slate-700 mt-2" onClick={() => switchTo('login')}>
                     Retour à la connexion

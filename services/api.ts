@@ -3,10 +3,24 @@ import { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import type { Task, LedgerEntry, User, UserRole, RegisteredUser, UserStatus, Bid, Rating, Approval, Rejection, DeletedRating, TaskCategory, TaskScope } from '../types';
 
-// Init Supabase
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-const supabase = createClient(supabaseUrl, supabaseKey);
+// Init Supabase safely
+// This prevents the "Cannot read properties of undefined" crash if import.meta.env is missing
+const getEnv = () => {
+    try {
+        return (import.meta as any).env || {};
+    } catch {
+        return {};
+    }
+};
+
+const env = getEnv();
+const supabaseUrl = env.VITE_SUPABASE_URL;
+const supabaseKey = env.VITE_SUPABASE_ANON_KEY;
+
+// Create client or fallback to placeholder to allow UI to load even if config is missing
+const supabase = (supabaseUrl && supabaseKey)
+    ? createClient(supabaseUrl, supabaseKey)
+    : createClient('https://placeholder.supabase.co', 'placeholder');
 
 // --- Helpers to map DB snake_case to App camelCase ---
 
@@ -97,6 +111,13 @@ export const useAuth = () => {
     useEffect(() => {
         const checkSession = async () => {
             try {
+                // Safety check for dummy client
+                if (supabaseUrl === undefined) {
+                    console.warn("Supabase not configured.");
+                    setLoading(false);
+                    return;
+                }
+
                 const { data: { session } } = await supabase.auth.getSession();
                 if (session?.user) {
                     const { data: profile, error } = await supabase
@@ -141,6 +162,8 @@ export const api = {
     // --- AUTH ---
     
     signUp: async (email: string, password: string, role: UserRole, firstName: string, lastName: string): Promise<void> => {
+        if (!supabaseUrl) throw new Error("La base de données n'est pas connectée.");
+        
         // 1. Create Auth User
         const { data, error } = await supabase.auth.signUp({
             email,
@@ -162,6 +185,8 @@ export const api = {
     },
 
     login: async (email: string, password: string): Promise<User> => {
+        if (!supabaseUrl) throw new Error("La base de données n'est pas connectée.");
+
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error || !data.user) throw new Error("Identifiants incorrects.");
 
@@ -220,6 +245,8 @@ export const api = {
     // --- DATA ---
 
     readTasks: async (): Promise<Task[]> => {
+        if (!supabaseUrl) return [];
+
         const { data, error } = await supabase
             .from('tasks')
             .select(`
@@ -336,6 +363,8 @@ export const api = {
 
     // --- LEDGER ---
     readLedger: async (): Promise<LedgerEntry[]> => {
+        if (!supabaseUrl) return [];
+        
         const { data, error } = await supabase
             .from('ledger')
             .select(`
@@ -368,6 +397,7 @@ export const api = {
     // --- USER MANAGEMENT ---
     
     getPendingUsers: async (): Promise<RegisteredUser[]> => {
+        if (!supabaseUrl) return [];
         const { data } = await supabase.from('profiles').select('*').eq('status', 'pending');
         return (data || []).map(mapProfile);
     },
@@ -386,12 +416,14 @@ export const api = {
     },
 
     getDirectory: async (): Promise<RegisteredUser[]> => {
+        if (!supabaseUrl) return [];
         // Return all users EXCEPT admin
         const { data } = await supabase.from('profiles').select('*').neq('role', 'admin').order('last_name');
         return (data || []).map(mapProfile);
     },
 
     getAllUsers: async (): Promise<RegisteredUser[]> => {
+        if (!supabaseUrl) return [];
         const { data } = await supabase.from('profiles').select('*');
         return (data || []).map(mapProfile);
     },

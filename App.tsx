@@ -921,9 +921,12 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
             </nav>
 
             <div className="flex items-center gap-4">
-                <div className="text-right hidden lg:block border-l border-slate-800 pl-4 ml-2">
+                <div className="text-right hidden lg:flex flex-col items-end border-l border-slate-800 pl-4 ml-2 gap-0.5">
                     <div className="text-sm font-bold text-white">{user?.firstName} {user?.lastName.toUpperCase()}</div>
                     <div className="text-xs text-slate-500">{user?.email}</div>
+                    <Badge className={`mt-1 text-[10px] px-2 h-5 ${user.role === 'owner' ? 'bg-slate-800 text-slate-400 border-slate-700' : user.role === 'council' ? 'bg-amber-900/40 text-amber-200 border-amber-800' : 'bg-rose-900/40 text-rose-200 border-rose-800'}`}>
+                        {ROLES.find(r => r.id === user.role)?.label}
+                    </Badge>
                 </div>
                 <Button variant="ghost" size="sm" onClick={onLogout} title="Déconnexion" className="text-slate-400 hover:text-rose-500 hover:bg-slate-800 rounded-full w-10 h-10 p-0">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">

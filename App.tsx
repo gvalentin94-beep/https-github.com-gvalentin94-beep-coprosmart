@@ -240,6 +240,7 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDel
     const [editLastName, setEditLastName] = useState("");
     const [editEmail, setEditEmail] = useState("");
     const [editRole, setEditRole] = useState<UserRole>("owner");
+    const [newPassword, setNewPassword] = useState("");
 
     const handleEditClick = (u: RegisteredUser) => {
         setEditingUser(u);
@@ -247,6 +248,7 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDel
         setEditLastName(u.lastName || "");
         setEditEmail(u.email || "");
         setEditRole(u.role);
+        setNewPassword("");
     };
 
     const handleSaveUser = () => {
@@ -260,6 +262,11 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDel
                 updates.firstName = editFirstName;
                 updates.lastName = editLastName;
                 updates.role = editRole;
+            }
+
+            // Only current user can update password (security)
+            if (newPassword.trim() && editingUser.id === me.id) {
+                updates.password = newPassword.trim();
             }
             
             onUpdateUser(editingUser.email, updates);
@@ -278,8 +285,10 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDel
                 {users.map(u => {
                     const isMe = u.email === me.email;
                     const isAdminOrCouncil = me.role === 'admin' || me.role === 'council';
+                    // Edit: CS/Admin can edit anyone, Copro can edit self
                     const canEdit = isAdminOrCouncil || isMe;
                     const isDeleted = u.status === 'deleted';
+                    const isAdminTarget = u.role === 'admin';
                     const history = tasks.filter(t => t.status === 'completed' && t.awardedTo === u.email);
                     
                     return (
@@ -307,8 +316,8 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDel
                                     {isDeleted && <Badge variant="destructive">Banni</Badge>}
                                 </div>
 
-                                {/* Admin Actions */}
-                                {isAdminOrCouncil && !isMe && (
+                                {/* Admin Actions - HIDDEN for Admin Target */}
+                                {isAdminOrCouncil && !isMe && !isAdminTarget && (
                                     <div className="pt-3 border-t border-slate-700/50 flex gap-2">
                                         {!isDeleted ? (
                                              <Button size="sm" variant="destructive" className="w-full h-8 text-xs opacity-80 hover:opacity-100" onClick={() => onBan(u.email)}>🚫 Bannir</Button>
@@ -394,6 +403,20 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDel
                                     onChange={e => setEditEmail(e.target.value)} 
                                 />
                             </div>
+                            
+                            {/* Password Change: Only visible if editing own profile */}
+                            {editingUser.id === me.id && (
+                                <div className="space-y-1.5 bg-slate-800/50 p-3 rounded border border-slate-700">
+                                    <Label>Nouveau mot de passe (optionnel)</Label>
+                                    <Input 
+                                        type="password"
+                                        placeholder="Laisser vide pour ne pas changer"
+                                        value={newPassword} 
+                                        onChange={e => setNewPassword(e.target.value)} 
+                                    />
+                                </div>
+                            )}
+
                             {(me.role === 'admin' || me.role === 'council') && (
                                 <div className="space-y-1.5">
                                     <Label>Rôle</Label>
@@ -603,6 +626,32 @@ function CreateTaskPage({ me, onSubmit, onCancel }: { me: User, onSubmit: (t: Pa
 }
 
 // --- Main Dashboard Component ---
+
+function SharedFooter({ onCGU, onLegal }: { onCGU: () => void, onLegal: () => void }) {
+    return (
+      <footer className="border-t border-slate-800 bg-slate-950 py-12 mt-auto">
+          <div className="max-w-4xl mx-auto px-4 text-center space-y-6">
+              <div className="flex items-center justify-center gap-2 opacity-50 grayscale hover:grayscale-0 transition-all duration-500">
+                  <span className="text-2xl">🏢</span>
+                  <span className="font-black text-xl tracking-tight text-white">CoproSmart.</span>
+              </div>
+              <p className="text-slate-500 text-sm leading-relaxed max-w-2xl mx-auto">
+                CoproSmart permet aux copropriétaires de réduire collectivement les charges communes en réalisant eux-mêmes les petits travaux des parties communes : une ampoule à changer, une porte à régler, des encombrants à évacuer… Les charges diminuent pour tous, et celui qui intervient bénéficie d’un crédit supplémentaire sur ses propres charges.
+              </p>
+              <p className="text-slate-400 font-bold text-sm uppercase tracking-widest">Simple. Local. Gagnant-gagnant.</p>
+              
+              <div className="flex justify-center gap-6 text-xs text-slate-500 pt-4">
+                  <button onClick={onCGU} className="hover:text-white underline">Conditions Générales d'Utilisation</button>
+                  <button onClick={onLegal} className="hover:text-white underline">Mentions Légales</button>
+              </div>
+
+              <div className="text-xs text-slate-700 pt-4 border-t border-slate-900 w-24 mx-auto mt-8">
+                  v0.1.3
+              </div>
+          </div>
+      </footer>
+    );
+}
 
 function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
   const [view, setView] = useState<'home' | 'create-task' | 'directory' | 'ledger'>('home');
@@ -851,7 +900,7 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
                     CoproSmart.
                 </h1>
                 <span className="text-[10px] font-black tracking-tighter text-white mt-0.5 leading-none">
-                    Simple. Local. Gagnant-gagnant.
+                    On réduit nos charges de copropriété.
                 </span>
             </button>
             
@@ -1018,33 +1067,8 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
             </div>
         )}
 
-      </main>
-
-      {/* --- Footer --- */}
-      <footer className="border-t border-slate-800 bg-slate-950 py-12 mt-auto">
-          <div className="max-w-4xl mx-auto px-4 text-center space-y-6">
-              <div className="flex items-center justify-center gap-2 opacity-50 grayscale hover:grayscale-0 transition-all duration-500">
-                  <span className="text-2xl">🏢</span>
-                  <span className="font-black text-xl tracking-tight text-white">CoproSmart.</span>
-              </div>
-              <p className="text-slate-500 text-sm leading-relaxed max-w-2xl mx-auto">
-                CoproSmart permet aux copropriétaires de réduire collectivement les charges communes en réalisant eux-mêmes les petits travaux des parties communes. Les charges diminuent pour tous, et celui qui intervient bénéficie d’un crédit sur ses charges.
-              </p>
-              <p className="text-slate-400 font-bold text-sm uppercase tracking-widest">Simple. Local. Gagnant-gagnant.</p>
-              
-              <div className="flex justify-center gap-6 text-xs text-slate-500 pt-4">
-                  <button onClick={() => setShowCGU(true)} className="hover:text-white underline">Conditions Générales d'Utilisation</button>
-                  <button onClick={() => setShowLegal(true)} className="hover:text-white underline">Mentions Légales</button>
-              </div>
-
-              <div className="text-xs text-slate-700 pt-4 border-t border-slate-900 w-24 mx-auto mt-8">
-                  v0.1.3
-              </div>
-          </div>
-      </footer>
-
-      {/* CGU Modal */}
-      {showCGU && (
+        {/* CGU Modal */}
+        {showCGU && (
           <InfoModal title="Conditions Générales d'Utilisation" onClose={() => setShowCGU(false)}>
               <p>Bienvenue sur CoproSmart.</p>
               <p>En utilisant cette application, vous acceptez les règles suivantes :</p>
@@ -1056,10 +1080,10 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
                   <li><b>Confidentialité :</b> Les données (noms, offres) sont visibles uniquement par les membres de la copropriété inscrits.</li>
               </ul>
           </InfoModal>
-      )}
+        )}
 
-      {/* Legal Modal */}
-      {showLegal && (
+        {/* Legal Modal */}
+        {showLegal && (
           <InfoModal title="Mentions Légales" onClose={() => setShowLegal(false)}>
               <p><b>Éditeur du service :</b></p>
               <p>CoproSmart - Initiative privée de copropriété.</p>
@@ -1072,8 +1096,13 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
               <p><b>Données personnelles :</b></p>
               <p>Conformément au RGPD, vous disposez d'un droit d'accès, de rectification et de suppression de vos données. Pour exercer ce droit, contactez le Conseil Syndical.</p>
           </InfoModal>
-      )}
-      
+        )}
+
+      </main>
+
+      {/* --- Footer --- */}
+      <SharedFooter onCGU={() => setShowCGU(true)} onLegal={() => setShowLegal(true)} />
+
       <ToastContainer toasts={toasts} onClose={(id) => setToasts(prev => prev.filter(t => t.id !== id))} />
     </div>
   );
@@ -1081,6 +1110,8 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
 
 export default function App() {
   const { user, setUser, loading } = useAuth();
+  const [showCGU, setShowCGU] = useState(false);
+  const [showLegal, setShowLegal] = useState(false);
 
   if (loading) {
     return (
@@ -1112,9 +1143,38 @@ export default function App() {
              <LoginCard onLogin={setUser} />
         </div>
         
-        <div className="mt-12 text-center text-sm text-slate-400 z-10 max-w-4xl mx-auto leading-relaxed font-medium opacity-80">
-            CoproSmart permet aux copropriétaires de réduire collectivement les charges communes en réalisant eux-mêmes les petits travaux des parties communes : une ampoule à changer, une porte à régler, des encombrants à évacuer… Les charges diminuent pour tous, et celui qui intervient bénéficie d’un crédit supplémentaire sur ses propres charges. Simple, local, gagnant-gagnant.
-        </div>
+        <SharedFooter onCGU={() => setShowCGU(true)} onLegal={() => setShowLegal(true)} />
+
+         {/* CGU Modal */}
+        {showCGU && (
+          <InfoModal title="Conditions Générales d'Utilisation" onClose={() => setShowCGU(false)}>
+              <p>Bienvenue sur CoproSmart.</p>
+              <p>En utilisant cette application, vous acceptez les règles suivantes :</p>
+              <ul className="list-disc pl-5 space-y-2">
+                  <li><b>Initiative locale :</b> CoproSmart est un outil d'entraide pour faciliter la gestion des petites interventions entre copropriétaires.</li>
+                  <li><b>Absence de contrat de travail :</b> Les interventions réalisées ne constituent pas une activité salariée ni une prestation commerciale professionnelle, mais une participation collaborative à la vie de l'immeuble.</li>
+                  <li><b>Compensation :</b> La rémunération se fait exclusivement par le biais d'un crédit (déduction) sur les charges de copropriété, validé par le Conseil Syndical et le Syndic.</li>
+                  <li><b>Responsabilité :</b> Chaque intervenant agit sous sa propre responsabilité. Il s'engage à ne réaliser que des tâches à sa portée et à respecter les règles de sécurité.</li>
+                  <li><b>Confidentialité :</b> Les données (noms, offres) sont visibles uniquement par les membres de la copropriété inscrits.</li>
+              </ul>
+          </InfoModal>
+        )}
+
+        {/* Legal Modal */}
+        {showLegal && (
+          <InfoModal title="Mentions Légales" onClose={() => setShowLegal(false)}>
+              <p><b>Éditeur du service :</b></p>
+              <p>CoproSmart - Initiative privée de copropriété.</p>
+              <p>Résidence Watteau</p>
+              <br/>
+              <p><b>Hébergement :</b></p>
+              <p>Ce site est hébergé par Vercel Inc.</p>
+              <p>340 S Lemon Ave #4133, Walnut, CA 91789, USA</p>
+              <br/>
+              <p><b>Données personnelles :</b></p>
+              <p>Conformément au RGPD, vous disposez d'un droit d'accès, de rectification et de suppression de vos données. Pour exercer ce droit, contactez le Conseil Syndical.</p>
+          </InfoModal>
+        )}
       </div>
     );
   }

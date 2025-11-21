@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import type { Task, LedgerEntry, User, UserRole, RegisteredUser, UserStatus, Bid, Rating, Approval, Rejection, DeletedRating, TaskCategory, TaskScope } from '../types';
@@ -459,6 +460,15 @@ export const api = {
         if (updates.lastName) map.last_name = updates.lastName;
         if (updates.role) map.role = updates.role;
         if (updates.email) map.email = updates.email; // Update display email
-        await supabase.from('profiles').update(map).eq('email', email);
+        
+        // Update profile table
+        const { error } = await supabase.from('profiles').update(map).eq('email', email);
+        if (error) throw error;
+
+        // If password is provided, update it via Auth (Only works if user is updating their own password)
+        if (updates.password) {
+            const { error: pwdError } = await supabase.auth.updateUser({ password: updates.password });
+            if (pwdError) throw pwdError;
+        }
     }
 };

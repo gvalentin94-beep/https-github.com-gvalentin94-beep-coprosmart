@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { fakeApi } from '../services/api';
+import { api } from '../services/api';
 import type { User, UserRole } from '../types';
 import { ROLES } from '../constants';
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Label, Select } from './ui';
@@ -47,16 +47,11 @@ export function LoginCard({ onLogin }: LoginCardProps) {
   const handleLogin = async () => {
     try {
       setErr("");
-      const u = await fakeApi.login(email.trim(), password);
+      const u = await api.login(email.trim(), password);
       onLogin(u);
     } catch (e) {
       if (e instanceof Error) {
-          let msg = e.message;
-          // Add specific hint for "User not found" in this prototype version
-          if (msg === "Utilisateur non trouvé.") {
-              msg += " (Note: Sur ce prototype, les comptes sont stockés sur l'appareil. Créez un compte si vous changez d'appareil.)";
-          }
-          setErr(msg);
+          setErr(e.message);
       }
       else setErr("Une erreur inconnue est survenue.");
     }
@@ -67,10 +62,9 @@ export function LoginCard({ onLogin }: LoginCardProps) {
       setErr("Les mots de passe ne correspondent pas.");
       return;
     }
-    // Names are now optional. Removed check.
     try {
       setErr("");
-      await fakeApi.signUp(email.trim(), password, role, firstName.trim(), lastName.trim());
+      await api.signUp(email.trim(), password, role, firstName.trim(), lastName.trim());
       // Do not auto-login. Show success message.
       setSuccessMsg("Compte créé ! En attente de validation par le Conseil Syndical.");
       setTimeout(() => {
@@ -87,12 +81,12 @@ export function LoginCard({ onLogin }: LoginCardProps) {
   const handleForgotPassword = async () => {
       try {
           setErr("");
-          const token = await fakeApi.requestPasswordReset(email.trim());
+          const token = await api.requestPasswordReset(email.trim());
           setSimulatedToken(token);
           // Move to next step automatically for simulation
           setTimeout(() => {
              setMode('resetPassword');
-             setResetToken(token); // Pre-fill for convenience in demo
+             setResetToken(token); 
           }, 2000);
       } catch (e) {
           if (e instanceof Error) setErr(e.message);
@@ -106,7 +100,7 @@ export function LoginCard({ onLogin }: LoginCardProps) {
       }
       try {
           setErr("");
-          await fakeApi.resetPassword(resetToken, password);
+          await api.resetPassword(resetToken, password);
           setSuccessMsg("Mot de passe modifié ! Vous pouvez vous connecter.");
           setTimeout(() => {
               setMode('login');

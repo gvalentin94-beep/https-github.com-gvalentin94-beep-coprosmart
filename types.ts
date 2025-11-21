@@ -14,7 +14,7 @@ export interface User {
 }
 
 export interface RegisteredUser extends User {
-  password: string;
+  password?: string; // Optional because Supabase handles auth
   status: UserStatus;
   resetToken?: string;
   resetTokenExpires?: number;
@@ -28,7 +28,9 @@ export interface Me {
 }
 
 export interface Bid {
-  by: string;
+  id?: string;
+  userId?: string; // UUID of the bidder
+  by: string; // Email (for display compatibility)
   amount: number;
   note: string;
   at: string;
@@ -49,7 +51,7 @@ export interface Rating {
   stars: number;
   comment: string;
   at: string;
-  byHash: string;
+  byHash: string; // User ID
 }
 
 export interface DeletedRating extends Rating {
@@ -67,14 +69,16 @@ export interface Task {
   startingPrice: number;
   warrantyDays: number;
   status: TaskStatus;
-  createdBy: string;
+  createdBy: string; // Email for display
+  createdById?: string; // UUID
   createdAt: string;
   bids: Bid[];
   ratings: Rating[];
   deletedRatings?: DeletedRating[]; // History of deleted ratings
   approvals: Approval[];
   rejections: Rejection[];
-  awardedTo?: string;
+  awardedTo?: string; // Email
+  awardedToId?: string; // UUID
   awardedAmount?: number;
   completionAt?: string;
   biddingStartedAt?: string;
@@ -83,6 +87,7 @@ export interface Task {
 }
 
 export interface LedgerEntry {
+  id?: string;
   taskId: string;
   type: "charge_credit" | "apartment_payment";
   payer: string;

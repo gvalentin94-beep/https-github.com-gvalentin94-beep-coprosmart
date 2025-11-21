@@ -30,6 +30,15 @@ export function LoginCard({ onLogin }: LoginCardProps) {
   const [err, setErr] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
 
+  // Helper to extract real error message from Supabase objects
+  const getErrorMessage = (e: any) => {
+      if (typeof e === 'string') return e;
+      if (e instanceof Error) return e.message;
+      if (e?.message) return e.message;
+      if (e?.error_description) return e.error_description;
+      return "Une erreur est survenue (" + JSON.stringify(e) + ")";
+  };
+
   const resetFields = () => {
     setEmail("");
     setPassword("");
@@ -50,10 +59,7 @@ export function LoginCard({ onLogin }: LoginCardProps) {
       const u = await api.login(email.trim(), password);
       onLogin(u);
     } catch (e) {
-      if (e instanceof Error) {
-          setErr(e.message);
-      }
-      else setErr("Une erreur inconnue est survenue.");
+      setErr(getErrorMessage(e));
     }
   };
 
@@ -73,8 +79,7 @@ export function LoginCard({ onLogin }: LoginCardProps) {
           setPassword(""); 
       }, 3000);
     } catch (e) {
-      if (e instanceof Error) setErr(e.message);
-      else setErr("Une erreur inconnue est survenue.");
+      setErr(getErrorMessage(e));
     }
   };
 
@@ -89,7 +94,7 @@ export function LoginCard({ onLogin }: LoginCardProps) {
              setResetToken(token); 
           }, 2000);
       } catch (e) {
-          if (e instanceof Error) setErr(e.message);
+          setErr(getErrorMessage(e));
       }
   };
 
@@ -107,7 +112,7 @@ export function LoginCard({ onLogin }: LoginCardProps) {
               resetFields();
           }, 2000);
       } catch (e) {
-          if (e instanceof Error) setErr(e.message);
+          setErr(getErrorMessage(e));
       }
   };
 

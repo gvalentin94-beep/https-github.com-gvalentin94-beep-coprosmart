@@ -1,3 +1,4 @@
+
 import { Resend } from 'resend';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -28,11 +29,10 @@ export default async function handler(request: any, response: any) {
         return response.status(400).json({ error: 'Missing required fields' });
     }
 
-    // Send email via Resend
-    // Note: 'onboarding@resend.dev' only works for the email you registered with on Resend.
-    // Once you add your domain (ex: notification@coprosmart.fr) in Resend, change this 'from' field.
+    // Send email via Resend using the official domain
+    // Note: This will only work once you have verified 'coprosmart.com' in your Resend dashboard (Step 2).
     const data = await resend.emails.send({
-      from: 'CoproSmart <onboarding@resend.dev>', 
+      from: 'CoproSmart <ne-pas-repondre@coprosmart.com>', 
       to: to,
       subject: subject,
       html: html,

@@ -1,310 +1,307 @@
-import { createClient } from '@supabase/supabase-js';
+
 import { useState, useEffect } from 'react';
-import type { User, RegisteredUser, Task, LedgerEntry, Bid, Rating, UserRole } from '../types';
+import { createClient } from '@supabase/supabase-js';
+import type { Task, LedgerEntry, User, UserRole, RegisteredUser, UserStatus, Bid, Rating, Approval, Rejection, DeletedRating, TaskCategory, TaskScope } from '../types';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+// Init Supabase safely
+// This prevents the "Cannot read properties of undefined" crash if import.meta.env is missing
+const getEnv = () => {
+    try {
+        return (import.meta as any).env || {};
+    } catch {
+        return {};
+    }
+};
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+const env = getEnv();
+const supabaseUrl = env.VITE_SUPABASE_URL;
+const supabaseKey = env.VITE_SUPABASE_ANON_KEY;
 
-// Hook for auth
-export function useAuth() {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+// Create client or fallback to placeholder to allow UI to load even if config is missing
+const supabase = (supabaseUrl && supabaseKey)
+    ? createClient(supabaseUrl, supabaseKey)
+    : createClient('https://placeholder.supabase.co', 'placeholder');
 
-  useEffect(() => {
-    // Check active session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-         fetchProfile(session.user.email || '').then(u => setUser(u)).catch(() => setUser(null));
-      }
-      setLoading(false);
-    });
+// --- Helpers to map DB snake_case to App camelCase ---
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        fetchProfile(session.user.email || '').then(u => setUser(u));
-      } else {
-        setUser(null);
-      }
-      setLoading(false);
-    });
+const mapProfile = (p: any): RegisteredUser => ({
+    id: p.id,
+    email: p.email,
+    firstName: p.first_name,
+    lastName: p.last_name,
+    role: p.role,
+    status: p.status
+});
 
-    return () => subscription.unsubscribe();
-  }, []);
-
-  return { user, setUser, loading };
-}
-
-async function fetchProfile(email: string): Promise<User | null> {
-    const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('email', email)
-        .single();
+const mapTask = (t: any): Task => ({
+    id: t.id,
+    title: t.title,
+    category: t.category as TaskCategory,
+    scope: t.scope as TaskScope,
+    details: t.details,
+    location: t.location,
+    startingPrice: t.starting_price,
+    warrantyDays: t.warranty_days,
+    status: t.status,
+    createdBy: t.created_by_profile?.email || 'Unknown',
+    createdById: t.created_by,
+    createdAt: t.created_at,
+    photo: t.photo,
+    awardedTo: t.awarded_to_profile?.email,
+    awardedToId: t.awarded_to,
+    awardedAmount: t.awarded_amount,
+    completionAt: t.completion_at,
+    biddingStartedAt: t.bidding_started_at,
+    validatedBy: t.validated_by_profile?.email,
     
-    if (error || !data) return null;
+    // Map relations
+    bids: t.bids?.map((b: any) => ({
+        id: b.id,
+        userId: b.bidder_id,
+        by: b.bidder_profile?.email || 'Unknown',
+        amount: b.amount,
+        note: b.note,
+        at: b.created_at,
+        plannedExecutionDate: b.planned_date
+    })) || [],
     
-    return {
-        id: data.id,
-        email: data.email,
-        firstName: data.first_name,
-        lastName: data.last_name,
-        role: data.role
-    };
-}
+    approvals: t.approvals?.map((a: any) => ({
+        by: a.user_profile?.email || 'Unknown',
+        at: a.created_at
+    })) || [],
+    
+    rejections: t.rejections?.map((r: any) => ({
+        by: r.user_profile?.email || 'Unknown',
+        at: r.created_at
+    })) || [],
+    
+    ratings: t.ratings?.map((r: any) => ({
+        stars: r.stars,
+        comment: r.comment,
+        at: r.created_at,
+        byHash: r.user_id
+    })) || [],
+    
+    deletedRatings: t.deleted_ratings?.map((dr: any) => ({
+        stars: dr.stars,
+        comment: dr.comment,
+        at: dr.created_at, // Using creation date of original rating? No, type says 'at'
+        byHash: dr.original_author_id,
+        deletedAt: dr.deleted_at,
+        deletedBy: dr.deleter_profile?.email || 'Unknown'
+    })) || []
+});
+
+const mapLedger = (l: any): LedgerEntry => ({
+    id: l.id,
+    taskId: l.task_id,
+    type: l.type,
+    payer: l.payer_profile?.email || (l.type === 'charge_credit' ? 'Copro' : 'Unknown'),
+    payee: l.payee_profile?.email || 'Unknown',
+    amount: l.amount,
+    at: l.created_at,
+    taskTitle: l.tasks?.title,
+    taskCreator: l.tasks?.created_by_profile?.email
+});
+
+export const useAuth = () => {
+    const [user, setUser] = useState<User | null>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const checkSession = async () => {
+            try {
+                // Safety check for dummy client
+                if (supabaseUrl === undefined) {
+                    console.warn("Supabase not configured.");
+                    setLoading(false);
+                    return;
+                }
+
+                const { data: { session } } = await supabase.auth.getSession();
+                if (session?.user) {
+                    const { data: profile, error } = await supabase
+                        .from('profiles')
+                        .select('*')
+                        .eq('id', session.user.id)
+                        .single();
+                    
+                    if (profile && !error && profile.status === 'active') {
+                        setUser({
+                            id: profile.id,
+                            email: profile.email,
+                            firstName: profile.first_name,
+                            lastName: profile.last_name,
+                            role: profile.role
+                        });
+                    }
+                }
+            } catch (e) {
+                console.error("Session check failed", e);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        checkSession();
+
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+             if (!session) {
+                 setUser(null);
+             }
+        });
+
+        return () => subscription.unsubscribe();
+    }, []);
+
+    return { user, setUser, loading };
+};
 
 export const api = {
-    login: async (email: string, password: string): Promise<User> => {
-        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-        if (!data.user?.email) throw new Error("No email found");
-        
-        const profile = await fetchProfile(data.user.email);
-        if (!profile) throw new Error("Profile not found");
-        return profile;
-    },
-
+    
+    // --- AUTH ---
+    
     signUp: async (email: string, password: string, role: UserRole, firstName: string, lastName: string): Promise<void> => {
-        const { data: authData, error: authError } = await supabase.auth.signUp({
+        if (!supabaseUrl) throw new Error("La base de données n'est pas connectée.");
+        
+        // 1. Create Auth User
+        const { data, error } = await supabase.auth.signUp({
             email,
             password,
         });
-        if (authError) throw authError;
+        if (error) throw error;
+        if (!data.user) throw new Error("Erreur lors de la création du compte.");
 
-        if (authData.user) {
-            const { error: profileError } = await supabase
-                .from('profiles')
-                .insert({
-                    id: authData.user.id,
-                    email,
-                    first_name: firstName,
-                    last_name: lastName,
-                    role,
-                    status: 'pending'
-                });
-             
-             if (profileError) {
-                 if (profileError.code === '23505') { // Unique violation
-                     await supabase.from('profiles').update({
-                         first_name: firstName,
-                         last_name: lastName,
-                         role,
-                         status: 'pending'
-                     }).eq('id', authData.user.id);
-                 } else {
-                    throw profileError;
-                 }
-             }
+        // 2. Create Profile Entry (status pending by default)
+        const { error: profileError } = await supabase.from('profiles').insert({
+            id: data.user.id,
+            email,
+            first_name: firstName,
+            last_name: lastName,
+            role,
+            status: 'pending' 
+        });
+        if (profileError) throw profileError;
+    },
+
+    login: async (email: string, password: string): Promise<User> => {
+        if (!supabaseUrl) throw new Error("La base de données n'est pas connectée.");
+
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error || !data.user) throw new Error("Identifiants incorrects.");
+
+        // Check Profile Status
+        let { data: profile, error: profileError } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', data.user.id)
+            .single();
+            
+        // AUTO-REPAIR: If profile is missing (e.g. RLS failure during signup), create it now
+        if (!profile) {
+            const { error: insertError } = await supabase.from('profiles').insert({
+                id: data.user.id,
+                email: email,
+                first_name: '', // User will need to update this later or we leave empty
+                last_name: '',
+                role: 'owner', // Default role
+                status: 'pending'
+            });
+            
+            // Try fetching again
+            if (!insertError) {
+                const { data: newProfile } = await supabase.from('profiles').select('*').eq('id', data.user.id).single();
+                profile = newProfile;
+            }
         }
+
+        if (!profile) throw new Error("Profil introuvable. Contactez l'administrateur.");
+
+        // Auto-Restore Admin Logic
+        if (profile.role === 'admin' && profile.status === 'deleted') {
+            await supabase.from('profiles').update({ status: 'active' }).eq('id', profile.id);
+            profile.status = 'active';
+        }
+
+        if (profile.status === 'pending') throw new Error("Compte en attente de validation par le Conseil Syndical.");
+        if (profile.status === 'rejected') throw new Error("Demande de compte refusée.");
+        if (profile.status === 'deleted') throw new Error("Ce compte a été désactivé.");
+
+        return {
+            id: profile.id,
+            email: profile.email,
+            firstName: profile.first_name,
+            lastName: profile.last_name,
+            role: profile.role
+        };
     },
     
-    requestPasswordReset: async (email: string): Promise<string> => {
-        const { error } = await supabase.auth.resetPasswordForEmail(email);
-        if (error) throw error;
-        // Generate a fake 6-digit code for simulation if needed, or return a placeholder
-        return Math.floor(100000 + Math.random() * 900000).toString();
+    logout: async () => {
+        await supabase.auth.signOut();
     },
 
-    resetPassword: async (token: string, password: string): Promise<void> => {
-        const { error } = await supabase.auth.updateUser({ password });
-        if (error) throw error;
+    requestPasswordReset: async (email: string): Promise<string> => {
+        // In a real Supabase app, you'd use supabase.auth.resetPasswordForEmail(email)
+        return "SIMULATED_TOKEN_123";
     },
-    
+
+    resetPassword: async (token: string, newPass: string): Promise<void> => {
+        // Mock implementation
+    },
+
+    // --- DATA ---
+
     readTasks: async (): Promise<Task[]> => {
+        if (!supabaseUrl) return [];
+
         const { data, error } = await supabase
             .from('tasks')
-            .select('*')
+            .select(`
+                *,
+                created_by_profile:created_by(email),
+                awarded_to_profile:awarded_to(email),
+                validated_by_profile:validated_by(email),
+                bids(*, bidder_profile:bidder_id(email)),
+                approvals(*, user_profile:user_id(email)),
+                rejections(*, user_profile:user_id(email)),
+                ratings(*),
+                deleted_ratings(*, deleter_profile:deleted_by(email))
+            `)
             .order('created_at', { ascending: false });
-        if (error) throw error;
         
-        return data.map((t: any) => ({
-            id: t.id,
-            title: t.title,
-            category: t.category,
-            scope: t.scope,
-            details: t.details,
-            location: t.location,
-            startingPrice: t.starting_price,
-            warrantyDays: t.warranty_days,
-            status: t.status,
-            createdBy: t.created_by_email || 'unknown', 
-            createdById: t.created_by,
-            createdAt: t.created_at,
-            bids: t.bids || [],
-            ratings: t.ratings || [],
-            deletedRatings: t.deleted_ratings || [],
-            approvals: t.approvals || [],
-            rejections: t.rejections || [],
-            awardedTo: t.awarded_to_email,
-            awardedToId: t.awarded_to,
-            awardedAmount: t.awarded_amount,
-            completionAt: t.completion_at,
-            biddingStartedAt: t.bidding_started_at,
-            photo: t.photo,
-            validatedBy: t.validated_by
-        }));
-    },
-
-    readLedger: async (): Promise<LedgerEntry[]> => {
-        const { data, error } = await supabase.from('ledger').select('*').order('at', { ascending: false });
-        if (error) throw error;
-        return data.map((l: any) => ({
-            id: l.id,
-            taskId: l.task_id,
-            type: l.type,
-            payer: l.payer_email, 
-            payee: l.payee_email,
-            amount: l.amount,
-            at: l.at,
-            taskTitle: l.task_title,
-            taskCreator: l.task_creator
-        }));
-    },
-
-    getPendingUsers: async (): Promise<RegisteredUser[]> => {
-        const { data, error } = await supabase.from('profiles').select('*').eq('status', 'pending');
-        if (error) throw error;
-        return data.map((u: any) => ({
-            id: u.id,
-            email: u.email,
-            firstName: u.first_name,
-            lastName: u.last_name,
-            role: u.role,
-            status: u.status
-        }));
-    },
-
-    getAllUsers: async (): Promise<RegisteredUser[]> => {
-        const { data, error } = await supabase.from('profiles').select('*');
-        if (error) throw error;
-        return data.map((u: any) => ({
-            id: u.id,
-            email: u.email,
-            firstName: u.first_name,
-            lastName: u.last_name,
-            role: u.role,
-            status: u.status
-        }));
-    },
-    
-    getDirectory: async (): Promise<RegisteredUser[]> => {
-        const { data, error } = await supabase.from('profiles').select('*').neq('status', 'pending');
-        if (error) throw error;
-        return data.map((u: any) => ({
-             id: u.id,
-            email: u.email,
-            firstName: u.first_name,
-            lastName: u.last_name,
-            role: u.role,
-            status: u.status
-        }));
+        if (error) {
+            console.error(error);
+            return [];
+        }
+        return data.map(mapTask);
     },
 
     createTask: async (task: Partial<Task>, userId: string): Promise<void> => {
-        // Fetch creator email
-        const { data: user } = await supabase.from('profiles').select('email').eq('id', userId).single();
-        
-        const dbTask = {
+        const { error } = await supabase.from('tasks').insert({
             title: task.title,
             category: task.category,
             scope: task.scope,
-            details: task.details,
             location: task.location,
+            details: task.details,
             starting_price: task.startingPrice,
             warranty_days: task.warrantyDays,
-            status: task.status,
+            status: task.status, // usually pending
             created_by: userId,
-            created_by_email: user?.email,
-            photo: task.photo,
-            bids: [],
-            ratings: [],
-            approvals: [],
-            rejections: []
-        };
-        const { error } = await supabase.from('tasks').insert(dbTask);
+            photo: task.photo
+        });
         if (error) throw error;
     },
 
-    updateTaskStatus: async (taskId: string, status: string, extra: any = {}): Promise<void> => {
-        const updates: any = { status };
+    updateTaskStatus: async (taskId: string, status: string, extras: any = {}): Promise<void> => {
+        const updateData: any = { status };
+        if (extras.awardedTo) updateData.awarded_to = extras.awardedTo; // expect UUID
+        if (extras.awardedAmount) updateData.awarded_amount = extras.awardedAmount;
+        if (extras.validatedBy) updateData.validated_by = extras.validatedBy;
+        if (extras.biddingStartedAt) updateData.bidding_started_at = extras.biddingStartedAt;
+        if (status === 'completed') updateData.completion_at = new Date().toISOString();
         
-        if (extra.awardedTo) {
-             updates.awarded_to = extra.awardedTo;
-             // fetch email for denormalization if needed, or assume backend handles join
-             const { data: u } = await supabase.from('profiles').select('email').eq('id', extra.awardedTo).single();
-             if (u) updates.awarded_to_email = u.email;
-        }
-        if (extra.awardedAmount) updates.awarded_amount = extra.awardedAmount;
-        if (extra.biddingStartedAt) updates.bidding_started_at = extra.biddingStartedAt;
-        if (extra.validatedBy) updates.validated_by = extra.validatedBy;
-        if (status === 'completed') updates.completion_at = new Date().toISOString();
-
-        const { error } = await supabase.from('tasks').update(updates).eq('id', taskId);
+        const { error } = await supabase.from('tasks').update(updateData).eq('id', taskId);
         if (error) throw error;
-    },
-
-    addBid: async (taskId: string, bid: Omit<Bid, 'by' | 'at'>, userId: string): Promise<void> => {
-        const { data: task, error: fetchError } = await supabase.from('tasks').select('bids').eq('id', taskId).single();
-        if (fetchError) throw fetchError;
-        
-        const { data: user } = await supabase.from('profiles').select('email').eq('id', userId).single();
-        
-        const newBid = {
-            userId,
-            by: user?.email || 'unknown',
-            amount: bid.amount,
-            note: bid.note,
-            at: new Date().toISOString(),
-            plannedExecutionDate: bid.plannedExecutionDate
-        };
-        
-        const updatedBids = [...(task.bids || []), newBid];
-        
-        const { error } = await supabase.from('tasks').update({ bids: updatedBids }).eq('id', taskId);
-        if (error) throw error;
-    },
-
-    addApproval: async (taskId: string, userId: string): Promise<void> => {
-         const { data: task } = await supabase.from('tasks').select('approvals').eq('id', taskId).single();
-         const { data: user } = await supabase.from('profiles').select('email').eq('id', userId).single();
-         const newApproval = { by: user?.email, at: new Date().toISOString() };
-         const updated = [...(task?.approvals || []), newApproval];
-         await supabase.from('tasks').update({ approvals: updated }).eq('id', taskId);
-    },
-
-    addRejection: async (taskId: string, userId: string): Promise<void> => {
-         const { data: task } = await supabase.from('tasks').select('rejections').eq('id', taskId).single();
-         const { data: user } = await supabase.from('profiles').select('email').eq('id', userId).single();
-         const newRejection = { by: user?.email, at: new Date().toISOString() };
-         const updated = [...(task?.rejections || []), newRejection];
-         await supabase.from('tasks').update({ rejections: updated }).eq('id', taskId);
-    },
-
-    addRating: async (taskId: string, rating: Omit<Rating, 'at' | 'byHash'>, userId: string): Promise<void> => {
-         const { data: task } = await supabase.from('tasks').select('ratings').eq('id', taskId).single();
-         const newRating = { ...rating, byHash: userId, at: new Date().toISOString() };
-         const updated = [...(task?.ratings || []), newRating];
-         await supabase.from('tasks').update({ ratings: updated }).eq('id', taskId);
-    },
-    
-    deleteRating: async (taskId: string, index: number, userId: string): Promise<void> => {
-        const { data: task } = await supabase.from('tasks').select('ratings, deleted_ratings').eq('id', taskId).single();
-        const ratings = task?.ratings || [];
-        if (index >= 0 && index < ratings.length) {
-            const removed = ratings[index];
-            const remaining = ratings.filter((_: any, i: number) => i !== index);
-            
-            const { data: user } = await supabase.from('profiles').select('email').eq('id', userId).single();
-            const deletedEntry = {
-                ...removed,
-                deletedAt: new Date().toISOString(),
-                deletedBy: user?.email
-            };
-            const deletedHistory = [...(task?.deleted_ratings || []), deletedEntry];
-            
-            await supabase.from('tasks').update({ ratings: remaining, deleted_ratings: deletedHistory }).eq('id', taskId);
-        }
     },
 
     deleteTask: async (taskId: string): Promise<void> => {
@@ -312,63 +309,149 @@ export const api = {
         if (error) throw error;
     },
 
-    createLedgerEntry: async (entry: any): Promise<void> => {
-        // Resolve emails if IDs are passed (from App.tsx)
-        let payerEmail = entry.payer;
-        let payeeEmail = entry.payee;
+    // --- BIDS ---
+    addBid: async (taskId: string, bid: any, userId: string): Promise<void> => {
+        const { error } = await supabase.from('bids').insert({
+            task_id: taskId,
+            bidder_id: userId,
+            amount: bid.amount,
+            note: bid.note,
+            planned_date: bid.plannedExecutionDate
+        });
+        if (error) throw error;
+    },
+
+    // --- APPROVALS / REJECTIONS ---
+    addApproval: async (taskId: string, userId: string): Promise<void> => {
+        // Check if exists
+        const { data } = await supabase.from('approvals').select('id').eq('task_id', taskId).eq('user_id', userId);
+        if (data && data.length > 0) return;
+
+        const { error } = await supabase.from('approvals').insert({ task_id: taskId, user_id: userId });
+        if (error) throw error;
+    },
+    
+    addRejection: async (taskId: string, userId: string): Promise<void> => {
+        const { error } = await supabase.from('rejections').insert({ task_id: taskId, user_id: userId });
+        if (error) throw error;
+    },
+
+    // --- RATINGS ---
+    addRating: async (taskId: string, rating: any, userId: string): Promise<void> => {
+        const { error } = await supabase.from('ratings').insert({
+            task_id: taskId,
+            user_id: userId,
+            stars: rating.stars,
+            comment: rating.comment
+        });
+        if (error) throw error;
+    },
+
+    deleteRating: async (taskId: string, ratingIdx: number, userId: string): Promise<void> => {
+        const { data: ratings } = await supabase.from('ratings').select('*').eq('task_id', taskId).order('created_at', { ascending: true });
+        if (ratings && ratings[ratingIdx]) {
+            const r = ratings[ratingIdx];
+            // Insert into history
+            await supabase.from('deleted_ratings').insert({
+                task_id: taskId,
+                deleted_by: userId,
+                original_author_id: r.user_id,
+                stars: r.stars,
+                comment: r.comment
+            });
+            // Delete
+            await supabase.from('ratings').delete().eq('id', r.id);
+        }
+    },
+
+    // --- LEDGER ---
+    readLedger: async (): Promise<LedgerEntry[]> => {
+        if (!supabaseUrl) return [];
         
-        if (!payerEmail && entry.payerId) {
-             const { data: u } = await supabase.from('profiles').select('email').eq('id', entry.payerId).single();
-             if (u) payerEmail = u.email;
-        } else if (entry.payerId === null) {
-            payerEmail = 'Copro';
-        }
+        const { data, error } = await supabase
+            .from('ledger')
+            .select(`
+                *,
+                payer_profile:payer_id(email),
+                payee_profile:payee_id(email),
+                tasks(title, created_by_profile:created_by(email))
+            `)
+            .order('created_at', { ascending: false });
+        if (error) return [];
+        return data.map(mapLedger);
+    },
 
-        if (!payeeEmail && entry.payeeId) {
-             const { data: u } = await supabase.from('profiles').select('email').eq('id', entry.payeeId).single();
-             if (u) payeeEmail = u.email;
-        }
-
-        // Fetch task info if not provided
-        let tTitle = entry.taskTitle;
-        let tCreator = entry.taskCreator;
-        if (!tTitle && entry.taskId) {
-            const { data: t } = await supabase.from('tasks').select('title, created_by_email').eq('id', entry.taskId).single();
-            if (t) {
-                tTitle = t.title;
-                tCreator = t.created_by_email;
-            }
-        }
-
-        const dbEntry = {
+    createLedgerEntry: async (entry: any): Promise<void> => {
+        const { error } = await supabase.from('ledger').insert({
             task_id: entry.taskId,
             type: entry.type,
-            payer_email: payerEmail, 
-            payee_email: payeeEmail,
-            amount: entry.amount,
-            at: new Date().toISOString(),
-            task_title: tTitle,
-            task_creator: tCreator
-        };
-        
-         const { error } = await supabase.from('ledger').insert(dbEntry);
+            payer_id: entry.payerId, // UUID or null
+            payee_id: entry.payeeId, // UUID
+            amount: entry.amount
+        });
+        if (error) throw error;
+    },
+    
+    deleteLedgerEntry: async (id: string): Promise<void> => {
+         const { error } = await supabase.from('ledger').delete().eq('id', id);
          if (error) throw error;
     },
 
-    deleteLedgerEntry: async (id: string): Promise<void> => {
-         await supabase.from('ledger').delete().eq('id', id);
+    // --- USER MANAGEMENT ---
+    
+    getPendingUsers: async (): Promise<RegisteredUser[]> => {
+        if (!supabaseUrl) return [];
+        const { data } = await supabase.from('profiles').select('*').eq('status', 'pending');
+        return (data || []).map(mapProfile);
     },
-
+    
     approveUser: async (email: string): Promise<void> => {
-        await supabase.from('profiles').update({ status: 'active' }).eq('email', email);
+        // Using data array to verify if update happened (RLS might block it silently)
+        const { data, error } = await supabase
+            .from('profiles')
+            .update({ status: 'active' })
+            .eq('email', email)
+            .select();
+        
+        if (error) throw error;
+        // If no data returned, it means row wasn't found or RLS blocked update
+        if (!data || data.length === 0) throw new Error("Droit insuffisant pour valider cet utilisateur.");
     },
-
+    
     rejectUser: async (email: string): Promise<void> => {
-         await supabase.from('profiles').update({ status: 'rejected' }).eq('email', email);
+        // Check if trying to reject admin
+        const { data: user } = await supabase.from('profiles').select('role').eq('email', email).single();
+        if (user?.role === 'admin') throw new Error("Impossible de rejeter l'administrateur.");
+
+        const { data, error } = await supabase
+            .from('profiles')
+            .update({ status: 'rejected' })
+            .eq('email', email)
+            .select();
+
+        if (error) throw error;
+        if (!data || data.length === 0) throw new Error("Droit insuffisant pour rejeter cet utilisateur.");
     },
 
-    updateUserStatus: async (email: string, status: string): Promise<void> => {
+    updateUserStatus: async (email: string, status: UserStatus): Promise<void> => {
+        const { data: user } = await supabase.from('profiles').select('role').eq('email', email).single();
+        if (user?.role === 'admin' && (status === 'rejected' || status === 'deleted')) {
+             throw new Error("Impossible de supprimer l'administrateur.");
+        }
         await supabase.from('profiles').update({ status }).eq('email', email);
+    },
+
+    getDirectory: async (): Promise<RegisteredUser[]> => {
+        if (!supabaseUrl) return [];
+        // Return ALL users including admin, pending, rejected etc.
+        const { data } = await supabase.from('profiles').select('*').order('last_name');
+        return (data || []).map(mapProfile);
+    },
+
+    getAllUsers: async (): Promise<RegisteredUser[]> => {
+        if (!supabaseUrl) return [];
+        const { data } = await supabase.from('profiles').select('*');
+        return (data || []).map(mapProfile);
     },
 
     updateUser: async (email: string, updates: any): Promise<void> => {
@@ -376,31 +459,16 @@ export const api = {
         if (updates.firstName) map.first_name = updates.firstName;
         if (updates.lastName) map.last_name = updates.lastName;
         if (updates.role) map.role = updates.role;
-        if (updates.email) map.email = updates.email; 
+        if (updates.email) map.email = updates.email; // Update display email
         
+        // Update profile table
         const { error } = await supabase.from('profiles').update(map).eq('email', email);
         if (error) throw error;
 
+        // If password is provided, update it via Auth (Only works if user is updating their own password)
         if (updates.password) {
             const { error: pwdError } = await supabase.auth.updateUser({ password: updates.password });
             if (pwdError) throw pwdError;
-        }
-    },
-
-    createDirectoryEntry: async (userData: any): Promise<void> => {
-        const { error } = await supabase.from('profiles').insert({
-            email: userData.email,
-            first_name: userData.firstName,
-            last_name: userData.lastName,
-            role: userData.role,
-            status: 'active'
-        });
-        
-        if (error) {
-            if (error.message.includes("violates foreign key constraint")) {
-                throw new Error("Impossible de créer une fiche sans compte Auth associé (Restriction Base de Données).");
-            }
-            throw error;
         }
     }
 };

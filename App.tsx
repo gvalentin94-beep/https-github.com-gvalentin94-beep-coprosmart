@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import type { Task, LedgerEntry, User, RegisteredUser, UserRole, TaskCategory, TaskScope, Bid, Rating } from './types';
 import { useAuth, api } from './services/api';
@@ -225,31 +226,21 @@ function Ledger({ entries, usersMap, onDelete, isAdmin }: { entries: LedgerEntry
   );
 }
 
-function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onCreateUser, onDeleteRating }: { 
+function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDeleteRating }: { 
     users: RegisteredUser[], 
     tasks: Task[], 
     me: User, 
     onBan: (email: string) => void, 
     onRestore: (email: string) => void,
     onUpdateUser: (email: string, data: any) => void,
-    onCreateUser: (data: any) => void,
     onDeleteRating: (taskId: string, ratingIdx: number) => void
 }) {
     const [editingUser, setEditingUser] = useState<RegisteredUser | null>(null);
-    const [creatingUser, setCreatingUser] = useState(false);
-    
-    // Edit states
     const [editFirstName, setEditFirstName] = useState("");
     const [editLastName, setEditLastName] = useState("");
     const [editEmail, setEditEmail] = useState("");
     const [editRole, setEditRole] = useState<UserRole>("owner");
     const [newPassword, setNewPassword] = useState("");
-
-    // Create states
-    const [createFirstName, setCreateFirstName] = useState("");
-    const [createLastName, setCreateLastName] = useState("");
-    const [createEmail, setCreateEmail] = useState("");
-    const [createRole, setCreateRole] = useState<UserRole>("owner");
 
     const handleEditClick = (u: RegisteredUser) => {
         setEditingUser(u);
@@ -266,38 +257,15 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onCre
                 email: editEmail
             };
             
-            // Logic:
-            // Admin: Can edit everything
-            // Council: Can edit Name/Role/Email of OWNERS. Can edit Name/Email of self. Cannot edit other Council/Admin.
-            // Owner: Can edit Email of self.
-            
-            const isMe = editingUser.id === me.id;
-            const isAdmin = me.role === 'admin';
-            const isCouncil = me.role === 'council';
-            
-            // Permission to edit details
-            if (isAdmin) {
-                 updates.firstName = editFirstName;
-                 updates.lastName = editLastName;
-                 updates.role = editRole;
-            } else if (isCouncil) {
-                // If editing self, can change names but not role (usually) - allowing role change for self might demote them
-                if (isMe) {
-                    updates.firstName = editFirstName;
-                    updates.lastName = editLastName;
-                    updates.role = editRole;
-                } else {
-                    // Editing others - only if target is Owner
-                    if (editingUser.role === 'owner') {
-                        updates.firstName = editFirstName;
-                        updates.lastName = editLastName;
-                        updates.role = editRole;
-                    }
-                }
+            // Only admin/council can update names/role
+            if (me.role === 'admin' || me.role === 'council') {
+                updates.firstName = editFirstName;
+                updates.lastName = editLastName;
+                updates.role = editRole;
             }
 
             // Only current user can update password (security)
-            if (newPassword.trim() && isMe) {
+            if (newPassword.trim() && editingUser.id === me.id) {
                 updates.password = newPassword.trim();
             }
             
@@ -305,53 +273,22 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onCre
             setEditingUser(null);
         }
     };
-    
-    const handleCreateUser = () => {
-        onCreateUser({
-            firstName: createFirstName,
-            lastName: createLastName,
-            email: createEmail,
-            role: createRole
-        });
-        setCreatingUser(false);
-        setCreateFirstName("");
-        setCreateLastName("");
-        setCreateEmail("");
-        setCreateRole("owner");
-    };
 
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <h2 className="text-3xl font-bold text-white tracking-tight">👥 Annuaire</h2>
-                <div className="flex gap-2 items-center">
-                    <Badge className="bg-slate-800 text-slate-400 border-slate-700">{users.length} membres</Badge>
-                    {(me.role === 'admin' || me.role === 'council') && (
-                        <Button size="sm" onClick={() => setCreatingUser(true)} className="bg-indigo-600 hover:bg-indigo-500">
-                            + Ajouter un résident
-                        </Button>
-                    )}
-                </div>
+                <Badge className="bg-slate-800 text-slate-400 border-slate-700">{users.length} membres</Badge>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {users.map(u => {
                     const isMe = u.email === me.email;
-                    const isAdmin = me.role === 'admin';
-                    const isCouncil = me.role === 'council';
-                    const targetIsAdmin = u.role === 'admin';
-                    const targetIsCouncil = u.role === 'council';
-
-                    // PERMISSIONS LOGIC
-                    let canEdit = false;
-                    if (isAdmin) canEdit = true;
-                    else if (isMe) canEdit = true;
-                    else if (isCouncil) {
-                        // Council can edit non-council/non-admin
-                        if (!targetIsAdmin && !targetIsCouncil) canEdit = true;
-                    }
-
+                    const isAdminOrCouncil = me.role === 'admin' || me.role === 'council';
+                    // Edit: CS/Admin can edit anyone, Copro can edit self
+                    const canEdit = isAdminOrCouncil || isMe;
                     const isDeleted = u.status === 'deleted';
+                    const isAdminTarget = u.role === 'admin';
                     const history = tasks.filter(t => t.status === 'completed' && t.awardedTo === u.email);
                     
                     return (
@@ -380,12 +317,12 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onCre
                                 </div>
 
                                 {/* Admin Actions - HIDDEN for Admin Target */}
-                                {isAdmin && !isMe && !targetIsAdmin && (
+                                {isAdminOrCouncil && !isMe && !isAdminTarget && (
                                     <div className="pt-3 border-t border-slate-700/50 flex gap-2">
                                         {!isDeleted ? (
                                              <Button size="sm" variant="destructive" className="w-full h-8 text-xs opacity-80 hover:opacity-100" onClick={() => onBan(u.email)}>🚫 Bannir</Button>
                                         ) : (
-                                             <Button size="sm" className="w-full h-8 text-xs bg-emerald-600 border-none text-white" onClick={() => onRestore(u.email)}>♻️ Rétablir</Button>
+                                             me.role === 'admin' && <Button size="sm" className="w-full h-8 text-xs bg-emerald-600 border-none text-white" onClick={() => onRestore(u.email)}>♻️ Rétablir</Button>
                                         )}
                                     </div>
                                 )}
@@ -417,7 +354,7 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onCre
                                                         r.comment && (
                                                             <div key={idx} className="mt-1 pt-1 border-t border-slate-800 text-[10px] text-slate-500 italic flex justify-between group">
                                                                 <span className="truncate">"{r.comment}"</span>
-                                                                {(isAdmin || isCouncil) && (
+                                                                {isAdminOrCouncil && (
                                                                     <button onClick={() => onDeleteRating(t.id, idx)} className="text-rose-500 opacity-0 group-hover:opacity-100 px-1">×</button>
                                                                 )}
                                                             </div>
@@ -446,9 +383,6 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onCre
                                 <Input 
                                     value={editFirstName} 
                                     onChange={e => setEditFirstName(e.target.value)} 
-                                    // Disabled if I'm owner (except if editing self?) 
-                                    // Requirement: Copro cannot edit their name. Only CS/Admin.
-                                    // me.role check
                                     disabled={!(me.role === 'admin' || me.role === 'council')}
                                     className="disabled:opacity-50 disabled:cursor-not-allowed"
                                 />
@@ -487,11 +421,7 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onCre
                                 <div className="space-y-1.5">
                                     <Label>Rôle</Label>
                                     <Select value={editRole} onChange={e => setEditRole(e.target.value as UserRole)}>
-                                        {/* CS cannot give admin role */}
-                                        {ROLES.filter(r => {
-                                            if (me.role === 'council') return r.id !== 'admin';
-                                            return true;
-                                        }).map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
+                                        {ROLES.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
                                     </Select>
                                 </div>
                             )}
@@ -502,44 +432,6 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onCre
                         </CardContent>
                     </Card>
                 </div>
-            )}
-            
-            {/* Create Modal */}
-            {creatingUser && (
-                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-                    <Card className="w-full max-w-md bg-slate-900 border-slate-700">
-                        <CardHeader><CardTitle>Ajouter un résident</CardTitle></CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="grid grid-cols-2 gap-2">
-                                <div className="space-y-1.5">
-                                    <Label>Prénom</Label>
-                                    <Input value={createFirstName} onChange={e => setCreateFirstName(e.target.value)} />
-                                </div>
-                                <div className="space-y-1.5">
-                                    <Label>Nom</Label>
-                                    <Input value={createLastName} onChange={e => setCreateLastName(e.target.value)} />
-                                </div>
-                            </div>
-                            <div className="space-y-1.5">
-                                <Label>Email</Label>
-                                <Input type="email" value={createEmail} onChange={e => setCreateEmail(e.target.value)} />
-                            </div>
-                            <div className="space-y-1.5">
-                                <Label>Rôle</Label>
-                                <Select value={createRole} onChange={e => setCreateRole(e.target.value as UserRole)}>
-                                    {ROLES.filter(r => {
-                                        if (me.role === 'council') return r.id !== 'admin';
-                                        return true;
-                                    }).map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
-                                </Select>
-                            </div>
-                            <div className="flex justify-end gap-3 mt-6">
-                                <Button variant="ghost" onClick={() => setCreatingUser(false)}>Annuler</Button>
-                                <Button onClick={handleCreateUser} disabled={!createEmail}>Créer</Button>
-                            </div>
-                        </CardContent>
-                    </Card>
-                 </div>
             )}
         </div>
     );
@@ -992,15 +884,6 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
   const handleBanUser = async (email: string) => { if (confirm(`Bannir ${email} ?`)) { await api.updateUserStatus(email, 'deleted'); loadData(); } }
   const handleRestoreUser = async (email: string) => { await api.updateUserStatus(email, 'active'); loadData(); }
   const handleUpdateUser = async (email: string, data: any) => { await api.updateUser(email, data); loadData(); }
-  const handleCreateUser = async (data: any) => {
-      try {
-          await api.createDirectoryEntry(data);
-          addToast("Succès", "Résident ajouté.", "success");
-          loadData();
-      } catch (e: any) {
-          addToast("Erreur", e.message, "error");
-      }
-  }
 
   // --- View Logic ---
   return (
@@ -1081,16 +964,7 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
         )}
 
         {view === 'directory' && user && (
-            <UserDirectory 
-                users={directoryUsers} 
-                tasks={tasks} 
-                me={user} 
-                onBan={handleBanUser} 
-                onRestore={handleRestoreUser} 
-                onUpdateUser={handleUpdateUser} 
-                onCreateUser={handleCreateUser}
-                onDeleteRating={handleDeleteRating} 
-            />
+            <UserDirectory users={directoryUsers} tasks={tasks} me={user} onBan={handleBanUser} onRestore={handleRestoreUser} onUpdateUser={handleUpdateUser} onDeleteRating={handleDeleteRating} />
         )}
 
         {view === 'ledger' && user && (
@@ -1271,7 +1145,7 @@ export default function App() {
         {/* Specific Login Footer as requested */}
         <div className="w-full max-w-4xl mx-auto mt-12 mb-8 text-center space-y-6 z-10">
             <p className="text-slate-400 text-sm leading-relaxed max-w-2xl mx-auto">
-                CoproSmart permet aux copropriétaires de réduire collectivement les charges communes en réalisant eux-mêmes les petits travaux des parties communes : une ampoule à changer, une porte à régler, des encombrants à évacuer… Les charges diminuent pour tous, et celui qui intervient bénéficie d’un crédit supplémentaire sur ses propres charges. <span className="font-black tracking-tighter text-white">simple. local. gagnant-gagnant.</span>
+                CoproSmart permet aux copropriétaires de réduire collectivement les charges communes en réalisant eux-mêmes les petits travaux des parties communes : une ampoule à changer, une porte à régler, des encombrants à évacuer… Les charges diminuent pour tous, et celui qui intervient bénéficie d’un crédit supplémentaire sur ses propres charges. Simple, local, gagnant-gagnant.
             </p>
             
             <div className="flex justify-center gap-6 text-xs text-slate-500">

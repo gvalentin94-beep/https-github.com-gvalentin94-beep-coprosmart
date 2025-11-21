@@ -230,7 +230,7 @@ function Ledger({ entries, usersMap, onDelete, isAdmin }: { entries: LedgerEntry
   );
 }
 
-function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDeleteRating, onAddUser }: { 
+function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDeleteRating, onAddUser, onDeleteUser }: { 
     users: RegisteredUser[], 
     tasks: Task[], 
     me: User, 
@@ -238,7 +238,8 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDel
     onRestore: (email: string) => void,
     onUpdateUser: (email: string, data: any) => void,
     onDeleteRating: (taskId: string, ratingIdx: number) => void,
-    onAddUser: (user: { firstName: string, lastName: string, email: string, role: UserRole }) => void
+    onAddUser: (user: { firstName: string, lastName: string, email: string, role: UserRole }) => void,
+    onDeleteUser: (email: string) => void
 }) {
     const [editingUser, setEditingUser] = useState<RegisteredUser | null>(null);
     const [expandedUser, setExpandedUser] = useState<string | null>(null); // New state for accordion
@@ -370,13 +371,25 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDel
                                     </div>
                                 </div>
 
-                                {/* Ban Actions */}
+                                {/* Ban & Delete Actions */}
                                 {canBan && (
                                     <div className="pt-3 border-t border-slate-700/50 flex gap-2">
                                         {!isDeleted ? (
-                                             <Button size="sm" variant="destructive" className="w-full h-8 text-xs opacity-80 hover:opacity-100" onClick={() => onBan(u.email)}>🚫 Bannir</Button>
+                                             <>
+                                                <Button size="sm" variant="destructive" className="flex-1 h-8 text-xs opacity-80 hover:opacity-100" onClick={() => onBan(u.email)}>🚫 Bannir</Button>
+                                                {me.role === 'admin' && (
+                                                    <Button size="sm" variant="outline" className="flex-1 h-8 text-xs border-rose-900 text-rose-500 hover:bg-rose-900/20 hover:text-rose-400" onClick={() => onDeleteUser(u.email)}>🗑️ Supprimer</Button>
+                                                )}
+                                             </>
                                         ) : (
-                                             me.role === 'admin' && <Button size="sm" className="w-full h-8 text-xs bg-emerald-600 border-none text-white" onClick={() => onRestore(u.email)}>♻️ Rétablir</Button>
+                                             <>
+                                                {me.role === 'admin' && (
+                                                    <>
+                                                        <Button size="sm" className="flex-1 h-8 text-xs bg-emerald-600 border-none text-white" onClick={() => onRestore(u.email)}>♻️ Rétablir</Button>
+                                                        <Button size="sm" variant="outline" className="flex-1 h-8 text-xs border-rose-900 text-rose-500 hover:bg-rose-900/20 hover:text-rose-400" onClick={() => onDeleteUser(u.email)}>🗑️ Supprimer</Button>
+                                                    </>
+                                                )}
+                                             </>
                                         )}
                                     </div>
                                 )}
@@ -958,6 +971,13 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
   const handleRestoreUser = async (email: string) => { await api.updateUserStatus(email, 'active'); loadData(); }
   const handleUpdateUser = async (email: string, data: any) => { await api.updateUser(email, data); loadData(); }
   const handleAddUser = async (userData: any) => { await api.createDirectoryEntry(userData); loadData(); addToast("Succès", "Utilisateur ajouté.", "success"); }
+  const handleDeleteUser = async (email: string) => { 
+      if (confirm(`Êtes-vous sûr de vouloir supprimer définitivement ${email} ?\nCette action effacera son profil. Pour libérer l'email, l'admin doit aussi le supprimer dans Supabase Auth.`)) {
+          await api.deleteUserProfile(email); 
+          loadData(); 
+          addToast("Supprimé", "Le profil utilisateur a été supprimé.", "info");
+      } 
+  }
 
   // --- View Logic ---
   return (
@@ -1036,7 +1056,7 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
         )}
 
         {view === 'directory' && user && (
-            <UserDirectory users={directoryUsers} tasks={tasks} me={user} onBan={handleBanUser} onRestore={handleRestoreUser} onUpdateUser={handleUpdateUser} onDeleteRating={handleDeleteRating} onAddUser={handleAddUser} />
+            <UserDirectory users={directoryUsers} tasks={tasks} me={user} onBan={handleBanUser} onRestore={handleRestoreUser} onUpdateUser={handleUpdateUser} onDeleteRating={handleDeleteRating} onAddUser={handleAddUser} onDeleteUser={handleDeleteUser} />
         )}
 
         {view === 'ledger' && user && (

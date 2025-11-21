@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import type { Task, LedgerEntry, User, UserRole, RegisteredUser, UserStatus, Bid, Rating, Approval, Rejection, DeletedRating, TaskCategory, TaskScope } from '../types';
@@ -452,6 +453,15 @@ export const api = {
              throw new Error("Impossible de supprimer l'administrateur.");
         }
         await supabase.from('profiles').update({ status }).eq('email', email);
+    },
+    
+    // Hard Delete User (Profile Only)
+    deleteUserProfile: async (email: string): Promise<void> => {
+        const { data: user } = await supabase.from('profiles').select('role').eq('email', email).single();
+        if (user?.role === 'admin') throw new Error("Impossible de supprimer l'administrateur.");
+        
+        const { error } = await supabase.from('profiles').delete().eq('email', email);
+        if (error) throw error;
     },
     
     createDirectoryEntry: async (userData: { firstName: string, lastName: string, email: string, role: UserRole }): Promise<void> => {

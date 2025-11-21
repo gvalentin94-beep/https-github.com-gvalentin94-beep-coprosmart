@@ -191,13 +191,31 @@ export const api = {
         if (error || !data.user) throw new Error("Identifiants incorrects.");
 
         // Check Profile Status
-        const { data: profile, error: profileError } = await supabase
+        let { data: profile, error: profileError } = await supabase
             .from('profiles')
             .select('*')
             .eq('id', data.user.id)
             .single();
             
-        if (profileError || !profile) throw new Error("Profil introuvable.");
+        // AUTO-REPAIR: If profile is missing (e.g. RLS failure during signup), create it now
+        if (!profile) {
+            const { error: insertError } = await supabase.from('profiles').insert({
+                id: data.user.id,
+                email: email,
+                first_name: '', // User will need to update this later or we leave empty
+                last_name: '',
+                role: 'owner', // Default role
+                status: 'pending'
+            });
+            
+            // Try fetching again
+            if (!insertError) {
+                const { data: newProfile } = await supabase.from('profiles').select('*').eq('id', data.user.id).single();
+                profile = newProfile;
+            }
+        }
+
+        if (!profile) throw new Error("Profil introuvable. Contactez l'administrateur.");
 
         // Auto-Restore Admin Logic
         if (profile.role === 'admin' && profile.status === 'deleted') {
@@ -224,22 +242,11 @@ export const api = {
 
     requestPasswordReset: async (email: string): Promise<string> => {
         // In a real Supabase app, you'd use supabase.auth.resetPasswordForEmail(email)
-        // But since we simulate the token for now without sending real email in this flow:
-        // We can't easily simulate the token UX with Supabase native flow without redirects.
-        // For this prototype phase with Supabase, we'll stick to a mock or simple alert.
-        // REAL IMPLEMENTATION:
-        // const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: ... });
         return "SIMULATED_TOKEN_123";
     },
 
     resetPassword: async (token: string, newPass: string): Promise<void> => {
-        // Mock implementation as Supabase requires authenticated update for password usually
-        // or a specific flow with hashes.
-        // For the scope of this switch, we assume user handles it via Supabase email links mostly.
-        // But if we must update password via API manually (admin style? no).
-        // Let's assume the user is logged in for password update or we skip this feature detail for now.
-        // To keep app working:
-        // If user is logged in: supabase.auth.updateUser({ password: newPass })
+        // Mock implementation
     },
 
     // --- DATA ---
@@ -341,10 +348,6 @@ export const api = {
     },
 
     deleteRating: async (taskId: string, ratingIdx: number, userId: string): Promise<void> => {
-        // In Supabase we delete by ID, not index.
-        // We need to fetch ratings for task, get the one at index (since UI relies on order), then delete.
-        // This is brittle. Better to pass ID. But UI passes index.
-        // Let's fetch first.
         const { data: ratings } = await supabase.from('ratings').select('*').eq('task_id', taskId).order('created_at', { ascending: true });
         if (ratings && ratings[ratingIdx]) {
             const r = ratings[ratingIdx];
@@ -407,7 +410,6 @@ export const api = {
     },
     
     rejectUser: async (email: string): Promise<void> => {
-        // Soft delete or reject status
         await supabase.from('profiles').update({ status: 'rejected' }).eq('email', email);
     },
 
@@ -417,8 +419,8 @@ export const api = {
 
     getDirectory: async (): Promise<RegisteredUser[]> => {
         if (!supabaseUrl) return [];
-        // Return all users EXCEPT admin
-        const { data } = await supabase.from('profiles').select('*').neq('role', 'admin').order('last_name');
+        // Return ALL users including admin, pending, rejected etc.
+        const { data } = await supabase.from('profiles').select('*').order('last_name');
         return (data || []).map(mapProfile);
     },
 

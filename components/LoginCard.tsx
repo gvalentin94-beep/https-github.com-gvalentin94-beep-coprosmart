@@ -43,6 +43,9 @@ export function LoginCard({ onLogin }: LoginCardProps) {
       if (msg.includes("row-level security")) {
           return "Erreur de configuration serveur (RLS). Contactez l'administrateur.";
       }
+      if (msg.includes("User already registered")) {
+          return "Cet email est déjà inscrit. Veuillez vous connecter.";
+      }
       return msg;
   };
 

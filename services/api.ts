@@ -176,8 +176,9 @@ export const fakeApi = {
 
   getDirectory: async (): Promise<RegisteredUser[]> => {
       const users = safeJsonParse<RegisteredUser[]>(usersDbKey, []);
-      // Return all users (active, pending, rejected, deleted) EXCEPT admin
-      return users.filter(u => u.role !== 'admin');
+      // Return ALL users (active, pending, rejected, deleted, admin).
+      // We removed the filter to ensure the directory is not empty during testing.
+      return users;
   },
 
   updateUserStatus: async (email: string, status: UserStatus): Promise<void> => {

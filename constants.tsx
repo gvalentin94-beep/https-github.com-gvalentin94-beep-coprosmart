@@ -12,12 +12,12 @@ export const ROLES = [
 
 export const LOCATIONS = ["Bâtiment A", "Bâtiment B", "Caves", "Parking", "Extérieurs"];
 
-// COLORS: Backgrounds/Borders removed, Text colors kept for icons.
+// COLORS: Neutral backgrounds (slate-800), Colored Text/Icons/Borders
 export const CATEGORIES = [
-  { id: "ampoule", label: "Ampoule / Lumière", icon: <LightbulbIcon />, colorClass: "text-amber-400 bg-slate-900/50 border-slate-700" },
-  { id: "porte", label: "Porte / Serrure", icon: <KeyIcon />, colorClass: "text-sky-400 bg-slate-900/50 border-slate-700" },
-  { id: "encombrants", label: "Encombrants", icon: <ArchiveBoxIcon />, colorClass: "text-rose-400 bg-slate-900/50 border-slate-700" },
-  { id: "divers", label: "Divers", icon: <SparklesIcon />, colorClass: "text-fuchsia-400 bg-slate-900/50 border-slate-700" },
+  { id: "ampoule", label: "Ampoule / Lumière", icon: <LightbulbIcon />, colorClass: "text-amber-400 bg-slate-800 border-slate-700" },
+  { id: "porte", label: "Porte / Serrure", icon: <KeyIcon />, colorClass: "text-sky-400 bg-slate-800 border-slate-700" },
+  { id: "encombrants", label: "Encombrants", icon: <ArchiveBoxIcon />, colorClass: "text-rose-400 bg-slate-800 border-slate-700" },
+  { id: "divers", label: "Divers", icon: <SparklesIcon />, colorClass: "text-fuchsia-400 bg-slate-800 border-slate-700" },
 ];
 
 export const SCOPES = [

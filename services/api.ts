@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import type { Task, LedgerEntry, User, UserRole, RegisteredUser, UserStatus, Bid, Rating, Approval, Rejection, DeletedRating, TaskCategory, TaskScope } from '../types';
@@ -249,6 +248,14 @@ export const api = {
         // Mock implementation
     },
 
+    onPasswordRecovery: (callback: () => void) => {
+        return supabase.auth.onAuthStateChange((event, _session) => {
+            if (event === 'PASSWORD_RECOVERY') {
+                callback();
+            }
+        });
+    },
+
     // --- DATA ---
 
     readTasks: async (): Promise<Task[]> => {
@@ -439,6 +446,22 @@ export const api = {
              throw new Error("Impossible de supprimer l'administrateur.");
         }
         await supabase.from('profiles').update({ status }).eq('email', email);
+    },
+    
+    createDirectoryEntry: async (userData: { firstName: string, lastName: string, email: string, role: UserRole }): Promise<void> => {
+        // This function allows admins to add a user to the directory.
+        // Note: It does not create a Supabase Auth user (which requires admin credentials).
+        // It only creates a profile entry.
+        const id = crypto.randomUUID();
+        const { error } = await supabase.from('profiles').insert({
+            id,
+            email: userData.email,
+            first_name: userData.firstName,
+            last_name: userData.lastName,
+            role: userData.role,
+            status: 'active'
+        });
+        if (error) throw error;
     },
 
     getDirectory: async (): Promise<RegisteredUser[]> => {

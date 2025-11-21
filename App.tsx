@@ -60,6 +60,32 @@ function ToastContainer({ toasts, onClose }: { toasts: Toast[]; onClose: (id: st
 
 // --- Helper Components ---
 
+function SharedFooter({ onCGU, onLegal }: { onCGU: () => void, onLegal: () => void }) {
+    return (
+      <footer className="border-t border-slate-800 bg-slate-950 py-12 mt-auto">
+          <div className="max-w-4xl mx-auto px-4 text-center space-y-6">
+              <div className="flex items-center justify-center gap-2 opacity-50 grayscale hover:grayscale-0 transition-all duration-500">
+                  <span className="text-2xl">🏢</span>
+                  <span className="font-black text-xl tracking-tight text-white">CoproSmart.</span>
+              </div>
+              <p className="text-slate-500 text-sm leading-relaxed max-w-2xl mx-auto">
+                CoproSmart permet aux copropriétaires de réduire collectivement les charges communes en réalisant eux-mêmes les petits travaux des parties communes : une ampoule à changer, une porte à régler, des encombrants à évacuer… Les charges diminuent pour tous, et celui qui intervient bénéficie d’un crédit supplémentaire sur ses propres charges.
+                <span className="block mt-2 font-black tracking-tighter lowercase text-slate-400">simple. local. gagnant-gagnant.</span>
+              </p>
+              
+              <div className="flex justify-center gap-6 text-xs text-slate-500 pt-4">
+                  <button onClick={onCGU} className="hover:text-white underline">Conditions Générales d'Utilisation</button>
+                  <button onClick={onLegal} className="hover:text-white underline">Mentions Légales</button>
+              </div>
+
+              <div className="text-xs text-slate-700 pt-4 border-t border-slate-900 w-24 mx-auto mt-8">
+                  v0.1.3
+              </div>
+          </div>
+      </footer>
+    );
+}
+
 function InfoModal({ title, children, onClose }: { title: string; children: React.ReactNode; onClose: () => void }) {
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
@@ -226,14 +252,15 @@ function Ledger({ entries, usersMap, onDelete, isAdmin }: { entries: LedgerEntry
   );
 }
 
-function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDeleteRating }: { 
+function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDeleteRating, onAddUser }: { 
     users: RegisteredUser[], 
     tasks: Task[], 
     me: User, 
     onBan: (email: string) => void, 
     onRestore: (email: string) => void,
     onUpdateUser: (email: string, data: any) => void,
-    onDeleteRating: (taskId: string, ratingIdx: number) => void
+    onDeleteRating: (taskId: string, ratingIdx: number) => void,
+    onAddUser: (user: { firstName: string, lastName: string, email: string, role: UserRole }) => void
 }) {
     const [editingUser, setEditingUser] = useState<RegisteredUser | null>(null);
     const [editFirstName, setEditFirstName] = useState("");
@@ -241,6 +268,9 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDel
     const [editEmail, setEditEmail] = useState("");
     const [editRole, setEditRole] = useState<UserRole>("owner");
     const [newPassword, setNewPassword] = useState("");
+    
+    const [isAdding, setIsAdding] = useState(false);
+    const [newUser, setNewUser] = useState({ firstName: '', lastName: '', email: '', role: 'owner' as UserRole });
 
     const handleEditClick = (u: RegisteredUser) => {
         setEditingUser(u);
@@ -254,13 +284,13 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDel
     const handleSaveUser = () => {
         if (editingUser) {
             const updates: any = {
-                email: editEmail
+                email: editEmail,
+                firstName: editFirstName,
+                lastName: editLastName
             };
             
-            // Only admin/council can update names/role
-            if (me.role === 'admin' || me.role === 'council') {
-                updates.firstName = editFirstName;
-                updates.lastName = editLastName;
+            // Role Update: ONLY Admin can update role
+            if (me.role === 'admin') {
                 updates.role = editRole;
             }
 
@@ -274,21 +304,46 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDel
         }
     };
 
+    const handleAddUserSubmit = () => {
+        onAddUser(newUser);
+        setIsAdding(false);
+        setNewUser({ firstName: '', lastName: '', email: '', role: 'owner' });
+    };
+
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <h2 className="text-3xl font-bold text-white tracking-tight">👥 Annuaire</h2>
-                <Badge className="bg-slate-800 text-slate-400 border-slate-700">{users.length} membres</Badge>
+                <div className="flex items-center gap-3">
+                     <Badge className="bg-slate-800 text-slate-400 border-slate-700">{users.length} membres</Badge>
+                     {(me.role === 'admin' || me.role === 'council') && (
+                         <Button size="sm" onClick={() => setIsAdding(true)}>+ Ajouter un résident</Button>
+                     )}
+                </div>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {users.map(u => {
                     const isMe = u.email === me.email;
-                    const isAdminOrCouncil = me.role === 'admin' || me.role === 'council';
-                    // Edit: CS/Admin can edit anyone, Copro can edit self
-                    const canEdit = isAdminOrCouncil || isMe;
+                    
+                    // --- PERMISSIONS LOGIC ---
+                    let canEdit = false;
+                    let canBan = false;
+                    
+                    if (me.role === 'admin') {
+                        canEdit = true; // Admin can edit everyone
+                        if (!isMe) canBan = true; // Admin can ban everyone except self
+                    } else if (me.role === 'council') {
+                        // CS can edit: Self AND Owners. Cannot edit other CS or Admin.
+                        if (isMe || u.role === 'owner') canEdit = true;
+                        // CS can ban: Owners only.
+                        if (u.role === 'owner') canBan = true;
+                    } else if (me.role === 'owner') {
+                        // Owner can edit: Self only
+                        if (isMe) canEdit = true;
+                    }
+
                     const isDeleted = u.status === 'deleted';
-                    const isAdminTarget = u.role === 'admin';
                     const history = tasks.filter(t => t.status === 'completed' && t.awardedTo === u.email);
                     
                     return (
@@ -316,8 +371,8 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDel
                                     {isDeleted && <Badge variant="destructive">Banni</Badge>}
                                 </div>
 
-                                {/* Admin Actions - HIDDEN for Admin Target */}
-                                {isAdminOrCouncil && !isMe && !isAdminTarget && (
+                                {/* Ban Actions */}
+                                {canBan && (
                                     <div className="pt-3 border-t border-slate-700/50 flex gap-2">
                                         {!isDeleted ? (
                                              <Button size="sm" variant="destructive" className="w-full h-8 text-xs opacity-80 hover:opacity-100" onClick={() => onBan(u.email)}>🚫 Bannir</Button>
@@ -354,7 +409,8 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDel
                                                         r.comment && (
                                                             <div key={idx} className="mt-1 pt-1 border-t border-slate-800 text-[10px] text-slate-500 italic flex justify-between group">
                                                                 <span className="truncate">"{r.comment}"</span>
-                                                                {isAdminOrCouncil && (
+                                                                {/* Council/Admin can delete comments */}
+                                                                {(me.role === 'admin' || me.role === 'council') && (
                                                                     <button onClick={() => onDeleteRating(t.id, idx)} className="text-rose-500 opacity-0 group-hover:opacity-100 px-1">×</button>
                                                                 )}
                                                             </div>
@@ -383,8 +439,6 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDel
                                 <Input 
                                     value={editFirstName} 
                                     onChange={e => setEditFirstName(e.target.value)} 
-                                    disabled={!(me.role === 'admin' || me.role === 'council')}
-                                    className="disabled:opacity-50 disabled:cursor-not-allowed"
                                 />
                             </div>
                             <div className="space-y-1.5">
@@ -392,8 +446,6 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDel
                                 <Input 
                                     value={editLastName} 
                                     onChange={e => setEditLastName(e.target.value)} 
-                                    disabled={!(me.role === 'admin' || me.role === 'council')}
-                                    className="disabled:opacity-50 disabled:cursor-not-allowed"
                                 />
                             </div>
                             <div className="space-y-1.5">
@@ -417,7 +469,8 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDel
                                 </div>
                             )}
 
-                            {(me.role === 'admin' || me.role === 'council') && (
+                            {/* Role: ONLY ADMIN can change role */}
+                            {me.role === 'admin' && (
                                 <div className="space-y-1.5">
                                     <Label>Rôle</Label>
                                     <Select value={editRole} onChange={e => setEditRole(e.target.value as UserRole)}>
@@ -428,6 +481,39 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDel
                             <div className="flex justify-end gap-3 mt-6">
                                 <Button variant="ghost" onClick={() => setEditingUser(null)}>Annuler</Button>
                                 <Button onClick={handleSaveUser}>Enregistrer</Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+            )}
+
+            {/* Add User Modal */}
+             {isAdding && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+                    <Card className="w-full max-w-md bg-slate-900 border-slate-700">
+                        <CardHeader><CardTitle>Ajouter un résident</CardTitle></CardHeader>
+                        <CardContent className="space-y-4">
+                             <div className="space-y-1.5">
+                                <Label>Prénom</Label>
+                                <Input value={newUser.firstName} onChange={e => setNewUser({...newUser, firstName: e.target.value})} />
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label>Nom</Label>
+                                <Input value={newUser.lastName} onChange={e => setNewUser({...newUser, lastName: e.target.value})} />
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label>Email</Label>
+                                <Input type="email" value={newUser.email} onChange={e => setNewUser({...newUser, email: e.target.value})} />
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label>Rôle</Label>
+                                <Select value={newUser.role} onChange={e => setNewUser({...newUser, role: e.target.value as UserRole})}>
+                                    {ROLES.filter(r => r.id !== 'admin').map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
+                                </Select>
+                            </div>
+                            <div className="flex justify-end gap-3 mt-6">
+                                <Button variant="ghost" onClick={() => setIsAdding(false)}>Annuler</Button>
+                                <Button onClick={handleAddUserSubmit}>Ajouter</Button>
                             </div>
                         </CardContent>
                     </Card>
@@ -627,32 +713,6 @@ function CreateTaskPage({ me, onSubmit, onCancel }: { me: User, onSubmit: (t: Pa
 
 // --- Main Dashboard Component ---
 
-function SharedFooter({ onCGU, onLegal }: { onCGU: () => void, onLegal: () => void }) {
-    return (
-      <footer className="border-t border-slate-800 bg-slate-950 py-12 mt-auto">
-          <div className="max-w-4xl mx-auto px-4 text-center space-y-6">
-              <div className="flex items-center justify-center gap-2 opacity-50 grayscale hover:grayscale-0 transition-all duration-500">
-                  <span className="text-2xl">🏢</span>
-                  <span className="font-black text-xl tracking-tight text-white">CoproSmart.</span>
-              </div>
-              <p className="text-slate-500 text-sm leading-relaxed max-w-2xl mx-auto">
-                CoproSmart permet aux copropriétaires de réduire collectivement les charges communes en réalisant eux-mêmes les petits travaux des parties communes : une ampoule à changer, une porte à régler, des encombrants à évacuer… Les charges diminuent pour tous, et celui qui intervient bénéficie d’un crédit supplémentaire sur ses propres charges.
-              </p>
-              <p className="text-slate-400 font-bold text-sm uppercase tracking-widest">Simple. Local. Gagnant-gagnant.</p>
-              
-              <div className="flex justify-center gap-6 text-xs text-slate-500 pt-4">
-                  <button onClick={onCGU} className="hover:text-white underline">Conditions Générales d'Utilisation</button>
-                  <button onClick={onLegal} className="hover:text-white underline">Mentions Légales</button>
-              </div>
-
-              <div className="text-xs text-slate-700 pt-4 border-t border-slate-900 w-24 mx-auto mt-8">
-                  v0.1.3
-              </div>
-          </div>
-      </footer>
-    );
-}
-
 function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
   const [view, setView] = useState<'home' | 'create-task' | 'directory' | 'ledger'>('home');
   
@@ -667,6 +727,10 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
   // States for Legal Modals
   const [showCGU, setShowCGU] = useState(false);
   const [showLegal, setShowLegal] = useState(false);
+
+  // Password Recovery State
+  const [showPasswordRecovery, setShowPasswordRecovery] = useState(false);
+  const [recoveryPassword, setRecoveryPassword] = useState("");
 
   const addToast = (title: string, message: string, type: Toast['type'] = 'info') => {
     const id = Math.random().toString(36).substring(2, 9);
@@ -724,6 +788,25 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
     const interval = setInterval(loadData, 5000);
     return () => clearInterval(interval);
   }, [loadData]);
+
+  // Listen for Password Recovery event
+  useEffect(() => {
+      const { data: { subscription } } = api.onPasswordRecovery(() => {
+          setShowPasswordRecovery(true);
+      });
+      return () => subscription.unsubscribe();
+  }, []);
+
+  const handlePasswordRecoverySubmit = async () => {
+      try {
+          await api.updateUser(user.email, { password: recoveryPassword });
+          addToast("Succès", "Mot de passe mis à jour avec succès.", "success");
+          setShowPasswordRecovery(false);
+          setRecoveryPassword("");
+      } catch (e: any) {
+          addToast("Erreur", e.message || "Erreur lors de la mise à jour", "error");
+      }
+  };
 
   // Auto Award (Runs locally on one client - race condition acceptable for now or moved to edge function later)
   useEffect(() => {
@@ -888,6 +971,7 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
   const handleBanUser = async (email: string) => { if (confirm(`Bannir ${email} ?`)) { await api.updateUserStatus(email, 'deleted'); loadData(); } }
   const handleRestoreUser = async (email: string) => { await api.updateUserStatus(email, 'active'); loadData(); }
   const handleUpdateUser = async (email: string, data: any) => { await api.updateUser(email, data); loadData(); }
+  const handleAddUser = async (userData: any) => { await api.createDirectoryEntry(userData); loadData(); addToast("Succès", "Utilisateur ajouté.", "success"); }
 
   // --- View Logic ---
   return (
@@ -920,17 +1004,18 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
                 )}
             </nav>
 
-            <div className="flex items-center gap-4">
-                <div className="text-right hidden lg:block border-l border-slate-800 pl-4 ml-2">
-                    <div className="text-sm font-bold text-white">{user?.firstName} {user?.lastName.toUpperCase()}</div>
-                    <div className="text-xs text-slate-500">{user?.email}</div>
-                </div>
-                <Button variant="ghost" size="sm" onClick={onLogout} title="Déconnexion" className="text-slate-400 hover:text-rose-500 hover:bg-slate-800 rounded-full w-10 h-10 p-0">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9" />
-                    </svg>
-                </Button>
+            <div className="flex flex-col items-end hidden lg:flex border-l border-slate-800 pl-4 ml-2">
+                <div className="text-sm font-bold text-white">{user?.firstName} {user?.lastName.toUpperCase()}</div>
+                <div className="text-xs text-slate-500">{user?.email}</div>
+                <Badge className={user.role === 'owner' ? 'bg-slate-800 text-slate-400 border-slate-700 mt-1' : user.role === 'council' ? 'bg-amber-900/40 text-amber-200 border-amber-800 mt-1' : 'bg-rose-900/40 text-rose-200 border-rose-800 mt-1'}>
+                    {ROLES.find(r => r.id === user.role)?.label}
+                </Badge>
             </div>
+            <Button variant="ghost" size="sm" onClick={onLogout} title="Déconnexion" className="ml-4 text-slate-400 hover:text-rose-500 hover:bg-slate-800 rounded-full w-10 h-10 p-0">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9" />
+                </svg>
+            </Button>
         </div>
       </header>
 
@@ -965,7 +1050,7 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
         )}
 
         {view === 'directory' && user && (
-            <UserDirectory users={directoryUsers} tasks={tasks} me={user} onBan={handleBanUser} onRestore={handleRestoreUser} onUpdateUser={handleUpdateUser} onDeleteRating={handleDeleteRating} />
+            <UserDirectory users={directoryUsers} tasks={tasks} me={user} onBan={handleBanUser} onRestore={handleRestoreUser} onUpdateUser={handleUpdateUser} onDeleteRating={handleDeleteRating} onAddUser={handleAddUser} />
         )}
 
         {view === 'ledger' && user && (
@@ -1067,6 +1152,24 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
             </div>
         )}
 
+         {/* PASSWORD RECOVERY MODAL */}
+         {showPasswordRecovery && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+                <Card className="w-full max-w-md bg-slate-900 border-slate-700">
+                    <CardHeader><CardTitle>Nouveau mot de passe</CardTitle></CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="space-y-1.5">
+                            <Label>Nouveau mot de passe</Label>
+                            <Input type="password" value={recoveryPassword} onChange={e => setRecoveryPassword(e.target.value)} />
+                        </div>
+                        <div className="flex justify-end gap-3 mt-4">
+                            <Button onClick={handlePasswordRecoverySubmit}>Mettre à jour</Button>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+        )}
+
         {/* CGU Modal */}
         {showCGU && (
           <InfoModal title="Conditions Générales d'Utilisation" onClose={() => setShowCGU(false)}>
@@ -1143,7 +1246,17 @@ export default function App() {
              <LoginCard onLogin={setUser} />
         </div>
         
-        <SharedFooter onCGU={() => setShowCGU(true)} onLegal={() => setShowLegal(true)} />
+        {/* Login Page Footer */}
+        <div className="max-w-4xl mx-auto px-4 text-center space-y-2 mt-12 pb-12">
+             <p className="text-slate-500 text-sm leading-relaxed max-w-2xl mx-auto">
+                CoproSmart permet aux copropriétaires de réduire collectivement les charges communes en réalisant eux-mêmes les petits travaux des parties communes : une ampoule à changer, une porte à régler, des encombrants à évacuer… Les charges diminuent pour tous, et celui qui intervient bénéficie d’un crédit supplémentaire sur ses propres charges.
+                <span className="block mt-2 font-black tracking-tighter lowercase text-slate-400">simple. local. gagnant-gagnant.</span>
+            </p>
+            <div className="flex justify-center gap-6 text-xs text-slate-600 pt-2">
+                  <button onClick={() => setShowCGU(true)} className="hover:text-slate-400 underline">Conditions Générales d'Utilisation</button>
+                  <button onClick={() => setShowLegal(true)} className="hover:text-slate-400 underline">Mentions Légales</button>
+            </div>
+        </div>
 
          {/* CGU Modal */}
         {showCGU && (

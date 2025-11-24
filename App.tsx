@@ -226,7 +226,7 @@ function Ledger({ entries, usersMap, onDelete, isAdmin }: { entries: LedgerEntry
   );
 }
 
-function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDeleteRating, onAddUser, onDeleteUser }: { 
+function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDeleteRating, onInviteUser, onDeleteUser }: { 
     users: RegisteredUser[], 
     tasks: Task[], 
     me: User, 
@@ -234,7 +234,7 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDel
     onRestore: (email: string) => void,
     onUpdateUser: (email: string, data: any) => void,
     onDeleteRating: (taskId: string, ratingIdx: number) => void,
-    onAddUser: (user: { firstName: string, lastName: string, email: string, role: UserRole }) => void,
+    onInviteUser: (email: string) => void,
     onDeleteUser: (email: string) => void
 }) {
     const [editingUser, setEditingUser] = useState<RegisteredUser | null>(null);
@@ -247,8 +247,8 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDel
     const [newPassword, setNewPassword] = useState("");
     const [editAvatar, setEditAvatar] = useState("");
     
-    const [isAdding, setIsAdding] = useState(false);
-    const [newUser, setNewUser] = useState({ firstName: '', lastName: '', email: '', role: 'owner' as UserRole });
+    const [isInviting, setIsInviting] = useState(false);
+    const [inviteEmail, setInviteEmail] = useState("");
 
     const handleEditClick = (u: RegisteredUser) => {
         setEditingUser(u);
@@ -284,10 +284,12 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDel
         }
     };
 
-    const handleAddUserSubmit = () => {
-        onAddUser(newUser);
-        setIsAdding(false);
-        setNewUser({ firstName: '', lastName: '', email: '', role: 'owner' });
+    const handleInviteUserSubmit = () => {
+        if (inviteEmail) {
+            onInviteUser(inviteEmail);
+            setIsInviting(false);
+            setInviteEmail("");
+        }
     };
 
     return (
@@ -297,7 +299,7 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDel
                 <div className="flex items-center gap-3">
                      <Badge className="bg-slate-800 text-slate-400 border-slate-700">{users.length} membres</Badge>
                      {(me.role === 'admin' || me.role === 'council') && (
-                         <Button size="sm" onClick={() => setIsAdding(true)}>+ Ajouter un résident</Button>
+                         <Button size="sm" onClick={() => setIsInviting(true)}>✉️ Inviter un résident</Button>
                      )}
                 </div>
             </div>
@@ -515,33 +517,20 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDel
                 </div>
             )}
 
-            {/* Add User Modal */}
-             {isAdding && (
+            {/* Invite User Modal (Replaces Add User) */}
+             {isInviting && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
                     <Card className="w-full max-w-md bg-slate-900 border-slate-700">
-                        <CardHeader><CardTitle>Ajouter un résident</CardTitle></CardHeader>
+                        <CardHeader><CardTitle>Inviter un résident</CardTitle></CardHeader>
                         <CardContent className="space-y-4">
-                             <div className="space-y-1.5">
-                                <Label>Prénom</Label>
-                                <Input value={newUser.firstName} onChange={e => setNewUser({...newUser, firstName: e.target.value})} />
-                            </div>
+                            <p className="text-sm text-slate-400 mb-2">Envoyez une invitation par email pour rejoindre CoproSmart.</p>
                             <div className="space-y-1.5">
-                                <Label>Nom</Label>
-                                <Input value={newUser.lastName} onChange={e => setNewUser({...newUser, lastName: e.target.value})} />
-                            </div>
-                            <div className="space-y-1.5">
-                                <Label>Email</Label>
-                                <Input type="email" value={newUser.email} onChange={e => setNewUser({...newUser, email: e.target.value})} />
-                            </div>
-                            <div className="space-y-1.5">
-                                <Label>Rôle</Label>
-                                <Select value={newUser.role} onChange={e => setNewUser({...newUser, role: e.target.value as UserRole})}>
-                                    {ROLES.filter(r => r.id !== 'admin').map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
-                                </Select>
+                                <Label>Email du voisin</Label>
+                                <Input type="email" placeholder="voisin@exemple.com" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} />
                             </div>
                             <div className="flex justify-end gap-3 mt-6">
-                                <Button variant="ghost" onClick={() => setIsAdding(false)}>Annuler</Button>
-                                <Button onClick={handleAddUserSubmit}>Ajouter</Button>
+                                <Button variant="ghost" onClick={() => setIsInviting(false)}>Annuler</Button>
+                                <Button onClick={handleInviteUserSubmit} disabled={!inviteEmail}>Envoyer l'invitation</Button>
                             </div>
                         </CardContent>
                     </Card>
@@ -551,764 +540,863 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDel
     );
 }
 
-// --- NEW PAGE: CREATE TASK ---
-function CreateTaskPage({ me, onSubmit, onCancel }: { me: User, onSubmit: (t: Partial<Task>) => void, onCancel: () => void }) {
+function CreateTaskPage({ onBack, onCreate }: { onBack: () => void, onCreate: (task: any) => void }) {
+    // STATE
     const [title, setTitle] = useState("");
-    const [category, setCategory] = useState<TaskCategory | "">("");
-    const [scope, setScope] = useState<TaskScope | "">("");
-    const [location, setLocation] = useState(LOCATIONS[0]);
+    const [category, setCategory] = useState<TaskCategory>("ampoule");
+    const [scope, setScope] = useState<TaskScope>("copro");
     const [details, setDetails] = useState("");
+    const [location, setLocation] = useState(LOCATIONS[0]);
     const [startingPrice, setStartingPrice] = useState("");
-    const [warranty, setWarranty] = useState("0");
+    const [warrantyDays, setWarrantyDays] = useState("0");
     const [photo, setPhoto] = useState<string | undefined>(undefined);
+    
+    // PREVIEW MODAL
     const [showPreview, setShowPreview] = useState(false);
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
             const reader = new FileReader();
-            reader.onloadend = () => setPhoto(reader.result as string);
+            reader.onloadend = () => {
+                setPhoto(reader.result as string);
+            };
             reader.readAsDataURL(file);
         }
     };
 
     const handlePreview = () => {
-        if (!title.trim() || !location || !startingPrice || !category || !scope) {
-            alert("Merci de remplir tous les champs obligatoires (Titre, Catégorie, Concerne, Emplacement, Prix).");
-            return;
-        }
-        const price = Number(startingPrice);
-        if (isNaN(price) || price <= 0) {
-            alert("Prix invalide.");
-            return;
-        }
-        if (price > MAX_TASK_PRICE) {
-             alert(`Le prix ne peut pas dépasser ${MAX_TASK_PRICE}€.`);
-             return;
-        }
+        if (!title.trim()) return alert("Le titre est obligatoire");
+        if (!startingPrice || Number(startingPrice) <= 0) return alert("Le prix est obligatoire");
+        if (Number(startingPrice) > MAX_TASK_PRICE) return alert(`Le prix maximum est de ${MAX_TASK_PRICE}€`);
         setShowPreview(true);
     };
 
-    const confirmSubmit = () => {
-        onSubmit({ title, category: category as TaskCategory, scope: scope as TaskScope, location, details, startingPrice: Number(startingPrice), warrantyDays: Number(warranty), photo });
+    const handleSubmit = () => {
+        onCreate({
+            title, category, scope, details, location, startingPrice: Number(startingPrice), warrantyDays: Number(warrantyDays), photo
+        });
     };
 
-    const taskData = { title, category: category as TaskCategory, scope: scope as TaskScope, location, details, startingPrice: Number(startingPrice), warrantyDays: Number(warranty), photo };
-
     return (
-        <div className="max-w-3xl mx-auto animate-in slide-in-from-bottom-4 duration-300">
-            <div className="mb-6 flex items-center justify-between">
-                 <h2 className="text-3xl font-black text-white tracking-tight">✨ Nouvelle Tâche</h2>
-                 <Button variant="ghost" onClick={onCancel} className="text-slate-400 hover:text-white">Annuler</Button>
-            </div>
-
-            <Card className="bg-slate-900 border-slate-800 shadow-2xl overflow-hidden">
-                <CardContent className="p-6 md:p-8 space-y-8">
-                    
-                    {/* 1. BASIC INFO */}
+        <div className="max-w-3xl mx-auto space-y-6 pb-20">
+             <Button variant="ghost" onClick={onBack} className="mb-4 pl-0 hover:bg-transparent hover:text-white">← Retour au tableau de bord</Button>
+             
+             <h2 className="text-3xl font-bold text-white mb-6">Nouvelle tâche</h2>
+             
+             <div className="space-y-8">
+                {/* 1. QUOI */}
+                <Section title="1. De quoi s'agit-il ?">
                     <div className="space-y-4">
                         <div className="space-y-1.5">
-                            <Label className="text-base text-white">Titre de la demande <span className="text-rose-500">*</span></Label>
+                            <Label className="text-slate-300">Titre de la demande <span className="text-rose-400">*</span></Label>
                             <Input 
-                                placeholder="Ex: Remplacer ampoule Hall A, Évacuer carton..." 
-                                value={title} onChange={(e) => setTitle(e.target.value)} 
-                                className="h-12 text-lg !bg-white !text-slate-900" 
+                                placeholder="Ex: Ampoule grillée dans le hall" 
+                                value={title} 
+                                onChange={e => setTitle(e.target.value)} 
+                                className="!bg-white !text-slate-900 font-medium text-lg"
                             />
                         </div>
-                        
-                         {/* CATEGORY & SCOPE moved here */}
-                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="space-y-2">
-                                <Label className="text-base text-white">Catégorie <span className="text-rose-500">*</span></Label>
-                                <div className="grid grid-cols-2 gap-3">
-                                    {CATEGORIES.map(c => (
-                                        <div 
-                                            key={c.id}
-                                            onClick={() => setCategory(c.id as TaskCategory)}
-                                            className={`cursor-pointer rounded-xl border p-2 flex flex-col items-center text-center gap-1 transition-all ${category === c.id ? `${c.colorClass} border-2 ring-2 ring-offset-2 ring-offset-slate-900` : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700'}`}
+
+                        {/* Category Selection - Rich Buttons */}
+                         <div className="space-y-1.5">
+                            <Label className="text-slate-300">Catégorie</Label>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                {CATEGORIES.map(cat => {
+                                    const isSelected = category === cat.id;
+                                    return (
+                                        <button
+                                            key={cat.id}
+                                            onClick={() => setCategory(cat.id as TaskCategory)}
+                                            className={`
+                                                relative flex flex-col items-center justify-center gap-2 p-4 rounded-xl border transition-all
+                                                ${isSelected 
+                                                    ? `bg-white border-white ring-2 ring-indigo-500 ring-offset-2 ring-offset-slate-900` 
+                                                    : 'bg-slate-800 border-slate-700 hover:bg-slate-750 text-slate-400 hover:border-slate-500'
+                                                }
+                                            `}
                                         >
-                                            <div className="scale-110">{React.cloneElement(c.icon, { className: "h-5 w-5" })}</div>
-                                            <span className="text-[10px] font-medium">{c.label}</span>
-                                        </div>
-                                    ))}
-                                </div>
+                                            <div className={`${isSelected ? cat.colorClass.replace('bg-slate-800', '').replace('border-slate-700', '') : 'text-slate-500'}`}>
+                                                {React.cloneElement(cat.icon, { className: "w-8 h-8" })}
+                                            </div>
+                                            <span className={`text-xs font-bold ${isSelected ? 'text-slate-900' : ''}`}>{cat.label}</span>
+                                        </button>
+                                    );
+                                })}
                             </div>
-                            <div className="space-y-2">
-                                <Label className="text-base text-white">Concerne <span className="text-rose-500">*</span></Label>
-                                <div className="grid grid-cols-2 gap-3">
-                                    {SCOPES.map(s => (
-                                        <div 
+                        </div>
+
+                        {/* Scope Selection - Rich Buttons */}
+                        <div className="space-y-1.5">
+                            <Label className="text-slate-300">Concerne</Label>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                {SCOPES.map(s => {
+                                    const isSelected = scope === s.id;
+                                    return (
+                                        <button
                                             key={s.id}
                                             onClick={() => setScope(s.id as TaskScope)}
-                                            className={`cursor-pointer rounded-xl border p-2 flex flex-col items-center text-center gap-1 transition-all ${scope === s.id ? `${s.colorClass} border-2 ring-2 ring-offset-2 ring-offset-slate-900` : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700'}`}
+                                            className={`
+                                                flex items-center gap-3 p-4 rounded-xl border transition-all text-left
+                                                ${isSelected 
+                                                    ? 'bg-white border-white ring-2 ring-indigo-500 ring-offset-2 ring-offset-slate-900' 
+                                                    : 'bg-slate-800 border-slate-700 hover:bg-slate-750 text-slate-400'
+                                                }
+                                            `}
                                         >
-                                            <div className="scale-110">{React.cloneElement(s.icon, { className: "h-5 w-5" })}</div>
-                                            <span className="text-[10px] font-bold">{s.label}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="space-y-2">
-                                <Label className="text-base text-white">Emplacement <span className="text-rose-500">*</span></Label>
-                                <Select value={location} onChange={(e) => setLocation(e.target.value)} className="h-12 !bg-white !text-slate-900">
-                                    {LOCATIONS.map(l => <option key={l} value={l}>📍 {l}</option>)}
-                                </Select>
-                            </div>
-                            
-                            {/* PRICE */}
-                            <div className="space-y-2">
-                                 <Label className="text-base text-white">Prix de départ (€) <span className="text-rose-500">*</span></Label>
-                                 <div className="relative">
-                                    <Input 
-                                        type="number" 
-                                        placeholder="15" 
-                                        className="pl-10 h-12 text-lg font-mono font-bold !bg-white !text-slate-900"
-                                        value={startingPrice} 
-                                        onChange={(e) => setStartingPrice(e.target.value)} 
-                                    />
-                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-lg font-bold">€</span>
-                                </div>
-                                <p className="text-xs text-slate-500">Max: {MAX_TASK_PRICE}€</p>
+                                            <div className={`${isSelected ? s.colorClass.split(' ')[0] : 'text-slate-500'}`}>
+                                                {React.cloneElement(s.icon, { className: "w-6 h-6" })}
+                                            </div>
+                                            <span className={`font-bold text-sm ${isSelected ? 'text-slate-900' : ''}`}>{s.label}</span>
+                                        </button>
+                                    );
+                                })}
                             </div>
                         </div>
                     </div>
+                </Section>
 
-                    {/* WARRANTY */}
-                    <div className="space-y-2 bg-slate-800/50 p-4 rounded-xl border border-slate-800">
-                        <Label className="text-base text-white">Garantie souhaitée</Label>
-                        <div className="grid grid-cols-4 gap-3">
-                            {WARRANTY_OPTIONS.map((opt) => (
-                                <div
-                                    key={opt.val}
-                                    onClick={() => setWarranty(opt.val)}
-                                    className={`cursor-pointer rounded-xl border p-2 flex flex-col items-center text-center gap-1 transition-all ${
-                                        warranty === opt.val ? `${opt.colorClass} border-2 ring-2 ring-offset-2 ring-offset-slate-900` : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700'
-                                    }`}
-                                >
-                                    <div className="scale-110">{React.cloneElement(opt.icon, { className: "h-5 w-5" })}</div>
-                                    <span className="text-[10px] font-bold">{opt.label}</span>
-                                </div>
-                            ))}
+                {/* 2. OÙ ET COMBIEN */}
+                <Section title="2. Détails & Prix">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                         <div className="space-y-1.5">
+                            <Label className="text-slate-300">Emplacement <span className="text-rose-400">*</span></Label>
+                            <Select 
+                                value={location} 
+                                onChange={e => setLocation(e.target.value)}
+                                className="!bg-white !text-slate-900 h-[46px]"
+                            >
+                                {LOCATIONS.map(l => <option key={l} value={l}>{l}</option>)}
+                            </Select>
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label className="text-slate-300">Prix de départ (€) <span className="text-rose-400">*</span></Label>
+                            <div className="relative">
+                                <Input 
+                                    type="number" 
+                                    placeholder="15" 
+                                    value={startingPrice} 
+                                    onChange={e => setStartingPrice(e.target.value)}
+                                    className="!bg-white !text-slate-900 font-mono font-bold pl-8 h-[46px]"
+                                />
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">€</span>
+                            </div>
+                            <p className="text-xs text-slate-500 text-right">Max: {MAX_TASK_PRICE}€</p>
                         </div>
                     </div>
-
-                    {/* 4. DETAILS & PHOTO */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                            <Label className="text-base text-white">Détails supplémentaires</Label>
-                            <Textarea 
-                                placeholder="Décrivez précisément ce qu'il y a à faire..." 
-                                value={details} onChange={(e) => setDetails(e.target.value)} 
-                                className="h-32 resize-none !bg-white !text-slate-900" 
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label className="text-base text-white">Photo</Label>
-                            <label className={`flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-xl cursor-pointer transition-all ${photo ? 'border-indigo-500 bg-indigo-900/20' : 'border-slate-700 bg-slate-800 hover:bg-slate-700 hover:border-slate-600'}`}>
-                                {photo ? (
-                                    <div className="relative w-full h-full group">
-                                        <img src={photo} alt="Preview" className="w-full h-full object-cover rounded-lg opacity-80 group-hover:opacity-40 transition-opacity" />
-                                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 text-white font-bold">Changer</div>
-                                    </div>
-                                ) : (
-                                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                                        <span className="text-3xl mb-2">📷</span>
-                                        <p className="text-sm text-slate-400"><span className="font-semibold">Cliquez pour ajouter</span></p>
-                                    </div>
-                                )}
-                                <input type="file" accept="image/*" onChange={handleFileChange} className="hidden"/>
-                            </label>
-                        </div>
+                    
+                    <div className="space-y-1.5">
+                        <Label className="text-slate-300">Description détaillée</Label>
+                        <Textarea 
+                            placeholder="Décrivez précisément le travail à effectuer..." 
+                            value={details} 
+                            onChange={e => setDetails(e.target.value)} 
+                            className="!bg-white !text-slate-900 min-h-[100px]"
+                        />
                     </div>
 
-                    <div className="pt-4">
-                         <Button className="w-full h-14 text-lg bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 shadow-lg shadow-indigo-900/20" onClick={handlePreview}>
-                            Prévisualiser la tâche
-                        </Button>
+                    <div className="space-y-3">
+                         <Label className="text-slate-300">Garantie souhaitée</Label>
+                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                             {WARRANTY_OPTIONS.map(w => {
+                                 const isSelected = warrantyDays === w.val;
+                                 return (
+                                     <button
+                                        key={w.val}
+                                        onClick={() => setWarrantyDays(w.val)}
+                                        className={`
+                                            flex flex-col items-center justify-center p-3 rounded-lg border transition-all
+                                            ${isSelected 
+                                                ? 'bg-white border-white ring-2 ring-indigo-500 ring-offset-2 ring-offset-slate-900' 
+                                                : 'bg-slate-800 border-slate-700 text-slate-400'
+                                            }
+                                        `}
+                                     >
+                                         <div className={`${isSelected ? w.colorClass.split(' ')[0] : 'text-slate-500'}`}>
+                                             {React.cloneElement(w.icon, { className: "w-5 h-5 mb-1" })}
+                                         </div>
+                                         <span className={`text-xs font-bold ${isSelected ? 'text-slate-900' : ''}`}>{w.label}</span>
+                                     </button>
+                                 );
+                             })}
+                         </div>
                     </div>
-                </CardContent>
-            </Card>
 
-            {showPreview && (
-                <TaskPreviewModal task={taskData} onConfirm={confirmSubmit} onCancel={() => setShowPreview(false)} />
-            )}
+                    <div className="space-y-1.5">
+                        <Label className="text-slate-300">Photo (Optionnel)</Label>
+                        <div className="border-2 border-dashed border-slate-700 rounded-xl p-8 flex flex-col items-center justify-center text-slate-500 hover:border-slate-500 hover:bg-slate-800/50 transition cursor-pointer relative">
+                            <input type="file" accept="image/*" onChange={handlePhotoUpload} className="absolute inset-0 opacity-0 cursor-pointer" />
+                            {photo ? (
+                                <img src={photo} alt="Preview" className="max-h-48 rounded shadow-lg" />
+                            ) : (
+                                <>
+                                    <span className="text-4xl mb-2">📷</span>
+                                    <span>Cliquez pour ajouter une photo</span>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                </Section>
+
+                <div className="pt-8 border-t border-slate-800 flex justify-end">
+                    <Button size="lg" onClick={handlePreview} className="bg-indigo-600 hover:bg-indigo-500 text-white px-8 shadow-lg shadow-indigo-500/20">
+                        Vérifier la demande →
+                    </Button>
+                </div>
+             </div>
+
+             {showPreview && <TaskPreviewModal task={{ title, category, scope, details, location, startingPrice: Number(startingPrice), warrantyDays: Number(warrantyDays), photo }} onCancel={() => setShowPreview(false)} onConfirm={handleSubmit} />}
         </div>
     );
 }
 
-// --- Main Dashboard Component ---
+function SharedFooter() {
+    const [showCGU, setShowCGU] = useState(false);
+    const [showMentions, setShowMentions] = useState(false);
+
+    return (
+        <footer className="mt-20 border-t border-slate-800/50 py-8 text-center">
+            <div className="flex items-center justify-center gap-2 mb-4 opacity-50 grayscale hover:grayscale-0 transition-all duration-500">
+                <span className="text-2xl">🏢</span>
+                <span className="font-bold text-white tracking-tight">CoproSmart <span className="text-indigo-500">v0.1.5</span></span>
+            </div>
+            <div className="flex justify-center gap-6 text-xs text-slate-500">
+                <button onClick={() => setShowCGU(true)} className="hover:text-slate-300 transition-colors">Conditions Générales d'Utilisation</button>
+                <button onClick={() => setShowMentions(true)} className="hover:text-slate-300 transition-colors">Mentions Légales</button>
+            </div>
+            
+            {showCGU && (
+                <InfoModal title="Conditions Générales d'Utilisation" onClose={() => setShowCGU(false)}>
+                    <h4 className="font-bold text-white mt-4">1. Objet</h4>
+                    <p>CoproSmart est une plateforme de mise en relation entre copropriétaires pour la réalisation de petits travaux.</p>
+                    <h4 className="font-bold text-white mt-4">2. Responsabilité</h4>
+                    <p>La copropriété n'agit qu'en tant qu'intermédiaire technique. Chaque intervenant est responsable de ses travaux.</p>
+                    <h4 className="font-bold text-white mt-4">3. Paiement</h4>
+                    <p>Les rémunérations sont effectuées par déduction de charges (crédit) ou de la main à la main selon la nature des travaux.</p>
+                </InfoModal>
+            )}
+            
+            {showMentions && (
+                 <InfoModal title="Mentions Légales" onClose={() => setShowMentions(false)}>
+                    <p>Éditeur : CoproSmart Inc.</p>
+                    <p>Hébergement : Vercel Inc.</p>
+                    <p>Contact : admin@coprosmart.fr</p>
+                </InfoModal>
+            )}
+        </footer>
+    );
+}
+
 
 function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
-  const [view, setView] = useState<'home' | 'create-task' | 'directory' | 'ledger'>('home');
-  
   const [tasks, setTasks] = useState<Task[]>([]);
   const [ledger, setLedger] = useState<LedgerEntry[]>([]);
   const [pendingUsers, setPendingUsers] = useState<RegisteredUser[]>([]);
   const [directoryUsers, setDirectoryUsers] = useState<RegisteredUser[]>([]);
-  const [usersMap, setUsersMap] = useState<Record<string, string>>({});
   
-  const [toasts, setToasts] = useState<Toast[]>([]);
-  
-  // States for Legal Modals
-  const [showCGU, setShowCGU] = useState(false);
-  const [showLegal, setShowLegal] = useState(false);
-
-  // Password Recovery State
-  const [showPasswordRecovery, setShowPasswordRecovery] = useState(false);
-  const [recoveryPassword, setRecoveryPassword] = useState("");
-
-  const addToast = (title: string, message: string, type: Toast['type'] = 'info') => {
-    const id = Math.random().toString(36).substring(2, 9);
-    setToasts((prev) => [...prev, { id, title, message, type }]);
-    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 4000);
-  };
-
-  // Generate Random Messages
-  const randomOpenMessage = useMemo(() => OPEN_EMPTY_MESSAGES[Math.floor(Math.random() * OPEN_EMPTY_MESSAGES.length)], [view]);
-  const randomProgressMessage = useMemo(() => PROGRESS_EMPTY_MESSAGES[Math.floor(Math.random() * PROGRESS_EMPTY_MESSAGES.length)], [view]);
-
-  // Email Notification
-  const notify = async (recipients: string[], subject: string, message: string) => {
-      addToast("Notification", `Email envoyé pour : ${subject}`, "info");
-      try {
-          await fetch('/api/send-email', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                  to: recipients,
-                  subject: `[CoproSmart] ${subject}`,
-                  html: `<div style="font-family: sans-serif;"><h2 style="color: #4f46e5;">CoproSmart Notification</h2><p>${message}</p></div>`
-              })
-          });
-      } catch (e) { console.error(e); }
-  };
-  
-  const getEmailsByRole = (roles: UserRole[]) => directoryUsers.filter(u => roles.includes(u.role)).map(u => u.email);
+  // View State
+  const [currentView, setCurrentView] = useState<'home' | 'create-task' | 'directory' | 'ledger'>('home');
 
   // Load Data
   const loadData = useCallback(async () => {
     try {
-      const t = await api.readTasks();
-      setTasks(t);
-      const l = await api.readLedger();
-      setLedger(l);
-      if (user.role === 'admin' || user.role === 'council') {
-          setPendingUsers(await api.getPendingUsers());
-      }
-      
-      // Get ALL users for mapping names
-      const allUsers = await api.getAllUsers();
-      const mapping: Record<string, string> = {};
-      allUsers.forEach(u => { mapping[u.email] = `${u.firstName} ${u.lastName.toUpperCase()}`; });
-      setUsersMap(mapping);
+        const [loadedTasks, loadedLedger, loadedPending, loadedDirectory, allUsers] = await Promise.all([
+            api.readTasks(),
+            api.readLedger(),
+            api.getPendingUsers(),
+            api.getDirectory(),
+            api.getAllUsers()
+        ]);
+        
+        // Build Users Map for Name Resolution
+        const map: Record<string, string> = {};
+        allUsers.forEach(u => {
+            map[u.email] = (u.firstName && u.lastName) ? `${u.firstName} ${u.lastName}` : u.email;
+        });
+        setUsersMap(map);
 
-      // Get Directory users for the list
-      const dir = await api.getDirectory();
-      setDirectoryUsers(dir);
-    } catch (e) { console.error(e); }
-  }, [user.role]);
+        setTasks(loadedTasks);
+        setLedger(loadedLedger);
+        setPendingUsers(loadedPending);
+        setDirectoryUsers(loadedDirectory);
+    } catch (e) {
+        console.error("Failed to load data", e);
+    }
+  }, []);
+
+  const [usersMap, setUsersMap] = useState<Record<string, string>>({});
 
   useEffect(() => {
     loadData();
+    // Real-time refresh loop (simple polling for this prototype)
     const interval = setInterval(loadData, 5000);
     return () => clearInterval(interval);
   }, [loadData]);
 
-  // Listen for Password Recovery event
-  useEffect(() => {
-      const { data: { subscription } } = api.onPasswordRecovery(() => {
-          setShowPasswordRecovery(true);
-      });
-      return () => subscription.unsubscribe();
-  }, []);
+  // --- Actions Handlers ---
+  const [toasts, setToasts] = useState<Toast[]>([]);
 
-  const handlePasswordRecoverySubmit = async () => {
-      try {
-          await api.updateUser(user.email, { password: recoveryPassword });
-          addToast("Succès", "Mot de passe mis à jour avec succès.", "success");
-          setShowPasswordRecovery(false);
-          setRecoveryPassword("");
-      } catch (e: any) {
-          addToast("Erreur", e.message || "Erreur lors de la mise à jour", "error");
-      }
+  const addToast = (title: string, message: string, type: 'info' | 'success' | 'error' = 'info') => {
+      const id = Math.random().toString(36).substring(7);
+      setToasts(prev => [...prev, { id, title, message, type }]);
+      setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 5000);
+  };
+  
+  const notify = async (recipients: string[], subject: string, message: string) => {
+    // 1. Visual notification
+    addToast("Notification envoyée", subject, "info");
+
+    // 2. Real Email Sending via Backend
+    try {
+        await fetch('/api/send-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                to: recipients,
+                subject: subject,
+                html: `<div style="font-family: sans-serif; padding: 20px; color: #333;">
+                        <h2 style="color: #4f46e5;">CoproSmart Notification</h2>
+                        <p>${message}</p>
+                        <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;" />
+                        <p style="font-size: 12px; color: #666;">Ceci est un message automatique de votre copropriété.</p>
+                       </div>`
+            })
+        });
+    } catch (e) {
+        console.error("Failed to send email", e);
+    }
   };
 
-  // Auto Award (Runs locally on one client - race condition acceptable for now or moved to edge function later)
-  useEffect(() => {
-      const interval = setInterval(() => {
-          tasks.forEach(async t => {
-              if (t.status === 'open' && t.biddingStartedAt && t.bids.length > 0) {
-                  const endTime = new Date(t.biddingStartedAt).getTime() + 24 * 60 * 60 * 1000;
-                  if (new Date().getTime() > endTime) {
-                      const lowestBid = t.bids.reduce((min, b) => b.amount < min.amount ? b : min, t.bids[0]);
-                      // Call API to update status
-                      await api.updateTaskStatus(t.id, 'awarded', { awardedTo: lowestBid.userId, awardedAmount: lowestBid.amount });
-                      notify([lowestBid.by], "Félicitations ! Tâche attribuée", `Vous avez remporté la tâche "${t.title}" pour ${lowestBid.amount}€.`);
-                      notify(getEmailsByRole(['council', 'admin']), "Attribution automatique", `La tâche "${t.title}" a été attribuée à ${lowestBid.by}.`);
-                      loadData();
-                  }
-              }
-          });
-      }, 10000); 
-      return () => clearInterval(interval);
-  }, [tasks, loadData]);
+  // HANDLERS
+  
+  const handleCreateTask = async (taskData: any) => {
+    try {
+        const taskId = await api.createTask({
+            ...taskData,
+            status: 'pending' // Admin tasks are NOT auto-open anymore, they go to pending
+        }, user.id);
+        
+        // Auto-approve if Council/Admin (First approval)
+        if (user.role === 'council' || user.role === 'admin') {
+             await api.addApproval(taskId, user.id);
+        }
 
-  // Handlers
-  const handleCreateTask = async (taskData: Partial<Task>) => {
-    
-    const taskId = await api.createTask({
-        ...taskData,
-        status: 'pending' // Always pending initially
-    }, user.id);
-    
-    // If user is council or admin, add self-approval immediately
-    if (user.role === 'council' || user.role === 'admin') {
-         await api.addApproval(taskId, user.id);
+        notify([user.email], "Tâche créée", `Votre demande "${taskData.title}" a été enregistrée et est en attente de validation.`);
+        setCurrentView('home');
+        loadData();
+        addToast("Succès", "Tâche créée avec succès", "success");
+    } catch (e: any) {
+        addToast("Erreur", e.message, "error");
     }
-
-    addToast("Succès", "Tâche créée et soumise.", "success");
-    setView('home');
-    loadData();
   };
 
   const handleApprove = async (taskId: string) => {
-      await api.addApproval(taskId, user.id);
-      
-      // Check if we should open the task
-      // Optimistically check local state or refetch. 
-      // Let's refetch single task or just loadData.
-      // To be faster, we can check current task state + 1.
-      const t = tasks.find(x => x.id === taskId);
-      if (t) {
-         const approvals = t.approvals.length + 1;
-         if (approvals >= COUNCIL_MIN_APPROVALS || user.role === 'admin') {
-             // Open it
-             await api.updateTaskStatus(taskId, 'open', { biddingStartedAt: t.biddingStartedAt }); // Keep existing or null
-             notify(getEmailsByRole(['owner', 'council', 'admin']), "Nouvelle offre disponible", `La tâche "${t.title}" est ouverte aux offres !`);
-         }
-      }
-      loadData();
-  };
+      try {
+          await api.addApproval(taskId, user.id);
+          
+          // Re-fetch to check approval count logic
+          // But for now, let's just optimistically check locally or rely on reload
+          // We need to check if we reached 2 approvals OR if admin forced it
+          
+          // Note: In a real app, the backend trigger handles status change. 
+          // Here we simulate the check:
+          const task = tasks.find(t => t.id === taskId);
+          const currentApprovals = (task?.approvals.length || 0) + 1;
+          
+          if (user.role === 'admin') {
+               // Admin Force Validate
+               await api.updateTaskStatus(taskId, 'open', { biddingStartedAt: null }); // bidding start when first bid comes
+               notify(directoryUsers.map(u => u.email), "Nouvelle opportunité !", `La tâche "${task?.title}" a été validée par l'administrateur et est ouverte aux offres.`);
+          } else if (currentApprovals >= COUNCIL_MIN_APPROVALS) {
+               await api.updateTaskStatus(taskId, 'open', { biddingStartedAt: null });
+               notify(directoryUsers.map(u => u.email), "Nouvelle opportunité !", `La tâche "${task?.title}" a reçu ses validations et est ouverte aux offres.`);
+          }
 
+          loadData();
+          addToast("Validé", "Votre approbation a été enregistrée", "success");
+      } catch (e: any) {
+          addToast("Erreur", e.message, "error");
+      }
+  };
+  
   const handleReject = async (taskId: string) => {
-      await api.addRejection(taskId, user.id);
-      await api.updateTaskStatus(taskId, 'rejected');
-      loadData();
+       try {
+           await api.addRejection(taskId, user.id);
+           await api.updateTaskStatus(taskId, 'rejected'); // Immediate rejection? Or voting? Let's say immediate for now.
+           loadData();
+           addToast("Rejeté", "La tâche a été rejetée", "info");
+       } catch (e: any) {
+           addToast("Erreur", e.message, "error");
+       }
   };
 
-  const handleBid = async (taskId: string, bidData: Omit<Bid, 'by' | 'at'>) => {
-      await api.addBid(taskId, bidData, user.id);
-      // Update biddingStartedAt if first bid
-      const t = tasks.find(x => x.id === taskId);
-      if (t && !t.biddingStartedAt) {
-          await api.updateTaskStatus(taskId, 'open', { biddingStartedAt: new Date().toISOString() });
+  const handleBid = async (bidData: any) => {
+      // Find task to check if first bid
+      const task = tasks.find(t => t.bids?.some(b => b.id === bidData.id)); // Wait, bidData doesn't have ID yet
+      // We need task ID passed to handleBid
+      // Actually TaskCard calls onBid which is (bid) => handleBid(task.id, bid)
+  };
+  
+  // Currying for TaskCard
+  const onBidWrapper = async (taskId: string, bidData: Omit<Bid, 'by' | 'at'>) => {
+      try {
+          const task = tasks.find(t => t.id === taskId);
+          if (!task) return;
+
+          await api.addBid(taskId, bidData, user.id);
+          
+          // Start timer if first bid
+          if (!task.biddingStartedAt) {
+              await api.updateTaskStatus(taskId, 'open', { biddingStartedAt: new Date().toISOString() });
+          }
+
+          notify([task.createdBy], "Nouvelle offre", `Une offre de ${bidData.amount}€ a été faite sur votre tâche "${task.title}".`);
+          loadData();
+          addToast("Offre envoyée", "Votre positionnement a été enregistré", "success");
+      } catch (e: any) {
+          addToast("Erreur", e.message, "error");
       }
-      notify(getEmailsByRole(['owner', 'council', 'admin']), "Nouvelle enchère", `Nouvelle offre de ${bidData.amount}€ sur "${t?.title}".`);
-      addToast("Offre enregistrée", "Votre positionnement a été pris en compte.", "success");
-      loadData();
   };
 
   const handleAward = async (taskId: string) => {
-      const t = tasks.find(x => x.id === taskId);
-      if (t && t.bids.length > 0) {
-          const lowestBid = t.bids.reduce((min, b) => b.amount < min.amount ? b : min, t.bids[0]);
-          await api.updateTaskStatus(taskId, 'awarded', { awardedTo: lowestBid.userId, awardedAmount: lowestBid.amount });
-          notify([lowestBid.by], "Tâche attribuée", `Félicitations, vous avez remporté la tâche "${t.title}".`);
+      try {
+          const task = tasks.find(t => t.id === taskId);
+          if (!task || !task.bids.length) return;
+          
+          // Find lowest bid
+          const winnerBid = task.bids.reduce((min, b) => b.amount < min.amount ? b : min, task.bids[0]);
+          
+          await api.updateTaskStatus(taskId, 'awarded', {
+              awardedTo: winnerBid.by, // Note: We should ideally store UUID, but we store Email for display legacy. 
+              // Actually API handles mapping. Let's pass ID if available or Email. 
+              // API updateTaskStatus expects awarded_to UUID? Let's check api.ts.
+              // It expects `awardedTo` which maps to `awarded_to` column. It should be UUID.
+              // winnerBid has `userId`.
+              awardedTo: winnerBid.userId,
+              awardedAmount: winnerBid.amount
+          });
+
+          notify([winnerBid.by], "Félicitations !", `La tâche "${task.title}" vous a été attribuée pour ${winnerBid.amount}€.`);
           loadData();
+          addToast("Attribuée", "La tâche a été attribuée au meilleur offrant", "success");
+      } catch (e: any) {
+          addToast("Erreur", e.message, "error");
       }
   };
 
   const handleRequestVerification = async (taskId: string) => {
-      await api.updateTaskStatus(taskId, 'verification');
-      const t = tasks.find(x => x.id === taskId);
-      if (t) notify(getEmailsByRole(['council', 'admin']), "Vérification demandée", `Le copropriétaire a terminé "${t.title}". Merci de vérifier.`);
-      loadData();
+       try {
+           await api.updateTaskStatus(taskId, 'verification');
+           // Notify Council
+           const councilEmails = directoryUsers.filter(u => u.role === 'council' || u.role === 'admin').map(u => u.email);
+           notify(councilEmails, "Contrôle Qualité Requis", `Une tâche est terminée et nécessite votre validation.`);
+           loadData();
+           addToast("Envoyé", "Demande de vérification envoyée au Conseil Syndical", "success");
+       } catch (e: any) {
+           addToast("Erreur", e.message, "error");
+       }
   };
 
   const handleRejectWork = async (taskId: string) => {
-      await api.updateTaskStatus(taskId, 'awarded');
-      const t = tasks.find(x => x.id === taskId);
-      if (t) notify([t.awardedTo!], "Travail refusé", `Le CS a refusé votre travail sur "${t.title}". Merci de corriger.`);
-      loadData();
+      try {
+          await api.updateTaskStatus(taskId, 'awarded'); // Back to work
+          loadData();
+          addToast("Refusé", "Le travail a été refusé et renvoyé au copropriétaire", "info");
+      } catch (e: any) {
+          addToast("Erreur", e.message, "error");
+      }
   };
 
   const handleComplete = async (taskId: string) => {
-      const t = tasks.find(x => x.id === taskId);
-      if (!t) return;
+       try {
+           const task = tasks.find(t => t.id === taskId);
+           if (!task) return;
 
-      await api.updateTaskStatus(taskId, 'completed', { validatedBy: user.id });
-      
-      // Create Ledger Entry
-      const entry = {
-          taskId,
-          type: t.scope === 'copro' ? 'charge_credit' : 'apartment_payment',
-          payerId: t.scope === 'copro' ? null : t.createdById, // assuming createdById available in Task from DB mapping
-          payeeId: t.awardedToId, 
-          amount: t.awardedAmount
-      };
-      await api.createLedgerEntry(entry);
+           // 1. Mark as completed and save validator
+           await api.updateTaskStatus(taskId, 'completed', { validatedBy: user.id });
 
-      notify([t.awardedTo!], "Paiement validé", `Votre travail sur "${t.title}" a été validé. ${t.awardedAmount}€ crédités.`);
-      loadData();
+           // 2. Generate Ledger Entry
+           if (task.awardedTo && task.awardedAmount) {
+               // Get awarded user ID
+               // We have awardedTo (email) or awardedToId (UUID) in task object?
+               // The API mapTask populates awardedTo (email) and awardedToId.
+               
+               const entry = {
+                   taskId: task.id,
+                   type: task.scope === 'copro' ? 'charge_credit' : 'apartment_payment',
+                   payerId: task.scope === 'copro' ? null : task.createdById, // Null for Copro
+                   payeeId: task.awardedToId,
+                   amount: task.awardedAmount
+               };
+               await api.createLedgerEntry(entry);
+           }
+
+           notify([task.awardedTo!], "Paiement validé", `Le travail pour "${task.title}" a été validé. Le montant a été ajouté au journal.`);
+           loadData();
+           addToast("Terminé", "Tâche clôturée et paiement enregistré", "success");
+       } catch (e: any) {
+           addToast("Erreur", e.message, "error");
+       }
   };
-
-  const handleRate = async (taskId: string, rating: Omit<Rating, 'at' | 'byHash'>) => {
-      await api.addRating(taskId, rating, user.id);
-      addToast("Merci", "Votre avis a été enregistré.", "success");
-      loadData();
-  };
-
-  const handleDeleteRating = async (taskId: string, ratingIndex: number) => {
-      await api.deleteRating(taskId, ratingIndex, user.id);
-      loadData();
-      addToast("Supprimé", "Le commentaire a été supprimé et archivé.", "info");
-  }
-
-  const handleDelete = async (taskId: string) => {
-      if (user.role !== 'admin') return;
-      if (confirm("Êtes-vous sûr de vouloir supprimer cette tâche ?")) {
-          await api.deleteTask(taskId);
-          addToast("Supprimé", "Tâche supprimée.", "info");
+  
+  const handleRate = async (taskId: string, ratingData: any) => {
+      try {
+          await api.addRating(taskId, ratingData, user.id);
           loadData();
+          addToast("Merci", "Votre avis a été enregistré", "success");
+      } catch (e: any) {
+          addToast("Erreur", e.message, "error");
       }
   };
   
-  const handleDeleteLedgerEntry = async (id: string) => {
-      if (user.role !== 'admin') return;
-      if (confirm("Supprimer cette écriture comptable ?")) {
+  const handleDeleteRating = async (taskId: string, ratingIdx: number) => {
+      if (!confirm("Voulez-vous vraiment supprimer ce commentaire ?")) return;
+      try {
+          await api.deleteRating(taskId, ratingIdx, user.id);
+          loadData();
+          addToast("Supprimé", "Le commentaire a été supprimé", "info");
+      } catch (e: any) {
+          addToast("Erreur", e.message, "error");
+      }
+  };
+
+  const handleDeleteTask = async (taskId: string) => {
+      if (!confirm("Êtes-vous sûr de vouloir supprimer cette tâche définitivement ?")) return;
+      try {
+          if (user.role !== 'admin') throw new Error("Seul l'admin peut supprimer.");
+          await api.deleteTask(taskId);
+          loadData();
+          addToast("Supprimé", "Tâche supprimée", "info");
+      } catch (e: any) {
+          addToast("Erreur", e.message, "error");
+      }
+  };
+  
+  const handleDeleteLedger = async (id: string) => {
+      if (!confirm("Supprimer cette ligne comptable ?")) return;
+      try {
           await api.deleteLedgerEntry(id);
           loadData();
+          addToast("Supprimé", "Ligne comptable effacée", "info");
+      } catch (e: any) {
+          addToast("Erreur", e.message, "error");
       }
-  }
+  };
 
-  const handleApproveUser = async (email: string) => { await api.approveUser(email); notify([email], "Compte validé", "Bienvenue sur CoproSmart !"); loadData(); };
-  const handleRejectUser = async (email: string) => { await api.rejectUser(email); loadData(); };
-  const handleBanUser = async (email: string) => { if (confirm(`Bannir ${email} ?`)) { await api.updateUserStatus(email, 'deleted'); loadData(); } }
-  const handleRestoreUser = async (email: string) => { await api.updateUserStatus(email, 'active'); loadData(); }
-  const handleUpdateUser = async (email: string, data: any) => { await api.updateUser(email, data); loadData(); }
-  const handleAddUser = async (userData: any) => { await api.createDirectoryEntry(userData); loadData(); addToast("Succès", "Utilisateur ajouté.", "success"); }
-  const handleDeleteUser = async (email: string) => { 
-      if (confirm(`Êtes-vous sûr de vouloir supprimer définitivement ${email} ?\nCette action effacera son profil. Pour libérer l'email, l'admin doit aussi le supprimer dans Supabase Auth.`)) {
-          try {
-             await api.deleteUserProfile(email); 
-             loadData(); 
-             addToast("Supprimé", "Le profil utilisateur a été supprimé.", "info");
-          } catch (e: any) {
-              addToast("Erreur", e.message || "Erreur de suppression", "error");
-          }
-      } 
-  }
+  // User Management Handlers
+  const handleApproveUser = async (email: string) => {
+      try {
+          await api.approveUser(email);
+          notify([email], "Compte validé !", "Bienvenue sur CoproSmart. Votre compte a été validé par le Conseil Syndical.");
+          loadData();
+          addToast("Validé", "Utilisateur activé", "success");
+      } catch (e: any) {
+          addToast("Erreur", e.message, "error");
+      }
+  };
+  
+  const handleRejectUser = async (email: string) => {
+      if (!confirm("Refuser cette inscription ?")) return;
+      try {
+          await api.rejectUser(email);
+          loadData();
+          addToast("Refusé", "Utilisateur rejeté", "info");
+      } catch (e: any) {
+          addToast("Erreur", e.message, "error");
+      }
+  };
+  
+  const handleBanUser = async (email: string) => {
+       if (!confirm("Bannir cet utilisateur ? Il ne pourra plus se connecter.")) return;
+       try {
+           await api.updateUserStatus(email, 'deleted');
+           loadData();
+           addToast("Banni", "Utilisateur désactivé", "error");
+       } catch (e: any) {
+           addToast("Erreur", e.message, "error");
+       }
+  };
+  
+  const handleRestoreUser = async (email: string) => {
+       try {
+           await api.updateUserStatus(email, 'active');
+           loadData();
+           addToast("Rétabli", "Utilisateur réactivé", "success");
+       } catch (e: any) {
+           addToast("Erreur", e.message, "error");
+       }
+  };
+  
+  const handleDeleteUser = async (email: string) => {
+      if (!confirm("ATTENTION : Cette action est irréversible. Le profil sera supprimé définitivement. Continuer ?")) return;
+      try {
+          await api.deleteUserProfile(email);
+          loadData();
+          addToast("Supprimé", "Utilisateur supprimé de la base", "success");
+      } catch (e: any) {
+           addToast("Erreur", e.message, "error");
+      }
+  };
 
-  // --- View Logic ---
+  const handleUpdateUser = async (email: string, updates: any) => {
+      try {
+          await api.updateUser(email, updates);
+          loadData();
+          addToast("Mis à jour", "Profil modifié", "success");
+      } catch (e: any) {
+          addToast("Erreur", e.message, "error");
+      }
+  };
+
+  const handleInviteUser = async (email: string) => {
+      try {
+          const inviterName = `${user.firstName} ${user.lastName}`;
+          await api.inviteUser(email, inviterName);
+          addToast("Envoyé", `Invitation envoyée à ${email}`, "success");
+      } catch (e: any) {
+          addToast("Erreur", e.message, "error");
+      }
+  };
+
+  // --- Derived State for Lists ---
+  const myTasks = tasks.filter(t => t.awardedTo === user.email && (t.status === 'awarded' || t.status === 'verification'));
+  const openTasks = tasks.filter(t => t.status === 'open');
+  const pendingTasks = tasks.filter(t => t.status === 'pending');
+  // All awarded/verification tasks for the "Work in Progress" section
+  const progressTasks = tasks.filter(t => t.status === 'awarded' || t.status === 'verification');
+  const historyTasks = tasks.filter(t => t.status === 'completed' || t.status === 'rejected');
+  
+  // Random empty messages (memoized to stay constant during session)
+  const randomOpenMsg = useMemo(() => OPEN_EMPTY_MESSAGES[Math.floor(Math.random() * OPEN_EMPTY_MESSAGES.length)], []);
+  const randomProgressMsg = useMemo(() => PROGRESS_EMPTY_MESSAGES[Math.floor(Math.random() * PROGRESS_EMPTY_MESSAGES.length)], []);
+
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-200 font-sans selection:bg-indigo-500/30 flex flex-col">
-      {/* --- Sticky Header --- */}
-      <header className="sticky top-0 z-40 w-full backdrop-blur-xl bg-slate-950/70 border-b border-slate-800">
-        <div className="max-w-6xl mx-auto px-4 h-18 md:h-20 flex items-center justify-between">
-             <button onClick={() => setView('home')} className="flex flex-col items-start focus:outline-none group mr-6">
-                <h1 className="text-2xl md:text-3xl font-black tracking-tighter text-white leading-none">
-                    CoproSmart.
-                </h1>
-                <span className="text-[10px] font-black tracking-tighter text-white mt-0.5 leading-none">
-                    On réduit nos charges de copropriété.
-                </span>
-            </button>
-            
-            {/* Create Task Button - Moved to Right of Logo */}
-            {view !== 'create-task' && (
-                <Button onClick={() => setView('create-task')} className="ml-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold shadow-lg shadow-indigo-500/20 rounded-full px-4 sm:px-6 py-2">
-                    + <span className="hidden sm:inline">Nouvelle Tâche</span>
-                </Button>
-            )}
-            
-            {/* Desktop Navigation */}
-            <nav className="hidden md:flex items-center gap-8 flex-1 justify-end mr-8">
-                <button onClick={() => setView('home')} className={`text-sm font-bold transition-colors ${view === 'home' ? 'text-white' : 'text-slate-400 hover:text-white'}`}>Accueil</button>
-                <button onClick={() => setView('directory')} className={`text-sm font-bold transition-colors ${view === 'directory' ? 'text-white' : 'text-slate-400 hover:text-white'}`}>Annuaire</button>
-                {(user && (user.role === 'admin' || user.role === 'council')) && (
-                    <button onClick={() => setView('ledger')} className={`text-sm font-bold transition-colors ${view === 'ledger' ? 'text-white' : 'text-slate-400 hover:text-white'}`}>Écritures</button>
-                )}
-            </nav>
+    <div className="min-h-screen bg-slate-950 text-slate-200 font-sans pb-20">
+      <ToastContainer toasts={toasts} onClose={id => setToasts(prev => prev.filter(t => t.id !== id))} />
 
-            <div className="flex flex-col items-end hidden lg:flex border-l border-slate-800 pl-4 ml-2">
-                <div className="text-sm font-bold text-white">{user?.firstName} {user?.lastName.toUpperCase()}</div>
-                <div className="text-xs text-slate-500">{user?.email}</div>
-                <Badge className={user.role === 'owner' ? 'bg-slate-800 text-slate-400 border-slate-700 mt-1' : user.role === 'council' ? 'bg-amber-900/40 text-amber-200 border-amber-800 mt-1' : 'bg-rose-900/40 text-rose-200 border-rose-800 mt-1'}>
-                    {ROLES.find(r => r.id === user.role)?.label}
-                </Badge>
+      {/* HEADER */}
+      <header className="bg-slate-900/80 backdrop-blur-md border-b border-slate-800 sticky top-0 z-40">
+        <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
+            <div className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition" onClick={() => setCurrentView('home')}>
+                <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-bold shadow-lg shadow-indigo-500/30">C</div>
+                <div className="leading-none">
+                    <h1 className="text-xl font-black text-white tracking-tighter">CoproSmart.</h1>
+                    <p className="text-[10px] text-slate-400 font-black tracking-tighter">Simple. Local. Gagnant-gagnant.</p>
+                </div>
             </div>
-            <Button variant="ghost" size="sm" onClick={onLogout} title="Déconnexion" className="ml-4 text-slate-400 hover:text-rose-500 hover:bg-slate-800 rounded-full w-10 h-10 p-0">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9" />
-                </svg>
-            </Button>
+
+            {/* Navigation Buttons */}
+            {currentView !== 'create-task' && (
+                <div className="flex items-center gap-4">
+                     <nav className="hidden md:flex gap-1">
+                        <Button variant={currentView === 'home' ? 'secondary' : 'ghost'} size="sm" onClick={() => setCurrentView('home')}>Accueil</Button>
+                        <Button variant={currentView === 'directory' ? 'secondary' : 'ghost'} size="sm" onClick={() => setCurrentView('directory')}>Annuaire</Button>
+                        {(user.role === 'admin' || user.role === 'council') && (
+                            <Button variant={currentView === 'ledger' ? 'secondary' : 'ghost'} size="sm" onClick={() => setCurrentView('ledger')}>Écritures</Button>
+                        )}
+                    </nav>
+                    
+                    <div className="h-6 w-px bg-slate-800 mx-2 hidden md:block"></div>
+                    
+                    <div className="flex flex-col items-end">
+                         <div className="text-right leading-none">
+                            <div className="text-sm font-bold text-white">{user.firstName} {user.lastName.toUpperCase()}</div>
+                            <div className="text-[10px] text-slate-400">{user.email}</div>
+                        </div>
+                        <Badge 
+                            variant="outline" 
+                            className={`mt-1 h-4 text-[9px] border-0 
+                                ${user.role === 'admin' ? 'bg-rose-900/50 text-rose-200' : 
+                                  user.role === 'council' ? 'bg-amber-900/50 text-amber-200' : 
+                                  'bg-slate-800 text-slate-400'}`}
+                        >
+                            {ROLES.find(r => r.id === user.role)?.label}
+                        </Badge>
+                    </div>
+                    
+                    <Button 
+                        size="sm" 
+                        variant="ghost" 
+                        className="text-slate-400 hover:text-white"
+                        onClick={() => {
+                            api.logout();
+                            onLogout();
+                        }}
+                    >
+                        ✕
+                    </Button>
+
+                    <Button 
+                        size="sm" 
+                        className="bg-indigo-600 hover:bg-indigo-500 text-white ml-2 shadow-lg shadow-indigo-500/20"
+                        onClick={() => setCurrentView('create-task')}
+                    >
+                        + Nouvelle Tâche
+                    </Button>
+                </div>
+            )}
         </div>
       </header>
 
-      {/* --- Mobile Navigation Bar --- */}
-       <div className="md:hidden fixed bottom-0 left-0 w-full bg-slate-900/90 backdrop-blur-md border-t border-slate-800 flex justify-around py-3 z-50 pb-safe">
-           <button onClick={() => setView('home')} className={`flex flex-col items-center ${view === 'home' ? 'text-indigo-400' : 'text-slate-500'}`}>
-               <span className="text-2xl">🏠</span><span className="text-[9px] font-bold mt-1">Accueil</span>
-           </button>
-           <button onClick={() => setView('create-task')} className={`flex flex-col items-center ${view === 'create-task' ? 'text-indigo-400' : 'text-slate-500'}`}>
-               <div className="bg-indigo-600 text-white rounded-full w-10 h-10 flex items-center justify-center -mt-4 shadow-lg border-4 border-slate-900 text-xl">+</div>
-           </button>
-           <button onClick={() => setView('directory')} className={`flex flex-col items-center ${view === 'directory' ? 'text-indigo-400' : 'text-slate-500'}`}>
-               <span className="text-2xl">👥</span><span className="text-[9px] font-bold mt-1">Annuaire</span>
-           </button>
-            {(user && (user.role === 'admin' || user.role === 'council')) && (
-                 <button onClick={() => setView('ledger')} className={`flex flex-col items-center ${view === 'ledger' ? 'text-indigo-400' : 'text-slate-500'}`}>
-                    <span className="text-2xl">📒</span><span className="text-[9px] font-bold mt-1">Compta</span>
-                </button>
-            )}
-       </div>
-
-
-      <main className="flex-grow max-w-6xl mx-auto w-full p-4 pb-24 md:pb-12 space-y-8">
+      {/* MAIN CONTENT */}
+      <main className="max-w-5xl mx-auto px-4 py-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
         
-        {/* USER VALIDATION (Global) */}
-        {(user && (user.role === 'council' || user.role === 'admin')) && pendingUsers.length > 0 && (
-            <UserValidationQueue pendingUsers={pendingUsers} onApprove={handleApproveUser} onReject={handleRejectUser} />
-        )}
-
-        {view === 'create-task' && user && (
-            <CreateTaskPage me={user} onSubmit={handleCreateTask} onCancel={() => setView('home')} />
-        )}
-
-        {view === 'directory' && user && (
-            <UserDirectory users={directoryUsers} tasks={tasks} me={user} onBan={handleBanUser} onRestore={handleRestoreUser} onUpdateUser={handleUpdateUser} onDeleteRating={handleDeleteRating} onAddUser={handleAddUser} onDeleteUser={handleDeleteUser} />
-        )}
-
-        {view === 'ledger' && user && (
-            <Ledger entries={ledger} usersMap={usersMap} onDelete={handleDeleteLedgerEntry} isAdmin={user.role === 'admin'} />
-        )}
-
-        {view === 'home' && user && (
-            <div className="space-y-10 animate-in fade-in duration-500 pt-6">
+        {currentView === 'create-task' ? (
+            <CreateTaskPage onBack={() => setCurrentView('home')} onCreate={handleCreateTask} />
+        ) : currentView === 'directory' ? (
+            <UserDirectory 
+                users={directoryUsers} 
+                tasks={tasks} 
+                me={user} 
+                onBan={handleBanUser} 
+                onRestore={handleRestoreUser} 
+                onUpdateUser={handleUpdateUser}
+                onDeleteRating={handleDeleteRating}
+                onInviteUser={handleInviteUser}
+                onDeleteUser={handleDeleteUser}
+            />
+        ) : currentView === 'ledger' ? (
+            <Ledger entries={ledger} usersMap={usersMap} onDelete={handleDeleteLedger} isAdmin={user.role === 'admin'} />
+        ) : (
+            <div className="space-y-12">
                 
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                    <div className="lg:col-span-12 space-y-12">
-                        
-                        {/* PENDING VALIDATION */}
-                        {tasks.some(t => t.status === 'pending') && (
-                            <Section title="⏳ En attente de validation">
-                                <div className="grid grid-cols-1 gap-3">
-                                {tasks.filter(t => t.status === 'pending').map(t => {
-                                    const canValidate = user.role === 'admin' || user.role === 'council';
-                                    return (
-                                        <TaskCard 
-                                            key={t.id} task={t} me={user} usersMap={usersMap}
-                                            onBid={() => {}} onAward={() => {}} onComplete={() => {}} onRate={() => {}} onPayApartment={() => {}} onDelete={() => handleDelete(t.id)}
-                                            canDelete={user.role === 'admin'}
-                                            onApprove={canValidate ? () => handleApprove(t.id) : undefined}
-                                            onReject={canValidate ? () => handleReject(t.id) : undefined}
-                                        />
-                                    );
-                                })}
-                                </div>
-                            </Section>
-                        )}
+                {/* 1. VALIDATION QUEUE (Admin & Council Only Action, Visible to All) */}
+                {pendingTasks.length > 0 && (
+                     <Section title={`⚠️ En attente de validation (${pendingTasks.length})`} className="border-l-4 border-amber-500 pl-4">
+                        {pendingTasks.map(t => (
+                            <TaskCard 
+                                key={t.id} 
+                                task={t} 
+                                me={user} 
+                                usersMap={usersMap}
+                                onBid={() => {}} 
+                                onAward={() => {}} 
+                                onComplete={() => {}} 
+                                onRate={() => {}}
+                                onPayApartment={() => {}}
+                                onDelete={() => handleDeleteTask(t.id)}
+                                canDelete={user.role === 'admin'}
+                                // Only pass actions if user is Council or Admin
+                                onApprove={ (user.role === 'admin' || user.role === 'council') ? () => handleApprove(t.id) : undefined }
+                                onReject={ (user.role === 'admin' || user.role === 'council') ? () => handleReject(t.id) : undefined }
+                            />
+                        ))}
+                    </Section>
+                )}
 
-                        {/* OPEN OFFERS */}
-                        <Section title="🔥 Offres ouvertes">
-                             {tasks.filter(t => t.status === 'open').length === 0 ? (
-                                <div className="bg-slate-900/30 border border-slate-800 rounded-xl p-8 text-center">
-                                    <p className="text-slate-500 italic">{randomOpenMessage}</p>
-                                </div>
-                             ) : (
-                                <div className="grid grid-cols-1 gap-3">
-                                    {tasks.filter(t => t.status === 'open').map(t => (
-                                        <TaskCard 
-                                            key={t.id} task={t} me={user} usersMap={usersMap}
-                                            onBid={(bid) => handleBid(t.id, bid)} 
-                                            onAward={() => handleAward(t.id)} 
-                                            onComplete={() => {}} 
-                                            onRate={() => {}} onPayApartment={() => {}} onDelete={() => handleDelete(t.id)}
-                                            canDelete={user.role === 'admin'}
-                                        />
-                                    ))}
-                                </div>
-                             )}
-                        </Section>
+                {/* 2. USER VALIDATION QUEUE (Admin & Council Only) */}
+                {(user.role === 'admin' || user.role === 'council') && pendingUsers.length > 0 && (
+                    <UserValidationQueue 
+                        pendingUsers={pendingUsers} 
+                        onApprove={handleApproveUser} 
+                        onReject={handleRejectUser} 
+                    />
+                )}
 
-                        {/* WORKS IN PROGRESS */}
-                        <Section title="🏗️ Travaux en cours">
-                            {tasks.filter(t => t.status === 'awarded' || t.status === 'verification').length === 0 ? (
-                                <div className="bg-slate-900/30 border border-slate-800 rounded-xl p-8 text-center">
-                                    <p className="text-slate-500 italic">{randomProgressMessage}</p>
-                                </div>
-                             ) : (
-                                <div className="grid grid-cols-1 gap-3">
-                                    {tasks.filter(t => t.status === 'awarded' || t.status === 'verification').map(t => (
-                                        <TaskCard 
-                                            key={t.id} task={t} me={user} usersMap={usersMap}
-                                            onBid={() => {}} onAward={() => {}} 
-                                            onComplete={() => handleComplete(t.id)} 
-                                            onRate={() => {}} onPayApartment={() => {}} onDelete={() => handleDelete(t.id)}
-                                            canDelete={user.role === 'admin'}
-                                            onRequestVerification={() => handleRequestVerification(t.id)}
-                                            onRejectWork={() => handleRejectWork(t.id)}
-                                        />
-                                    ))}
-                                </div>
-                             )}
-                        </Section>
-
-                         {/* COMPLETED HISTORY */}
-                        <Section title="✅ Travaux terminés">
-                            {tasks.filter(t => t.status === 'completed' || t.status === 'rejected').length === 0 ? (
-                                <p className="text-slate-500 italic pl-2">Aucun historique pour le moment.</p>
-                            ) : (
-                                <div className="flex flex-col gap-3">
-                                    {tasks.filter(t => t.status === 'completed' || t.status === 'rejected').sort((a,b) => new Date(b.completionAt || b.createdAt).getTime() - new Date(a.completionAt || a.createdAt).getTime()).map(t => (
-                                        <TaskCard 
-                                            key={t.id} task={t} me={user} usersMap={usersMap}
-                                            onBid={() => {}} onAward={() => {}} onComplete={() => {}} 
-                                            onRate={(r) => handleRate(t.id, r)} 
-                                            onDeleteRating={handleDeleteRating}
-                                            onPayApartment={() => {}} onDelete={() => handleDelete(t.id)}
-                                            canDelete={user.role === 'admin'}
-                                        />
-                                    ))}
-                                </div>
-                            )}
-                        </Section>
-                    </div>
-                </div>
-            </div>
-        )}
-
-         {/* PASSWORD RECOVERY MODAL */}
-         {showPasswordRecovery && (
-            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-                <Card className="w-full max-w-md bg-slate-900 border-slate-700">
-                    <CardHeader><CardTitle>Nouveau mot de passe</CardTitle></CardHeader>
-                    <CardContent className="space-y-4">
-                        <div className="space-y-1.5">
-                            <Label>Nouveau mot de passe</Label>
-                            <Input type="password" value={recoveryPassword} onChange={e => setRecoveryPassword(e.target.value)} />
+                {/* 3. OPEN OFFERS */}
+                <Section title="📣 Offres ouvertes">
+                    {openTasks.length === 0 ? (
+                        <div className="text-center py-12 border-2 border-dashed border-slate-800 rounded-xl bg-slate-900/30">
+                            <p className="text-2xl mb-2">🏖️</p>
+                            <p className="text-slate-500 font-medium">{randomOpenMsg}</p>
                         </div>
-                        <div className="flex justify-end gap-3 mt-4">
-                            <Button onClick={handlePasswordRecoverySubmit}>Mettre à jour</Button>
+                    ) : (
+                        <div className="grid gap-4">
+                            {openTasks.map(t => (
+                                <TaskCard 
+                                    key={t.id} 
+                                    task={t} 
+                                    me={user} 
+                                    usersMap={usersMap}
+                                    onBid={(b) => onBidWrapper(t.id, b)} 
+                                    onAward={() => handleAward(t.id)} 
+                                    onComplete={() => {}} 
+                                    onRate={() => {}}
+                                    onPayApartment={() => {}}
+                                    onDelete={() => handleDeleteTask(t.id)}
+                                    canDelete={user.role === 'admin'}
+                                />
+                            ))}
                         </div>
-                    </CardContent>
-                </Card>
+                    )}
+                </Section>
+
+                {/* 4. WORK IN PROGRESS */}
+                <Section title="🏗️ Travaux en cours">
+                     {progressTasks.length === 0 ? (
+                        <div className="text-center py-12 border-2 border-dashed border-slate-800 rounded-xl bg-slate-900/30">
+                            <p className="text-2xl mb-2">💤</p>
+                            <p className="text-slate-500 font-medium">{randomProgressMsg}</p>
+                        </div>
+                    ) : (
+                        <div className="grid gap-4">
+                            {progressTasks.map(t => (
+                                <TaskCard 
+                                    key={t.id} 
+                                    task={t} 
+                                    me={user} 
+                                    usersMap={usersMap}
+                                    onBid={() => {}} 
+                                    onAward={() => {}} 
+                                    onComplete={() => handleComplete(t.id)} 
+                                    onRate={() => {}}
+                                    onPayApartment={() => {}}
+                                    onDelete={() => handleDeleteTask(t.id)}
+                                    canDelete={user.role === 'admin'}
+                                    onRequestVerification={() => handleRequestVerification(t.id)}
+                                    onRejectWork={() => handleRejectWork(t.id)}
+                                />
+                            ))}
+                        </div>
+                    )}
+                </Section>
+                
+                {/* 5. HISTORY */}
+                {historyTasks.length > 0 && (
+                    <Section title="✅ Travaux terminés">
+                        <div className="grid gap-4 opacity-80 hover:opacity-100 transition-opacity">
+                            {historyTasks.map(t => (
+                                <TaskCard 
+                                    key={t.id} 
+                                    task={t} 
+                                    me={user} 
+                                    usersMap={usersMap}
+                                    onBid={() => {}} 
+                                    onAward={() => {}} 
+                                    onComplete={() => {}} 
+                                    onRate={(r) => handleRate(t.id, r)}
+                                    onDeleteRating={handleDeleteRating}
+                                    onPayApartment={() => {}}
+                                    onDelete={() => handleDeleteTask(t.id)}
+                                    canDelete={user.role === 'admin'}
+                                />
+                            ))}
+                        </div>
+                    </Section>
+                )}
             </div>
-        )}
-
-        {/* CGU Modal */}
-        {showCGU && (
-          <InfoModal title="Conditions Générales d'Utilisation" onClose={() => setShowCGU(false)}>
-              <p>Bienvenue sur CoproSmart.</p>
-              <p>En utilisant cette application, vous acceptez les règles suivantes :</p>
-              <ul className="list-disc pl-5 space-y-2">
-                  <li><b>Initiative locale :</b> CoproSmart est un outil d'entraide pour faciliter la gestion des petites interventions entre copropriétaires.</li>
-                  <li><b>Absence de contrat de travail :</b> Les interventions réalisées ne constituent pas une activité salariée ni une prestation commerciale professionnelle, mais une participation collaborative à la vie de l'immeuble.</li>
-                  <li><b>Compensation :</b> La rémunération se fait exclusivement par le biais d'un crédit (déduction) sur les charges de copropriété, validé par le Conseil Syndical et le Syndic.</li>
-                  <li><b>Responsabilité :</b> Chaque intervenant agit sous sa propre responsabilité. Il s'engage à ne réaliser que des tâches à sa portée et à respecter les règles de sécurité.</li>
-                  <li><b>Confidentialité :</b> Les données (noms, offres) sont visibles uniquement par les membres de la copropriété inscrits.</li>
-              </ul>
-          </InfoModal>
-        )}
-
-        {/* Legal Modal */}
-        {showLegal && (
-          <InfoModal title="Mentions Légales" onClose={() => setShowLegal(false)}>
-              <p><b>Éditeur du service :</b></p>
-              <p>CoproSmart - Initiative privée de copropriété.</p>
-              <p>Résidence Watteau</p>
-              <br/>
-              <p><b>Hébergement :</b></p>
-              <p>Ce site est hébergé par Vercel Inc.</p>
-              <p>340 S Lemon Ave #4133, Walnut, CA 91789, USA</p>
-              <br/>
-              <p><b>Données personnelles :</b></p>
-              <p>Conformément au RGPD, vous disposez d'un droit d'accès, de rectification et de suppression de vos données. Pour exercer ce droit, contactez le Conseil Syndical.</p>
-          </InfoModal>
         )}
       </main>
+
+       {/* FOOTER */}
+       <SharedFooter />
+
     </div>
   );
 }
 
-export default function App() {
+function App() {
   const { user, setUser, loading } = useAuth();
-  const [showCGU, setShowCGU] = useState(false);
-  const [showLegal, setShowLegal] = useState(false);
 
   if (loading) {
-     return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-500">Chargement...</div>;
+      return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-500">Chargement...</div>;
   }
 
   if (!user) {
-    return (
-      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4 relative overflow-hidden pt-10 overflow-y-auto">
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-             <div className="absolute -top-[20%] -left-[10%] w-[60%] h-[60%] rounded-full bg-indigo-900/10 blur-[120px]"></div>
-             <div className="absolute top-[20%] right-[10%] w-[40%] h-[40%] rounded-full bg-rose-900/10 blur-[100px]"></div>
-        </div>
-
-        <div className="w-full max-w-3xl z-10 mb-10 text-center mx-auto space-y-2">
-            <h1 className="text-6xl md:text-7xl font-black tracking-tighter text-white leading-none w-full text-center">
-                CoproSmart.
-            </h1>
-            <p className="text-lg md:text-xl font-black tracking-tighter text-white mt-2 text-center">
-                On réduit nos charges de copropriété.
-            </p>
-        </div>
-        
-        <div className="w-full max-w-md z-10 mx-auto shadow-2xl shadow-indigo-900/20 rounded-2xl">
-             <LoginCard onLogin={setUser} />
-        </div>
-        
-        {/* Login Page Footer */}
-        <div className="max-w-4xl mx-auto px-4 text-center space-y-2 mt-12 pb-12">
-             <p className="text-slate-500 text-sm leading-relaxed max-w-2xl mx-auto">
-                CoproSmart permet aux copropriétaires de réduire collectivement les charges communes en réalisant eux-mêmes les petits travaux des parties communes : une ampoule à changer, une porte à régler, des encombrants à évacuer… Les charges diminuent pour tous, et celui qui intervient bénéficie d’un crédit supplémentaire sur ses propres charges.
-                <span className="block mt-2 font-black tracking-tighter lowercase text-slate-400">simple. local. gagnant-gagnant.</span>
-            </p>
-            <div className="flex justify-center gap-6 text-xs text-slate-600 pt-2">
-                  <button onClick={() => setShowCGU(true)} className="hover:text-slate-400 underline">Conditions Générales d'Utilisation</button>
-                  <button onClick={() => setShowLegal(true)} className="hover:text-slate-400 underline">Mentions Légales</button>
-            </div>
-        </div>
-
-         {/* CGU Modal */}
-        {showCGU && (
-          <InfoModal title="Conditions Générales d'Utilisation" onClose={() => setShowCGU(false)}>
-              <p>Bienvenue sur CoproSmart.</p>
-              <p>En utilisant cette application, vous acceptez les règles suivantes :</p>
-              <ul className="list-disc pl-5 space-y-2">
-                  <li><b>Initiative locale :</b> CoproSmart est un outil d'entraide pour faciliter la gestion des petites interventions entre copropriétaires.</li>
-                  <li><b>Absence de contrat de travail :</b> Les interventions réalisées ne constituent pas une activité salariée ni une prestation commerciale professionnelle, mais une participation collaborative à la vie de l'immeuble.</li>
-                  <li><b>Compensation :</b> La rémunération se fait exclusivement par le biais d'un crédit (déduction) sur les charges de copropriété, validé par le Conseil Syndical et le Syndic.</li>
-                  <li><b>Responsabilité :</b> Chaque intervenant agit sous sa propre responsabilité. Il s'engage à ne réaliser que des tâches à sa portée et à respecter les règles de sécurité.</li>
-                  <li><b>Confidentialité :</b> Les données (noms, offres) sont visibles uniquement par les membres de la copropriété inscrits.</li>
-              </ul>
-          </InfoModal>
-        )}
-
-        {/* Legal Modal */}
-        {showLegal && (
-          <InfoModal title="Mentions Légales" onClose={() => setShowLegal(false)}>
-              <p><b>Éditeur du service :</b></p>
-              <p>CoproSmart - Initiative privée de copropriété.</p>
-              <p>Résidence Watteau</p>
-              <br/>
-              <p><b>Hébergement :</b></p>
-              <p>Ce site est hébergé par Vercel Inc.</p>
-              <p>340 S Lemon Ave #4133, Walnut, CA 91789, USA</p>
-              <br/>
-              <p><b>Données personnelles :</b></p>
-              <p>Conformément au RGPD, vous disposez d'un droit d'accès, de rectification et de suppression de vos données. Pour exercer ce droit, contactez le Conseil Syndical.</p>
-          </InfoModal>
-        )}
-      </div>
-    );
+    return <LoginCard onLogin={setUser} />;
   }
 
   return <Dashboard user={user} onLogout={() => setUser(null)} />;
 }
+
+export default App;

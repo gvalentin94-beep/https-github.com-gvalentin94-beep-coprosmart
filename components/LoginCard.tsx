@@ -74,14 +74,16 @@ export function LoginCard({ onLogin }: LoginCardProps) {
     }
     try {
       setErr("");
+      // REVERTED: Standard pending status only
       await api.signUp(email.trim(), password, role, firstName.trim(), lastName.trim());
-      // Do not auto-login. Show success message.
+      
       setSuccessMsg("Compte créé ! En attente de validation par le Conseil Syndical.");
       setTimeout(() => {
           setMode('login');
           setSuccessMsg("Votre compte a été créé. Veuillez attendre la validation du CS avant de vous connecter.");
           setPassword(""); 
       }, 3000);
+
     } catch (e) {
       setErr(getErrorMessage(e));
     }
@@ -119,155 +121,169 @@ export function LoginCard({ onLogin }: LoginCardProps) {
   }
 
   return (
-    <Card className="w-full max-w-md mx-auto bg-slate-800/50 backdrop-blur-sm border-slate-700">
-      <CardHeader>
-        <CardTitle className="text-white">{title}</CardTitle>
-        <CardDescription className="text-slate-300">{desc}</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        
-        {/* SUCCESS MESSAGE */}
-        {successMsg && (
-            <div className="bg-emerald-900/30 border border-emerald-800 text-emerald-200 p-3 rounded-lg text-sm mb-4">
-                {successMsg}
-            </div>
-        )}
-        
-        {/* LOGIN FORM */}
-        {mode === 'login' && (
-            <>
-                <div className="space-y-1.5">
-                    <Label className="text-slate-300">Email</Label>
-                    <Input 
-                        type="email" 
-                        placeholder="prenom@copro.fr" 
-                        value={email} 
-                        onChange={(e) => setEmail(e.target.value)} 
-                        autoCapitalize="none"
-                        autoComplete="email"
-                        autoCorrect="off"
-                    />
+    <div className="w-full max-w-md mx-auto">
+        <Card className="bg-slate-800/50 backdrop-blur-sm border-slate-700">
+        <CardHeader>
+            <CardTitle className="text-white text-center text-2xl font-black tracking-tight">{title}</CardTitle>
+            <CardDescription className="text-slate-300 text-center">{desc}</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+            
+            {/* SUCCESS MESSAGE */}
+            {successMsg && (
+                <div className="bg-emerald-900/30 border border-emerald-800 text-emerald-200 p-3 rounded-lg text-sm mb-4 text-center">
+                    {successMsg}
                 </div>
-                <div className="space-y-1.5">
-                    <div className="flex justify-between">
+            )}
+            
+            {/* LOGIN FORM */}
+            {mode === 'login' && (
+                <>
+                    <div className="space-y-1.5">
+                        <Label className="text-slate-300">Email</Label>
+                        <Input 
+                            type="email" 
+                            placeholder="prenom@copro.fr" 
+                            value={email} 
+                            onChange={(e) => setEmail(e.target.value)} 
+                            autoCapitalize="none"
+                            autoComplete="email"
+                            autoCorrect="off"
+                        />
+                    </div>
+                    <div className="space-y-1.5">
+                        <div className="flex justify-between">
+                            <Label className="text-slate-300">Mot de passe</Label>
+                            <button onClick={() => switchTo('forgotPassword')} className="text-xs text-indigo-400 hover:underline">Oublié ?</button>
+                        </div>
+                        <Input 
+                            type="password" 
+                            value={password} 
+                            onChange={(e) => setPassword(e.target.value)} 
+                        />
+                    </div>
+                    {err && (
+                        <div className="text-sm text-rose-400 bg-rose-900/20 p-2 rounded border border-rose-900/50 flex flex-col gap-2 text-center">
+                            {err}
+                        </div>
+                    )}
+                    <Button className="w-full mt-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2.5" onClick={handleLogin}>Continuer</Button>
+                    <Button variant="outline" className="w-full bg-transparent border-slate-600 text-slate-300 hover:bg-slate-700 mt-2" onClick={() => switchTo('signUp')}>
+                        Créer un compte
+                    </Button>
+                </>
+            )}
+
+            {/* SIGN UP FORM */}
+            {mode === 'signUp' && (
+                <>
+                    <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1.5">
+                            <Label className="text-slate-300">Prénom</Label>
+                            <Input 
+                                value={firstName} 
+                                onChange={(e) => setFirstName(e.target.value)} 
+                            />
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label className="text-slate-300">Nom</Label>
+                            <Input 
+                                value={lastName} 
+                                onChange={(e) => setLastName(e.target.value)} 
+                            />
+                        </div>
+                    </div>
+                    <div className="space-y-1.5">
+                        <Label className="text-slate-300">Email</Label>
+                        <Input 
+                            type="email" 
+                            value={email} 
+                            onChange={(e) => setEmail(e.target.value)}
+                            autoCapitalize="none"
+                            autoComplete="email"
+                            autoCorrect="off"
+                        />
+                    </div>
+                    <div className="space-y-1.5">
                         <Label className="text-slate-300">Mot de passe</Label>
-                        <button onClick={() => switchTo('forgotPassword')} className="text-xs text-indigo-400 hover:underline">Oublié ?</button>
-                    </div>
-                    <Input 
-                        type="password" 
-                        value={password} 
-                        onChange={(e) => setPassword(e.target.value)} 
-                    />
-                </div>
-                {err && (
-                    <div className="text-sm text-rose-400 bg-rose-900/20 p-2 rounded border border-rose-900/50 flex flex-col gap-2">
-                        {err}
-                    </div>
-                )}
-                <Button className="w-full mt-2" onClick={handleLogin}>Continuer</Button>
-                <Button variant="outline" className="w-full bg-transparent border-slate-500 text-slate-200 hover:bg-slate-700 mt-2" onClick={() => switchTo('signUp')}>
-                    Créer un compte
-                </Button>
-            </>
-        )}
-
-        {/* SIGN UP FORM */}
-        {mode === 'signUp' && (
-            <>
-                <div className="grid grid-cols-2 gap-2">
-                    <div className="space-y-1.5">
-                        <Label className="text-slate-300">Prénom</Label>
                         <Input 
-                            value={firstName} 
-                            onChange={(e) => setFirstName(e.target.value)} 
+                            type="password" 
+                            value={password} 
+                            onChange={(e) => setPassword(e.target.value)} 
                         />
                     </div>
                     <div className="space-y-1.5">
-                        <Label className="text-slate-300">Nom</Label>
+                        <Label className="text-slate-300">Confirmer le mot de passe</Label>
                         <Input 
-                            value={lastName} 
-                            onChange={(e) => setLastName(e.target.value)} 
+                            type="password" 
+                            value={confirmPassword} 
+                            onChange={(e) => setConfirmPassword(e.target.value)} 
                         />
                     </div>
-                </div>
-                 <div className="space-y-1.5">
-                    <Label className="text-slate-300">Email</Label>
-                    <Input 
-                        type="email" 
-                        value={email} 
-                        onChange={(e) => setEmail(e.target.value)}
-                        autoCapitalize="none"
-                        autoComplete="email"
-                        autoCorrect="off"
-                    />
-                </div>
-                <div className="space-y-1.5">
-                    <Label className="text-slate-300">Mot de passe</Label>
-                    <Input 
-                        type="password" 
-                        value={password} 
-                        onChange={(e) => setPassword(e.target.value)} 
-                    />
-                </div>
-                <div className="space-y-1.5">
-                    <Label className="text-slate-300">Confirmer le mot de passe</Label>
-                    <Input 
-                        type="password" 
-                        value={confirmPassword} 
-                        onChange={(e) => setConfirmPassword(e.target.value)} 
-                    />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-slate-300">Nom de la résidence</Label>
-                  <Select
-                    value={residence}
-                    onChange={(e) => setResidence(e.target.value)}
-                  >
-                    <option value="Résidence Watteau">Résidence Watteau</option>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                    <Label className="text-slate-300">Rôle</Label>
-                    <Select 
-                        value={role} 
-                        onChange={(e) => setRole(e.target.value as UserRole)} 
+                    <div className="space-y-1.5">
+                    <Label className="text-slate-300">Nom de la résidence</Label>
+                    <Select
+                        value={residence}
+                        onChange={(e) => setResidence(e.target.value)}
                     >
-                        {/* Filter out 'admin' so new users cannot sign up as admin */}
-                        {ROLES.filter(r => r.id !== 'admin').map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
+                        <option value="Résidence Watteau">Résidence Watteau</option>
                     </Select>
-                </div>
-                {err && (
-                    <div className="text-sm text-rose-400 bg-rose-900/20 p-2 rounded border border-rose-900/50 flex flex-col gap-2">
-                        {err}
                     </div>
-                )}
-                <Button className="w-full mt-2" onClick={handleSignUp}>Créer mon compte</Button>
-                <Button variant="outline" className="w-full bg-transparent border-slate-500 text-slate-200 hover:bg-slate-700 mt-2" onClick={() => switchTo('login')}>
-                    Retour à la connexion
-                </Button>
-            </>
-        )}
+                    <div className="space-y-1.5">
+                        <Label className="text-slate-300">Rôle</Label>
+                        <Select 
+                            value={role} 
+                            onChange={(e) => setRole(e.target.value as UserRole)} 
+                        >
+                            {/* Filter out 'admin' so new users cannot sign up as admin */}
+                            {ROLES.filter(r => r.id !== 'admin').map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
+                        </Select>
+                    </div>
+                    {err && (
+                        <div className="text-sm text-rose-400 bg-rose-900/20 p-2 rounded border border-rose-900/50 flex flex-col gap-2 text-center">
+                            {err}
+                        </div>
+                    )}
+                    <Button className="w-full mt-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold" onClick={handleSignUp}>Créer mon compte</Button>
+                    <Button variant="outline" className="w-full bg-transparent border-slate-600 text-slate-300 hover:bg-slate-700 mt-2" onClick={() => switchTo('login')}>
+                        Retour à la connexion
+                    </Button>
+                </>
+            )}
 
-        {/* FORGOT PASSWORD FORM */}
-        {mode === 'forgotPassword' && (
-             <>
-                <div className="space-y-1.5">
-                    <Label className="text-slate-300">Email</Label>
-                    <Input 
-                        type="email" 
-                        value={email} 
-                        onChange={(e) => setEmail(e.target.value)}
-                        autoCapitalize="none"
-                        autoComplete="email"
-                    />
-                </div>
-                {err && <p className="text-sm text-rose-400">{err}</p>}
-                <Button className="w-full mt-2" onClick={handleForgotPassword}>Envoyer le lien magique</Button>
-                <Button variant="ghost" className="w-full mt-2" onClick={() => switchTo('login')}>Annuler</Button>
-             </>
-        )}
+            {/* FORGOT PASSWORD FORM */}
+            {mode === 'forgotPassword' && (
+                <>
+                    <div className="space-y-1.5">
+                        <Label className="text-slate-300">Email</Label>
+                        <Input 
+                            type="email" 
+                            value={email} 
+                            onChange={(e) => setEmail(e.target.value)}
+                            autoCapitalize="none"
+                            autoComplete="email"
+                        />
+                    </div>
+                    {err && <p className="text-sm text-rose-400 text-center">{err}</p>}
+                    <Button className="w-full mt-2 bg-indigo-600 hover:bg-indigo-500 text-white" onClick={handleForgotPassword}>Envoyer le lien magique</Button>
+                    <Button variant="ghost" className="w-full mt-2 text-slate-400 hover:text-white" onClick={() => switchTo('login')}>Annuler</Button>
+                </>
+            )}
 
-      </CardContent>
-    </Card>
+        </CardContent>
+        </Card>
+
+        {/* LOGIN FOOTER TEXT */}
+        <div className="mt-8 text-center px-4 max-w-4xl mx-auto">
+            <p className="text-sm text-slate-400 leading-relaxed">
+            CoproSmart permet aux copropriétaires de réduire collectivement les charges communes en réalisant eux-mêmes les petits travaux des parties communes : une ampoule à changer, une porte à régler, des encombrants à évacuer… Les charges diminuent pour tous, et celui qui intervient bénéficie d’un crédit supplémentaire sur ses propres charges. <br/>
+            <span className="font-black tracking-tighter text-white">simple. local. gagnant-gagnant.</span>
+            </p>
+            <div className="flex justify-center gap-6 text-xs text-slate-500 mt-4">
+                <button className="hover:text-slate-300 transition-colors">Conditions Générales d'Utilisation</button>
+                <button className="hover:text-slate-300 transition-colors">Mentions Légales</button>
+            </div>
+        </div>
+    </div>
   );
 }

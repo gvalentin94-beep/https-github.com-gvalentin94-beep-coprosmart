@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import type { Task, LedgerEntry, User, RegisteredUser, UserRole, TaskCategory, TaskScope, Bid, Rating } from './types';
 import { useAuth, api } from './services/api';
@@ -469,7 +468,7 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDel
                                 <Input 
                                     value={editFirstName} 
                                     onChange={e => setEditFirstName(e.target.value)}
-                                    disabled={me.role === 'owner' && !editingUser} // Owners can enable edit for self
+                                    disabled={me.role === 'owner' && editingUser.id !== me.id} // Owners can enable edit for self
                                 />
                             </div>
                             <div className="space-y-1.5">
@@ -477,7 +476,7 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDel
                                 <Input 
                                     value={editLastName} 
                                     onChange={e => setEditLastName(e.target.value)}
-                                    disabled={me.role === 'owner' && !editingUser}
+                                    disabled={me.role === 'owner' && editingUser.id !== me.id}
                                 />
                             </div>
                             <div className="space-y-1.5">
@@ -760,7 +759,7 @@ function SharedFooter() {
         <footer className="mt-20 border-t border-slate-800/50 py-8 text-center">
             <div className="flex items-center justify-center gap-2 mb-4 opacity-50 grayscale hover:grayscale-0 transition-all duration-500">
                 <span className="text-2xl">🏢</span>
-                <span className="font-bold text-white tracking-tight">CoproSmart <span className="text-indigo-500">v0.1.7</span></span>
+                <span className="font-bold text-white tracking-tight">CoproSmart <span className="text-indigo-500">v0.1.9</span></span>
             </div>
             <div className="flex justify-center gap-6 text-xs text-slate-500">
                 <button onClick={() => setShowCGU(true)} className="hover:text-slate-300 transition-colors">Conditions Générales d'Utilisation</button>
@@ -962,12 +961,7 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
           const winnerBid = task.bids.reduce((min, b) => b.amount < min.amount ? b : min, task.bids[0]);
           
           await api.updateTaskStatus(taskId, 'awarded', {
-              awardedTo: winnerBid.by, // Note: We should ideally store UUID, but we store Email for display legacy. 
-              // Actually API handles mapping. Let's pass ID if available or Email. 
-              // API updateTaskStatus expects awarded_to UUID? Let's check api.ts.
-              // It expects `awardedTo` which maps to `awarded_to` column. It should be UUID.
-              // winnerBid has `userId`.
-              awardedTo: winnerBid.userId,
+              awardedTo: winnerBid.userId, // Use userId if available
               awardedAmount: winnerBid.amount
           });
 
@@ -1176,7 +1170,7 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
                 <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-bold shadow-lg shadow-indigo-500/30">C</div>
                 <div className="leading-none">
                     <h1 className="text-xl font-black text-white tracking-tighter">CoproSmart.</h1>
-                    <p className="text-[10px] text-slate-400 font-black tracking-tighter">Simple. Local. Gagnant-gagnant.</p>
+                    <p className="text-[10px] text-slate-400 font-black tracking-tighter">On réduit nos charges de copropriété.</p>
                 </div>
             </div>
 
@@ -1382,9 +1376,50 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
 
 function App() {
   const { user, setUser, loading } = useAuth();
+  const [showPasswordRecovery, setShowPasswordRecovery] = useState(false);
+
+  // Listen for Password Recovery Event from Email Link
+  useEffect(() => {
+      const { data: { subscription } } = api.onPasswordRecovery(() => {
+          setShowPasswordRecovery(true);
+      });
+      return () => subscription.unsubscribe();
+  }, []);
 
   if (loading) {
       return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-500">Chargement...</div>;
+  }
+
+  // Password Recovery Modal (Always visible if triggered)
+  if (showPasswordRecovery) {
+      return (
+          <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
+              <Card className="w-full max-w-md bg-slate-900 border-slate-700">
+                  <CardHeader><CardTitle>Nouveau mot de passe</CardTitle></CardHeader>
+                  <CardContent className="space-y-4">
+                      <p className="text-sm text-slate-400">Veuillez choisir un nouveau mot de passe pour votre compte.</p>
+                      <Input type="password" placeholder="Nouveau mot de passe" id="new-password" />
+                      <Button className="w-full" onClick={async () => {
+                          const pwd = (document.getElementById('new-password') as HTMLInputElement).value;
+                          if(pwd) {
+                              try {
+                                  // Update via Auth API
+                                  // We need to handle this via api service ideally, but for recovery flow often direct update works if session established
+                                  // api.updateUser logic handles password update if authenticated.
+                                  // The link should have authenticated the user.
+                                  await api.updateUser('recovery', { password: pwd }); // 'recovery' is placeholder, api uses session
+                                  alert("Mot de passe modifié !");
+                                  setShowPasswordRecovery(false);
+                                  window.location.href = "/"; 
+                              } catch(e: any) {
+                                  alert("Erreur: " + e.message);
+                              }
+                          }
+                      }}>Enregistrer</Button>
+                  </CardContent>
+              </Card>
+          </div>
+      );
   }
 
   if (!user) {

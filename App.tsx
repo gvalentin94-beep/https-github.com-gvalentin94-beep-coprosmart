@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import type { Task, LedgerEntry, User, RegisteredUser, UserRole, TaskCategory, TaskScope, Bid, Rating } from './types';
 import { useAuth, api } from './services/api';
@@ -1228,9 +1229,10 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
               <p>Conformément au RGPD, vous disposez d'un droit d'accès, de rectification et de suppression de vos données. Pour exercer ce droit, contactez le Conseil Syndical.</p>
           </InfoModal>
         )}
-      </div>
-    );
-  }
+      </main>
+    </div>
+  );
+}
 
 export default function App() {
   const { user, setUser, loading } = useAuth();

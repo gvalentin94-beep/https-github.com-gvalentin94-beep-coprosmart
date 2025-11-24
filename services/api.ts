@@ -41,7 +41,7 @@ const mapTask = (t: any): Task => ({
     details: t.details,
     location: t.location,
     startingPrice: t.starting_price,
-    warranty_days: t.warranty_days,
+    warrantyDays: t.warranty_days,
     status: t.status,
     createdBy: t.created_by_profile?.email || 'Unknown',
     createdById: t.created_by,

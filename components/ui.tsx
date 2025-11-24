@@ -36,7 +36,6 @@ interface CardProps {
   children?: React.ReactNode;
   className?: string;
   padding?: 'none' | 'sm' | 'md';
-  key?: React.Key;
 }
 
 export function Card({ children, className = "", padding = 'md' }: CardProps) {
@@ -73,8 +72,7 @@ export function CardContent({ children, className = "" }: CardChildProps) {
   return <div className={`p-5 ${className}`}>{children}</div>;
 }
 
-// Form Components - Updated to White Background / Dark Text
-// Modified Input to use text-base on mobile (prevents iOS zoom) and text-sm on desktop
+// Form Components
 export function Input({ className = "", ...props }: React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input

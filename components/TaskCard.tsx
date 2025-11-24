@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect } from 'react';
 import type { Task, User, Rating, Bid } from '../types';
-import { Button, Card, Input, Label, Badge, Textarea } from './ui';
+import { Button, Card, Input, Label, Badge } from './ui';
 import { CATEGORIES, TASK_STATUS_CONFIG, SCOPES, WARRANTY_OPTIONS, MapPinIcon, RATING_LEGEND } from '../constants';
 
 // --- Sub-components defined in the same file to keep file count low ---
@@ -135,7 +134,7 @@ function RatingBox({ onSubmit }: RatingBoxProps) {
 
     if (!open) {
         return (
-            <Button size="sm" variant="outline" className="bg-slate-800 border-slate-600 text-amber-400 hover:text-amber-300 hover:border-amber-500 hover:bg-slate-700 shadow-sm whitespace-nowrap" onClick={(e) => { e.stopPropagation(); setOpen(true); }}>
+            <Button size="sm" variant="outline" className="bg-slate-800 border-slate-700 text-slate-600 hover:text-amber-300 hover:border-amber-500 hover:bg-slate-700 shadow-sm whitespace-nowrap" onClick={(e) => { e.stopPropagation(); setOpen(true); }}>
                 ⭐ Noter
             </Button>
         );
@@ -221,7 +220,6 @@ interface TaskCardProps {
   onReject?: () => void;
   onRequestVerification?: () => void;
   onRejectWork?: () => void;
-  key?: React.Key;
 }
 
 export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRate, onDeleteRating, onPayApartment, onDelete, canDelete, onApprove, onReject, onRequestVerification, onRejectWork }: TaskCardProps) {
@@ -239,6 +237,7 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
     
     const myBidsCount = task.bids.filter(b => b.by === me.email).length;
     const isFirstBidder = task.bids.length > 0 && task.bids[0].by === me.email;
+    // Allow Council/Admin to bid like owners
     const canBid = (isFirstBidder && myBidsCount < 2) || (!isFirstBidder && myBidsCount < 1);
     const hasApproved = task.approvals?.some(a => a.by === me.email);
 
@@ -267,7 +266,8 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
     // Action Button Logic
     let ActionButton = null;
 
-    if (task.status === 'open' && me.role === 'owner') {
+    if (task.status === 'open') {
+        // Everyone can bid now (except restrictions in App logic)
         if (canBid) {
             ActionButton = <Button size="sm" onClick={(e) => { e.stopPropagation(); setShowBidForm(!showBidForm); }} className="bg-indigo-600 hover:bg-indigo-500 text-white shadow-md whitespace-nowrap">🚀 Faire une offre</Button>;
         } else {

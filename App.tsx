@@ -469,6 +469,7 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDel
                                 <Input 
                                     value={editFirstName} 
                                     onChange={e => setEditFirstName(e.target.value)}
+                                    disabled={me.role === 'owner' && !editingUser} // Owners can enable edit for self
                                 />
                             </div>
                             <div className="space-y-1.5">
@@ -476,6 +477,7 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDel
                                 <Input 
                                     value={editLastName} 
                                     onChange={e => setEditLastName(e.target.value)}
+                                    disabled={me.role === 'owner' && !editingUser}
                                 />
                             </div>
                             <div className="space-y-1.5">

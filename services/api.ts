@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import type { Task, LedgerEntry, User, UserRole, RegisteredUser, UserStatus, Bid, Rating, Approval, Rejection, DeletedRating, TaskCategory, TaskScope } from '../types';
@@ -30,7 +29,8 @@ const mapProfile = (p: any): RegisteredUser => ({
     firstName: p.first_name,
     lastName: p.last_name,
     role: p.role,
-    status: p.status
+    status: p.status,
+    avatar: p.avatar
 });
 
 const mapTask = (t: any): Task => ({
@@ -41,7 +41,7 @@ const mapTask = (t: any): Task => ({
     details: t.details,
     location: t.location,
     startingPrice: t.starting_price,
-    warrantyDays: t.warranty_days,
+    warranty_days: t.warranty_days,
     status: t.status,
     createdBy: t.created_by_profile?.email || 'Unknown',
     createdById: t.created_by,
@@ -499,6 +499,7 @@ export const api = {
         if (updates.lastName) map.last_name = updates.lastName;
         if (updates.role) map.role = updates.role;
         if (updates.email) map.email = updates.email; // Update display email
+        if (updates.avatar) map.avatar = updates.avatar;
         
         // Update profile table
         const { error } = await supabase.from('profiles').update(map).eq('email', email);

@@ -1,3 +1,4 @@
+
 import { Resend } from 'resend';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -29,10 +30,9 @@ export default async function handler(request: any, response: any) {
     }
 
     // Send email via Resend
-    // Note: 'onboarding@resend.dev' only works for the email you registered with on Resend.
-    // Once you add your domain (ex: notification@coprosmart.fr) in Resend, change this 'from' field.
+    // Using official domain
     const data = await resend.emails.send({
-      from: 'CoproSmart <onboarding@resend.dev>', 
+      from: 'CoproSmart <admin@coprosmart.com>', 
       to: to,
       subject: subject,
       html: html,

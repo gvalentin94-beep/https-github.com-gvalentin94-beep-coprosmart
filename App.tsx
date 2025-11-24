@@ -1,10 +1,9 @@
-
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import type { Task, LedgerEntry, User, RegisteredUser, UserRole, TaskCategory, TaskScope, Bid, Rating } from './types';
 import { useAuth, api } from './services/api';
 import { Button, Card, CardContent, CardHeader, CardTitle, Label, Input, Textarea, Select, Badge, Section } from './components/ui';
 import { TaskCard } from './components/TaskCard';
-import { LOCATIONS, CATEGORIES, SCOPES, WARRANTY_OPTIONS, COUNCIL_MIN_APPROVALS, ROLES, MAX_TASK_PRICE } from './constants';
+import { LOCATIONS, CATEGORIES, SCOPES, WARRANTY_OPTIONS, COUNCIL_MIN_APPROVALS, ROLES, MAX_TASK_PRICE, AVATARS } from './constants';
 import { LoginCard } from './components/LoginCard';
 
 // --- Constants for Random Messages ---
@@ -249,6 +248,7 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDel
     const [editEmail, setEditEmail] = useState("");
     const [editRole, setEditRole] = useState<UserRole>("owner");
     const [newPassword, setNewPassword] = useState("");
+    const [editAvatar, setEditAvatar] = useState("");
     
     const [isAdding, setIsAdding] = useState(false);
     const [newUser, setNewUser] = useState({ firstName: '', lastName: '', email: '', role: 'owner' as UserRole });
@@ -259,6 +259,7 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDel
         setEditLastName(u.lastName || "");
         setEditEmail(u.email || "");
         setEditRole(u.role);
+        setEditAvatar(u.avatar || "");
         setNewPassword("");
     };
 
@@ -267,7 +268,8 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDel
             const updates: any = {
                 email: editEmail,
                 firstName: editFirstName,
-                lastName: editLastName
+                lastName: editLastName,
+                avatar: editAvatar
             };
             
             // Role Update: ONLY Admin can update role
@@ -335,12 +337,12 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDel
                         : null;
                     
                     return (
-                        <Card key={u.email} className={`border-slate-700 bg-slate-800/50 hover:border-slate-600 transition-all ${isDeleted ? 'opacity-50 grayscale' : ''}`}>
+                        <Card key={u.email} className={`border-slate-700 bg-slate-800/50 hover:border-slate-600 transition-all ${isDeleted ? 'opacity-50 grayscale' : ''} relative overflow-hidden`}>
                             <CardContent className="p-5 space-y-4">
                                 <div className="flex justify-between items-start">
                                     <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-full bg-indigo-500/20 flex items-center justify-center text-indigo-300 font-bold text-lg border border-indigo-500/30">
-                                            {u.firstName ? u.firstName.charAt(0) : ''}{u.lastName ? u.lastName.charAt(0) : ''}
+                                        <div className="w-12 h-12 rounded-full bg-indigo-500/20 flex items-center justify-center text-2xl border border-indigo-500/30 shadow-inner">
+                                            {u.avatar || AVATARS[0]}
                                         </div>
                                         <div>
                                             <div className="font-bold text-lg text-white leading-tight min-h-[1.5rem]">{u.firstName} {u.lastName}</div>
@@ -353,21 +355,29 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDel
                                 </div>
 
                                 <div className="flex flex-wrap gap-2">
-                                     <Badge className={u.role === 'owner' ? 'bg-slate-700' : u.role === 'council' ? 'bg-amber-900/40 text-amber-200 border-amber-800' : 'bg-rose-900/40 text-rose-200 border-rose-800'}>
-                                        {ROLES.find(r => r.id === u.role)?.label}
-                                    </Badge>
+                                     {u.role === 'council' ? (
+                                         <div className="flex gap-2">
+                                             <Badge className="bg-amber-500 text-slate-900 border-amber-400 font-bold shadow-[0_0_10px_rgba(245,158,11,0.3)]">Conseil Syndical</Badge>
+                                             <Badge className="bg-slate-700">Copropriétaire</Badge>
+                                         </div>
+                                     ) : (
+                                         <Badge className={u.role === 'owner' ? 'bg-slate-700' : 'bg-rose-900/40 text-rose-200 border-rose-800'}>
+                                            {ROLES.find(r => r.id === u.role)?.label}
+                                        </Badge>
+                                     )}
+                                     
                                     {isDeleted && <Badge variant="destructive">Banni</Badge>}
                                 </div>
                                 
                                 {/* SUMMARY STATS */}
-                                <div className="flex justify-between items-center bg-slate-900/30 p-3 rounded-lg border border-slate-700/50">
+                                <div className="flex justify-between items-center bg-slate-900/30 p-2 rounded-lg border border-slate-700/50">
                                     <div className="text-center flex-1 border-r border-slate-700/50">
-                                        <div className="text-xl font-bold text-amber-400">{avgRating ? avgRating : '-'} <span className="text-xs text-slate-500 font-normal">/5</span></div>
-                                        <div className="text-[10px] text-slate-500 uppercase">Moyenne</div>
+                                        <div className="text-lg font-bold text-amber-400">{avgRating ? avgRating : '-'} <span className="text-xs text-slate-500 font-normal">/5</span></div>
+                                        <div className="text-[9px] text-slate-500 uppercase">Moyenne</div>
                                     </div>
                                     <div className="text-center flex-1">
-                                        <div className="text-xl font-bold text-white">{totalTasks}</div>
-                                        <div className="text-[10px] text-slate-500 uppercase">Travaux</div>
+                                        <div className="text-lg font-bold text-white">{totalTasks}</div>
+                                        <div className="text-[9px] text-slate-500 uppercase">Travaux</div>
                                     </div>
                                 </div>
 
@@ -442,11 +452,24 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDel
                         <CardHeader><CardTitle>Modifier le profil</CardTitle></CardHeader>
                         <CardContent className="space-y-4">
                             <div className="space-y-1.5">
+                                <Label>Avatar</Label>
+                                <div className="flex gap-2 overflow-x-auto pb-2">
+                                    {AVATARS.map(av => (
+                                        <button 
+                                            key={av}
+                                            onClick={() => setEditAvatar(av)}
+                                            className={`text-2xl p-2 rounded-full border transition-all ${editAvatar === av ? 'bg-indigo-500/30 border-indigo-400 scale-110' : 'bg-slate-800 border-slate-700 hover:bg-slate-700'}`}
+                                        >
+                                            {av}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="space-y-1.5">
                                 <Label>Prénom</Label>
                                 <Input 
                                     value={editFirstName} 
                                     onChange={e => setEditFirstName(e.target.value)}
-                                    disabled={me.role === 'owner' && editingUser.id === me.id} 
                                 />
                             </div>
                             <div className="space-y-1.5">
@@ -454,7 +477,6 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDel
                                 <Input 
                                     value={editLastName} 
                                     onChange={e => setEditLastName(e.target.value)}
-                                    disabled={me.role === 'owner' && editingUser.id === me.id}
                                 />
                             </div>
                             <div className="space-y-1.5">
@@ -1206,16 +1228,9 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
               <p>Conformément au RGPD, vous disposez d'un droit d'accès, de rectification et de suppression de vos données. Pour exercer ce droit, contactez le Conseil Syndical.</p>
           </InfoModal>
         )}
-
-      </main>
-
-      {/* --- Footer --- */}
-      <SharedFooter />
-
-      <ToastContainer toasts={toasts} onClose={(id) => setToasts(prev => prev.filter(t => t.id !== id))} />
-    </div>
-  );
-}
+      </div>
+    );
+  }
 
 export default function App() {
   const { user, setUser, loading } = useAuth();
@@ -1223,12 +1238,7 @@ export default function App() {
   const [showLegal, setShowLegal] = useState(false);
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4 relative overflow-hidden">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500 mb-4"></div>
-        <div className="text-slate-400 animate-pulse">Chargement...</div>
-      </div>
-    );
+     return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-500">Chargement...</div>;
   }
 
   if (!user) {

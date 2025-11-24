@@ -10,8 +10,8 @@ interface LoginCardProps {
 }
 
 export function LoginCard({ onLogin }: LoginCardProps) {
-  // Modes: 'login', 'signUp', 'forgotPassword', 'resetPassword'
-  const [mode, setMode] = useState<'login' | 'signUp' | 'forgotPassword' | 'resetPassword'>('login');
+  // Modes: 'login', 'signUp', 'forgotPassword'
+  const [mode, setMode] = useState<'login' | 'signUp' | 'forgotPassword'>('login');
   
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -23,10 +23,6 @@ export function LoginCard({ onLogin }: LoginCardProps) {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   
-  // Reset Flow
-  const [resetToken, setResetToken] = useState("");
-  const [simulatedToken, setSimulatedToken] = useState("");
-
   const [err, setErr] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
 
@@ -57,8 +53,6 @@ export function LoginCard({ onLogin }: LoginCardProps) {
     setResidence("Résidence Watteau");
     setFirstName("");
     setLastName("");
-    setResetToken("");
-    setSimulatedToken("");
     setErr("");
     setSuccessMsg("");
   };
@@ -96,31 +90,12 @@ export function LoginCard({ onLogin }: LoginCardProps) {
   const handleForgotPassword = async () => {
       try {
           setErr("");
-          const token = await api.requestPasswordReset(email.trim());
-          setSimulatedToken(token);
-          // Move to next step automatically for simulation
+          // This triggers the real Supabase email flow
+          await api.requestPasswordReset(email.trim());
+          setSuccessMsg("Si cet email existe, un lien de réinitialisation a été envoyé. Vérifiez vos spams.");
           setTimeout(() => {
-             setMode('resetPassword');
-             setResetToken(token); 
-          }, 2000);
-      } catch (e) {
-          setErr(getErrorMessage(e));
-      }
-  };
-
-  const handleResetPassword = async () => {
-      if (password !== confirmPassword) {
-          setErr("Les mots de passe ne correspondent pas.");
-          return;
-      }
-      try {
-          setErr("");
-          await api.resetPassword(resetToken, password);
-          setSuccessMsg("Mot de passe modifié ! Vous pouvez vous connecter.");
-          setTimeout(() => {
-              setMode('login');
-              resetFields();
-          }, 2000);
+             setMode('login');
+          }, 5000);
       } catch (e) {
           setErr(getErrorMessage(e));
       }
@@ -140,10 +115,7 @@ export function LoginCard({ onLogin }: LoginCardProps) {
       desc = "Renseignez vos informations. Validation requise.";
   } else if (mode === 'forgotPassword') {
       title = "Mot de passe oublié";
-      desc = "Entrez votre email pour recevoir un code.";
-  } else if (mode === 'resetPassword') {
-      title = "Réinitialiser le mot de passe";
-      desc = "Entrez le code reçu et votre nouveau mot de passe.";
+      desc = "Entrez votre email pour recevoir un lien.";
   }
 
   return (
@@ -158,13 +130,6 @@ export function LoginCard({ onLogin }: LoginCardProps) {
         {successMsg && (
             <div className="bg-emerald-900/30 border border-emerald-800 text-emerald-200 p-3 rounded-lg text-sm mb-4">
                 {successMsg}
-            </div>
-        )}
-
-        {/* SIMULATED EMAIL FOR FORGOT PASSWORD */}
-        {mode === 'forgotPassword' && simulatedToken && (
-            <div className="bg-indigo-900/30 border border-indigo-800 text-indigo-200 p-3 rounded-lg text-sm mb-4 animate-pulse">
-                📧 <b>Email simulé:</b> Votre code est <b>{simulatedToken}</b>
             </div>
         )}
         
@@ -297,40 +262,8 @@ export function LoginCard({ onLogin }: LoginCardProps) {
                     />
                 </div>
                 {err && <p className="text-sm text-rose-400">{err}</p>}
-                <Button className="w-full mt-2" onClick={handleForgotPassword}>Envoyer le code</Button>
+                <Button className="w-full mt-2" onClick={handleForgotPassword}>Envoyer le lien magique</Button>
                 <Button variant="ghost" className="w-full mt-2" onClick={() => switchTo('login')}>Annuler</Button>
-             </>
-        )}
-
-        {/* RESET PASSWORD FORM */}
-        {mode === 'resetPassword' && (
-             <>
-                <div className="space-y-1.5">
-                    <Label className="text-slate-300">Code de vérification</Label>
-                    <Input 
-                        type="text" 
-                        value={resetToken} 
-                        onChange={(e) => setResetToken(e.target.value)} 
-                    />
-                </div>
-                <div className="space-y-1.5">
-                    <Label className="text-slate-300">Nouveau mot de passe</Label>
-                    <Input 
-                        type="password" 
-                        value={password} 
-                        onChange={(e) => setPassword(e.target.value)} 
-                    />
-                </div>
-                <div className="space-y-1.5">
-                    <Label className="text-slate-300">Confirmer</Label>
-                    <Input 
-                        type="password" 
-                        value={confirmPassword} 
-                        onChange={(e) => setConfirmPassword(e.target.value)} 
-                    />
-                </div>
-                {err && <p className="text-sm text-rose-400">{err}</p>}
-                <Button className="w-full mt-2" onClick={handleResetPassword}>Changer le mot de passe</Button>
              </>
         )}
 

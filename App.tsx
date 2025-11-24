@@ -60,11 +60,7 @@ function ToastContainer({ toasts, onClose }: { toasts: Toast[]; onClose: (id: st
 
 // --- Helper Components ---
 
-function SharedFooter() {
-    return null; // Not used anymore, we use specific footer for login
-}
-
-function InfoModal({ title, children, onClose }: { title: string; children: React.ReactNode; onClose: () => void }) {
+function InfoModal({ title, children, onClose }: { title: string; children?: React.ReactNode; onClose: () => void }) {
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
             <Card className="w-full max-w-2xl bg-slate-900 border-slate-700 max-h-[80vh] overflow-y-auto shadow-2xl">
@@ -996,9 +992,13 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
   const handleAddUser = async (userData: any) => { await api.createDirectoryEntry(userData); loadData(); addToast("Succès", "Utilisateur ajouté.", "success"); }
   const handleDeleteUser = async (email: string) => { 
       if (confirm(`Êtes-vous sûr de vouloir supprimer définitivement ${email} ?\nCette action effacera son profil. Pour libérer l'email, l'admin doit aussi le supprimer dans Supabase Auth.`)) {
-          await api.deleteUserProfile(email); 
-          loadData(); 
-          addToast("Supprimé", "Le profil utilisateur a été supprimé.", "info");
+          try {
+             await api.deleteUserProfile(email); 
+             loadData(); 
+             addToast("Supprimé", "Le profil utilisateur a été supprimé.", "info");
+          } catch (e: any) {
+              addToast("Erreur", e.message || "Erreur de suppression", "error");
+          }
       } 
   }
 

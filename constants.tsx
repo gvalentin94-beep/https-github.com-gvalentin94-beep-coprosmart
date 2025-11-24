@@ -43,7 +43,7 @@ export const WARRANTY_OPTIONS = [
 
 export const TASK_STATUS_CONFIG: { [key: string]: { label: string; color: string; icon: React.ReactElement<{ className?: string }> } } = {
   pending: { label: "En validation", color: "amber", icon: <ClockIcon className="h-4 w-4" /> },
-  open: { label: "Offres ouvertes", color: "indigo", icon: <ScaleIcon className="h-4 w-4" /> },
+  open: { label: "Offres ouvertes", color: "indigo", icon: <MegaphoneIcon className="h-4 w-4" /> },
   awarded: { label: "Attribuée", color: "sky", icon: <CheckBadgeIcon className="h-4 w-4" /> },
   verification: { label: "Tâche terminée - Attente contrôle", color: "fuchsia", icon: <MagnifyingGlassIcon className="h-4 w-4" /> },
   completed: { label: "Terminée", color: "emerald", icon: <CheckCircleIcon className="h-4 w-4" /> },
@@ -92,10 +92,10 @@ export function ClockIcon({ className = "h-5 w-5" }: { className?: string }) {
     );
 }
 
-export function ScaleIcon({ className = "h-5 w-5" }: { className?: string }) {
+export function MegaphoneIcon({ className = "h-5 w-5" }: { className?: string }) {
     return (
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v17.25m0 0c-1.472 0-2.882.265-4.185.75M12 20.25c1.472 0 2.882.265 4.185.75M18.75 20.25c-1.472 0-2.882.265-4.185.75M12 20.25v-1.5m0 1.5c-1.472 0-2.882.265-4.185.75M12 20.25c-1.472 0-2.882.265-4.185.75M6 13.5V12m6 1.5v-1.5m-6 0h-6a.75.75 0 0 1 0-1.5h6v-1.5a.75.75 0 0 1 0-1.5h-6v-1.5a.75.75 0 0 1 0-1.5h6z" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M10.34 15.84c-.688-.06-1.386-.09-2.09-.09H7.5a4.5 4.5 0 1 1 0-9h.75c.704 0 1.402-.03 2.09-.09 1.884-.163 3.868-.524 5.919-1.08 1.503-.408 2.857.776 2.857 2.225v9.642c0 1.449-1.354 2.633-2.857 2.225-2.051-.556-4.035-.917-5.919-1.08Zm-5.592 1.32a21.735 21.735 0 0 1 3.252-.244l1.919.16 5.427-1.357a.75.75 0 0 1 .936.726v.75a.75.75 0 0 1-.726.75h-7.5a.75.75 0 0 1-.726-.75v-.75a.75.75 0 0 1 .585-.735Z" />
         </svg>
     );
 }
@@ -160,7 +160,7 @@ export function MapPinIcon({ className = "h-5 w-5" }: { className?: string }) {
 export function ShieldCheckIcon({ className = "h-5 w-5" }: { className?: string }) {
     return (
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 0 1-1.043 3.296 3.745 3.745 0 0 1-3.296 1.043A3.745 3.745 0 0 1 12 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 0 1-3.296-1.043 3.745 3.745 0 0 1-1.043-3.296A3.745 3.745 0 0 1 3 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 0 1 1.043-3.296 3.746 3.746 0 0 1 3.296-1.043A3.746 3.746 0 0 1 12 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 0 1 3.296 1.043 3.746 3.746 0 0 1 1.043 3.296A3.745 3.745 0 0 1 21 12Z" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 0 1-1.043 3.296 3.745 3.745 0 0 1-3.296 1.043A3.745 3.745 0 0 1 12 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 0 1-3.296-1.043 3.745 3.745 0 0 1-1.043-3.296A3.745 3.745 0 0 1 12 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 0 1 3.296 1.043 3.746 3.746 0 0 1 1.043 3.296A3.745 3.745 0 0 1 21 12Z" />
         </svg>
     );
 }

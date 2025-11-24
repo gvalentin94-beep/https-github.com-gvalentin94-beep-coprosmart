@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import type { Task, LedgerEntry, User, RegisteredUser, UserRole, TaskCategory, TaskScope, Bid, Rating } from './types';
 import { useAuth, api } from './services/api';
@@ -468,7 +469,8 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDel
                                 <Input 
                                     value={editFirstName} 
                                     onChange={e => setEditFirstName(e.target.value)}
-                                    disabled={me.role === 'owner' && editingUser.id !== me.id} // Owners can enable edit for self
+                                    // Owners can enable edit for self
+                                    disabled={false} 
                                 />
                             </div>
                             <div className="space-y-1.5">
@@ -476,7 +478,8 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDel
                                 <Input 
                                     value={editLastName} 
                                     onChange={e => setEditLastName(e.target.value)}
-                                    disabled={me.role === 'owner' && editingUser.id !== me.id}
+                                    // Owners can enable edit for self
+                                    disabled={false}
                                 />
                             </div>
                             <div className="space-y-1.5">
@@ -759,7 +762,7 @@ function SharedFooter() {
         <footer className="mt-20 border-t border-slate-800/50 py-8 text-center">
             <div className="flex items-center justify-center gap-2 mb-4 opacity-50 grayscale hover:grayscale-0 transition-all duration-500">
                 <span className="text-2xl">🏢</span>
-                <span className="font-bold text-white tracking-tight">CoproSmart <span className="text-indigo-500">v0.2.1</span></span>
+                <span className="font-bold text-white tracking-tight">CoproSmart <span className="text-indigo-500">v0.2.4</span></span>
             </div>
             <div className="flex justify-center gap-6 text-xs text-slate-500">
                 <button onClick={() => setShowCGU(true)} className="hover:text-slate-300 transition-colors">Conditions Générales d'Utilisation</button>

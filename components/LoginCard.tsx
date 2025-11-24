@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { api } from '../services/api';
 import type { User, UserRole } from '../types';
 import { ROLES } from '../constants';
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Label, Select } from './ui';
+import { Button, Card, CardContent, CardHeader, CardTitle, Input, Label, Select } from './ui';
 
 interface LoginCardProps {
   onLogin: (user: User) => void;
@@ -109,25 +109,26 @@ export function LoginCard({ onLogin }: LoginCardProps) {
   };
   
   // Render Logic
-  let title = "Se connecter à CoproSmart";
-  let desc = "Entrez vos informations pour commencer.";
+  let cardTitle = "Bienvenue";
   
-  if (mode === 'signUp') {
-      title = "Créer un compte";
-      desc = "Renseignez vos informations. Validation requise.";
-  } else if (mode === 'forgotPassword') {
-      title = "Mot de passe oublié";
-      desc = "Entrez votre email pour recevoir un lien.";
-  }
+  if (mode === 'login') cardTitle = "Connexion";
+  else if (mode === 'signUp') cardTitle = "Créer un compte";
+  else if (mode === 'forgotPassword') cardTitle = "Récupération";
 
   return (
-    <div className="w-full max-w-md mx-auto">
-        <Card className="bg-slate-800/50 backdrop-blur-sm border-slate-700">
-        <CardHeader>
-            <CardTitle className="text-white text-center text-2xl font-black tracking-tight">{title}</CardTitle>
-            <CardDescription className="text-slate-300 text-center">{desc}</CardDescription>
+    <div className="w-full min-h-screen flex flex-col items-center justify-center p-4 bg-slate-950">
+        
+        {/* BIG HEADER OUTSIDE CARD */}
+        <div className="text-center mb-8 animate-in fade-in slide-in-from-top-4 duration-700">
+            <h1 className="text-5xl md:text-7xl font-black text-white tracking-tighter mb-2">CoproSmart.</h1>
+            <p className="text-lg md:text-xl text-indigo-200 font-medium tracking-tight">On réduit nos charges de copropriété.</p>
+        </div>
+
+        <Card className="w-full max-w-md bg-slate-800/80 backdrop-blur-md border-slate-700 shadow-2xl">
+        <CardHeader className="pb-2">
+            <CardTitle className="text-white text-center text-xl">{cardTitle}</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 pt-2">
             
             {/* SUCCESS MESSAGE */}
             {successMsg && (
@@ -149,6 +150,7 @@ export function LoginCard({ onLogin }: LoginCardProps) {
                             autoCapitalize="none"
                             autoComplete="email"
                             autoCorrect="off"
+                            className="!bg-white !text-slate-900"
                         />
                     </div>
                     <div className="space-y-1.5">
@@ -159,7 +161,8 @@ export function LoginCard({ onLogin }: LoginCardProps) {
                         <Input 
                             type="password" 
                             value={password} 
-                            onChange={(e) => setPassword(e.target.value)} 
+                            onChange={(e) => setPassword(e.target.value)}
+                            className="!bg-white !text-slate-900"
                         />
                     </div>
                     {err && (
@@ -167,7 +170,7 @@ export function LoginCard({ onLogin }: LoginCardProps) {
                             {err}
                         </div>
                     )}
-                    <Button className="w-full mt-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2.5" onClick={handleLogin}>Continuer</Button>
+                    <Button className="w-full mt-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2.5 text-lg shadow-lg shadow-indigo-500/20" onClick={handleLogin}>Se connecter</Button>
                     <Button variant="outline" className="w-full bg-transparent border-slate-600 text-slate-300 hover:bg-slate-700 mt-2" onClick={() => switchTo('signUp')}>
                         Créer un compte
                     </Button>
@@ -183,6 +186,7 @@ export function LoginCard({ onLogin }: LoginCardProps) {
                             <Input 
                                 value={firstName} 
                                 onChange={(e) => setFirstName(e.target.value)} 
+                                className="!bg-white !text-slate-900"
                             />
                         </div>
                         <div className="space-y-1.5">
@@ -190,6 +194,7 @@ export function LoginCard({ onLogin }: LoginCardProps) {
                             <Input 
                                 value={lastName} 
                                 onChange={(e) => setLastName(e.target.value)} 
+                                className="!bg-white !text-slate-900"
                             />
                         </div>
                     </div>
@@ -202,6 +207,7 @@ export function LoginCard({ onLogin }: LoginCardProps) {
                             autoCapitalize="none"
                             autoComplete="email"
                             autoCorrect="off"
+                            className="!bg-white !text-slate-900"
                         />
                     </div>
                     <div className="space-y-1.5">
@@ -210,14 +216,16 @@ export function LoginCard({ onLogin }: LoginCardProps) {
                             type="password" 
                             value={password} 
                             onChange={(e) => setPassword(e.target.value)} 
+                            className="!bg-white !text-slate-900"
                         />
                     </div>
                     <div className="space-y-1.5">
-                        <Label className="text-slate-300">Confirmer le mot de passe</Label>
+                        <Label className="text-slate-300">Confirmer</Label>
                         <Input 
                             type="password" 
                             value={confirmPassword} 
                             onChange={(e) => setConfirmPassword(e.target.value)} 
+                            className="!bg-white !text-slate-900"
                         />
                     </div>
                     <div className="space-y-1.5">
@@ -225,6 +233,7 @@ export function LoginCard({ onLogin }: LoginCardProps) {
                     <Select
                         value={residence}
                         onChange={(e) => setResidence(e.target.value)}
+                        className="!bg-white !text-slate-900"
                     >
                         <option value="Résidence Watteau">Résidence Watteau</option>
                     </Select>
@@ -234,6 +243,7 @@ export function LoginCard({ onLogin }: LoginCardProps) {
                         <Select 
                             value={role} 
                             onChange={(e) => setRole(e.target.value as UserRole)} 
+                            className="!bg-white !text-slate-900"
                         >
                             {/* Filter out 'admin' so new users cannot sign up as admin */}
                             {ROLES.filter(r => r.id !== 'admin').map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
@@ -244,9 +254,9 @@ export function LoginCard({ onLogin }: LoginCardProps) {
                             {err}
                         </div>
                     )}
-                    <Button className="w-full mt-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold" onClick={handleSignUp}>Créer mon compte</Button>
+                    <Button className="w-full mt-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2" onClick={handleSignUp}>M'inscrire</Button>
                     <Button variant="outline" className="w-full bg-transparent border-slate-600 text-slate-300 hover:bg-slate-700 mt-2" onClick={() => switchTo('login')}>
-                        Retour à la connexion
+                        Annuler
                     </Button>
                 </>
             )}
@@ -262,11 +272,12 @@ export function LoginCard({ onLogin }: LoginCardProps) {
                             onChange={(e) => setEmail(e.target.value)}
                             autoCapitalize="none"
                             autoComplete="email"
+                            className="!bg-white !text-slate-900"
                         />
                     </div>
                     {err && <p className="text-sm text-rose-400 text-center">{err}</p>}
-                    <Button className="w-full mt-2 bg-indigo-600 hover:bg-indigo-500 text-white" onClick={handleForgotPassword}>Envoyer le lien magique</Button>
-                    <Button variant="ghost" className="w-full mt-2 text-slate-400 hover:text-white" onClick={() => switchTo('login')}>Annuler</Button>
+                    <Button className="w-full mt-4 bg-indigo-600 hover:bg-indigo-500 text-white" onClick={handleForgotPassword}>Envoyer le lien</Button>
+                    <Button variant="ghost" className="w-full mt-2 text-slate-400 hover:text-white" onClick={() => switchTo('login')}>Retour</Button>
                 </>
             )}
 
@@ -274,14 +285,14 @@ export function LoginCard({ onLogin }: LoginCardProps) {
         </Card>
 
         {/* LOGIN FOOTER TEXT */}
-        <div className="mt-8 text-center px-4 max-w-4xl mx-auto">
+        <div className="mt-12 text-center px-4 max-w-3xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-700 delay-200">
             <p className="text-sm text-slate-400 leading-relaxed">
             CoproSmart permet aux copropriétaires de réduire collectivement les charges communes en réalisant eux-mêmes les petits travaux des parties communes : une ampoule à changer, une porte à régler, des encombrants à évacuer… Les charges diminuent pour tous, et celui qui intervient bénéficie d’un crédit supplémentaire sur ses propres charges. <br/>
-            <span className="font-black tracking-tighter text-white">simple. local. gagnant-gagnant.</span>
+            <span className="font-black tracking-tighter text-white block mt-2 text-base">simple. local. gagnant-gagnant.</span>
             </p>
-            <div className="flex justify-center gap-6 text-xs text-slate-500 mt-4">
-                <button className="hover:text-slate-300 transition-colors">Conditions Générales d'Utilisation</button>
-                <button className="hover:text-slate-300 transition-colors">Mentions Légales</button>
+            <div className="flex justify-center gap-6 text-xs text-slate-600 mt-6">
+                <button className="hover:text-slate-400 transition-colors">Conditions Générales d'Utilisation</button>
+                <button className="hover:text-slate-400 transition-colors">Mentions Légales</button>
             </div>
         </div>
     </div>

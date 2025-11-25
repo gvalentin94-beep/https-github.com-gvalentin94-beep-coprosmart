@@ -92,8 +92,11 @@ function TaskPreviewModal({ task, onConfirm, onCancel }: { task: Partial<Task>; 
                 <CardContent className="space-y-6 pt-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
                         <div><span className="text-slate-500 uppercase text-xs font-bold tracking-wider">Titre</span> <div className="font-medium text-white text-lg">{task.title}</div></div>
+                        
+                         {/* REORDERED: Category & Scope right below Title */}
                         <div><span className="text-slate-500 uppercase text-xs font-bold tracking-wider">Catégorie</span> <div className="font-medium text-white">{catInfo?.label}</div></div>
                         <div><span className="text-slate-500 uppercase text-xs font-bold tracking-wider">Concerne</span> <div className="font-medium text-white flex items-center gap-2">{scopeInfo?.label}</div></div>
+                        
                         <div><span className="text-slate-500 uppercase text-xs font-bold tracking-wider">Prix départ</span> <div className="font-mono text-xl text-indigo-400 font-bold">{task.startingPrice} €</div></div>
                         <div><span className="text-slate-500 uppercase text-xs font-bold tracking-wider">Emplacement</span> <div className="font-medium text-white">{task.location}</div></div>
                         <div><span className="text-slate-500 uppercase text-xs font-bold tracking-wider">Garantie</span> <div className="font-medium text-white">{task.warrantyDays} jours</div></div>
@@ -435,6 +438,7 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDel
                                                         </div>
                                                         <div className="flex justify-between items-center">
                                                             <span className="text-slate-600">{new Date(t.completionAt!).toLocaleDateString()}</span>
+                                                            {/* Ratings */}
                                                             {t.ratings && t.ratings.length > 0 && (
                                                                 <div className="flex gap-0.5 items-center bg-slate-950/50 px-1.5 py-0.5 rounded">
                                                                     <span className="text-amber-400 font-bold mr-1">{t.ratings[0].stars}</span>
@@ -763,7 +767,7 @@ function SharedFooter() {
         <footer className="mt-20 border-t border-slate-800/50 py-8 text-center">
             <div className="flex items-center justify-center gap-2 mb-4 opacity-50 grayscale hover:grayscale-0 transition-all duration-500">
                 <span className="text-2xl">🏢</span>
-                <span className="font-bold text-white tracking-tight">CoproSmart <span className="text-indigo-500">v0.2.21</span></span>
+                <span className="font-bold text-white tracking-tight">CoproSmart <span className="text-indigo-500">v0.2.22</span></span>
             </div>
             <div className="flex justify-center gap-6 text-xs text-slate-500">
                 <button onClick={() => setShowCGU(true)} className="hover:text-slate-300 transition-colors">Conditions Générales d'Utilisation</button>

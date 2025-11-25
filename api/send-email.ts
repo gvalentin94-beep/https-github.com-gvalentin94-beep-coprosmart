@@ -29,11 +29,12 @@ export default async function handler(request: any, response: any) {
         return response.status(400).json({ error: 'Missing required fields' });
     }
 
-    // Send email via Resend
-    // Using testing domain 'onboarding@resend.dev' which works without domain verification
-    // You must verify 'to' email address in Resend dashboard if using testing domain
+    // Use configured sender email or fallback to Resend testing domain
+    // Once you verify your domain in Resend (DNS), add SENDER_EMAIL='ne-pas-repondre@votre-domaine.com' to your environment variables.
+    const senderEmail = process.env.SENDER_EMAIL || 'onboarding@resend.dev';
+
     const data = await resend.emails.send({
-      from: 'CoproSmart <onboarding@resend.dev>', 
+      from: `CoproSmart <${senderEmail}>`, 
       to: to,
       subject: subject,
       html: html,

@@ -1,8 +1,3 @@
-/**
- * CoproSmart Application Logic
- * Version: 0.2.14
- * Handles Dashboard, Tasks, Directory and Ledger.
- */
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import type { Task, LedgerEntry, User, RegisteredUser, UserRole, TaskCategory, TaskScope, Bid, Rating } from './types';
 import { useAuth, api } from './services/api';
@@ -472,7 +467,7 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDel
                                 <Label>Prénom</Label>
                                 <Input 
                                     value={editFirstName} 
-                                    onChange={e => setEditFirstName(e.target.value)}
+                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditFirstName(e.target.value)}
                                     // Owners can enable edit for self
                                     disabled={false} 
                                 />
@@ -481,7 +476,7 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDel
                                 <Label>Nom</Label>
                                 <Input 
                                     value={editLastName} 
-                                    onChange={e => setEditLastName(e.target.value)}
+                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditLastName(e.target.value)}
                                     // Owners can enable edit for self
                                     disabled={false}
                                 />
@@ -490,7 +485,7 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDel
                                 <Label>Email de contact</Label>
                                 <Input 
                                     value={editEmail} 
-                                    onChange={e => setEditEmail(e.target.value)} 
+                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditEmail(e.target.value)} 
                                 />
                             </div>
                             
@@ -502,7 +497,7 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDel
                                         type="password"
                                         placeholder="Laisser vide pour ne pas changer"
                                         value={newPassword} 
-                                        onChange={e => setNewPassword(e.target.value)} 
+                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewPassword(e.target.value)} 
                                     />
                                 </div>
                             )}
@@ -511,7 +506,7 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDel
                             {me.role === 'admin' && (
                                 <div className="space-y-1.5">
                                     <Label>Rôle</Label>
-                                    <Select value={editRole} onChange={e => setEditRole(e.target.value as UserRole)}>
+                                    <Select value={editRole} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setEditRole(e.target.value as UserRole)}>
                                         {ROLES.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
                                     </Select>
                                 </div>
@@ -534,7 +529,7 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDel
                             <p className="text-sm text-slate-400 mb-2">Envoyez une invitation par email pour rejoindre CoproSmart.</p>
                             <div className="space-y-1.5">
                                 <Label>Email du voisin</Label>
-                                <Input type="email" placeholder="voisin@exemple.com" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} />
+                                <Input type="email" placeholder="voisin@exemple.com" value={inviteEmail} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInviteEmail(e.target.value)} />
                             </div>
                             <div className="flex justify-end gap-3 mt-6">
                                 <Button variant="ghost" onClick={() => setIsInviting(false)}>Annuler</Button>
@@ -601,7 +596,7 @@ function CreateTaskPage({ onBack, onCreate }: { onBack: () => void, onCreate: (t
                             <Input 
                                 placeholder="Ex: Ampoule grillée dans le hall" 
                                 value={title} 
-                                onChange={e => setTitle(e.target.value)} 
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTitle(e.target.value)} 
                                 className="!bg-white !text-slate-900 font-medium text-lg"
                             />
                         </div>
@@ -665,7 +660,7 @@ function CreateTaskPage({ onBack, onCreate }: { onBack: () => void, onCreate: (t
                             <Label className="text-slate-300">Emplacement <span className="text-rose-400">*</span></Label>
                             <Select 
                                 value={location} 
-                                onChange={e => setLocation(e.target.value)}
+                                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setLocation(e.target.value)}
                                 className="!bg-white !text-slate-900 h-[46px]"
                             >
                                 {LOCATIONS.map(l => <option key={l} value={l}>{l}</option>)}
@@ -678,7 +673,7 @@ function CreateTaskPage({ onBack, onCreate }: { onBack: () => void, onCreate: (t
                                     type="number" 
                                     placeholder="15" 
                                     value={startingPrice} 
-                                    onChange={e => setStartingPrice(e.target.value)}
+                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setStartingPrice(e.target.value)}
                                     className="!bg-white !text-slate-900 font-mono font-bold pl-8 h-[46px]"
                                 />
                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">€</span>
@@ -692,7 +687,7 @@ function CreateTaskPage({ onBack, onCreate }: { onBack: () => void, onCreate: (t
                         <Textarea 
                             placeholder="Décrivez précisément le travail à effectuer..." 
                             value={details} 
-                            onChange={e => setDetails(e.target.value)} 
+                            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setDetails(e.target.value)} 
                             className="!bg-white !text-slate-900 min-h-[100px]"
                         />
                     </div>
@@ -757,7 +752,7 @@ function SharedFooter() {
         <footer className="mt-20 border-t border-slate-800/50 py-8 text-center">
             <div className="flex items-center justify-center gap-2 mb-4 opacity-50 grayscale hover:grayscale-0 transition-all duration-500">
                 <span className="text-2xl">🏢</span>
-                <span className="font-bold text-white tracking-tight">CoproSmart <span className="text-indigo-500">v0.2.14</span></span>
+                <span className="font-bold text-white tracking-tight">CoproSmart <span className="text-indigo-500">v0.2.16</span></span>
             </div>
             <div className="flex justify-center gap-6 text-xs text-slate-500">
                 <button onClick={() => setShowCGU(true)} className="hover:text-slate-300 transition-colors">Conditions Générales d'Utilisation</button>
@@ -958,7 +953,7 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
           if (!task || !task.bids.length) return;
           
           // Find lowest bid
-          const winnerBid = task.bids.reduce((min, b) => b.amount < min.amount ? b : min, task.bids[0]);
+          const winnerBid = task.bids.reduce((min: any, b: any) => b.amount < min.amount ? b : min, task.bids[0]);
           
           await api.updateTaskStatus(taskId, 'awarded', {
               awardedTo: winnerBid.userId, // Use userId if available

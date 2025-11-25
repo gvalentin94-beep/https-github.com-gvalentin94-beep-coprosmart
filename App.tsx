@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import type { Task, LedgerEntry, User, RegisteredUser, UserRole, TaskCategory, TaskScope, Bid, Rating } from './types';
 import { useAuth, api } from './services/api';
@@ -831,7 +832,7 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
     // 2. Real Email Sending via Backend
     if (recipients.length > 0) {
         try {
-            await fetch('/api/send-email', {
+            const res = await fetch('/api/send-email', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -845,8 +846,10 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
                         </div>`
                 })
             });
+            if (!res.ok) throw new Error(`API Error: ${res.status}`);
         } catch (e) {
-            console.error("Failed to send email", e);
+            console.warn("Backend notification failed (simulation mode)", e);
+            console.log(`[SIMULATED NOTIF] To: ${recipients}, Subject: ${subject}`);
         }
     }
   };

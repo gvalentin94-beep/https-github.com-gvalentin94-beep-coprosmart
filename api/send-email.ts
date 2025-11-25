@@ -30,9 +30,10 @@ export default async function handler(request: any, response: any) {
     }
 
     // Send email via Resend
-    // Using official domain
+    // Using testing domain 'onboarding@resend.dev' which works without domain verification
+    // You must verify 'to' email address in Resend dashboard if using testing domain
     const data = await resend.emails.send({
-      from: 'CoproSmart <admin@coprosmart.com>', 
+      from: 'CoproSmart <onboarding@resend.dev>', 
       to: to,
       subject: subject,
       html: html,

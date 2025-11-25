@@ -121,12 +121,12 @@ export function LoginCard({ onLogin }: LoginCardProps) {
         {/* BIG HEADER OUTSIDE CARD */}
         <div className="text-center mb-8 animate-in fade-in slide-in-from-top-4 duration-700">
             <h1 className="text-5xl md:text-7xl font-black text-white tracking-tighter mb-2">CoproSmart.</h1>
-            <p className="text-lg md:text-xl text-indigo-200 font-medium tracking-tight">On réduit nos charges de copropriété.</p>
+            <p className="text-lg md:text-xl text-indigo-200 font-bold tracking-tight">On réduit nos charges de copropriété.</p>
         </div>
 
         <Card className="w-full max-w-md bg-slate-800/80 backdrop-blur-md border-slate-700 shadow-2xl">
         <CardHeader className="pb-2">
-            <CardTitle className="text-white text-center text-xl">{cardTitle}</CardTitle>
+            <CardTitle className="text-white text-center text-xl font-black">{cardTitle}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4 pt-2">
             
@@ -286,7 +286,7 @@ export function LoginCard({ onLogin }: LoginCardProps) {
 
         {/* LOGIN FOOTER TEXT */}
         <div className="mt-12 text-center px-4 max-w-3xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-700 delay-200">
-            <p className="text-sm text-slate-400 leading-relaxed">
+            <p className="text-sm text-slate-400 leading-relaxed font-light">
             CoproSmart permet aux copropriétaires de réduire collectivement les charges communes en réalisant eux-mêmes les petits travaux des parties communes : une ampoule à changer, une porte à régler, des encombrants à évacuer… Les charges diminuent pour tous, et celui qui intervient bénéficie d’un crédit supplémentaire sur ses propres charges. <br/>
             <span className="font-black tracking-tighter text-white block mt-2 text-base">simple. local. gagnant-gagnant.</span>
             </p>

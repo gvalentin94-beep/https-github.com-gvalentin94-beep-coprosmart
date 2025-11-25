@@ -1,3 +1,4 @@
+
 import React from 'react';
 
 // Button Component
@@ -61,11 +62,12 @@ export function CardHeader({ children, className = "" }: CardChildProps) {
 }
 
 export function CardTitle({ children, className = "" }: CardChildProps) {
-  return <h2 className={`font-bold text-lg text-white tracking-tight ${className}`}>{children}</h2>;
+  // Updated to use font-black tracking-tight for consistency
+  return <h2 className={`font-black text-lg text-white tracking-tight ${className}`}>{children}</h2>;
 }
 
 export function CardDescription({ children, className = "" }: CardChildProps) {
-    return <p className={`text-sm text-slate-400 ${className}`}>{children}</p>;
+    return <p className={`text-sm text-slate-400 font-light ${className}`}>{children}</p>;
 }
 
 export function CardContent({ children, className = "" }: CardChildProps) {
@@ -76,7 +78,7 @@ export function CardContent({ children, className = "" }: CardChildProps) {
 export function Input({ className = "", ...props }: React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input
-      className={`w-full border border-slate-300 rounded-lg px-3 py-2 text-base md:text-sm shadow-sm bg-white text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition ${className}`}
+      className={`w-full border border-slate-300 rounded-lg px-3 py-2 text-base md:text-sm shadow-sm bg-white text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition font-normal ${className}`}
       {...props}
     />
   );
@@ -85,7 +87,7 @@ export function Input({ className = "", ...props }: React.InputHTMLAttributes<HT
 export function Textarea({ className = "", ...props }: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
   return (
     <textarea
-      className={`w-full border border-slate-300 rounded-lg px-3 py-2 text-base md:text-sm shadow-sm bg-white text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 min-h-[80px] transition ${className}`}
+      className={`w-full border border-slate-300 rounded-lg px-3 py-2 text-base md:text-sm shadow-sm bg-white text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 min-h-[80px] transition font-normal ${className}`}
       {...props}
     />
   );
@@ -94,7 +96,7 @@ export function Textarea({ className = "", ...props }: React.TextareaHTMLAttribu
 export function Select({ className = "", children, ...props }: React.SelectHTMLAttributes<HTMLSelectElement>) {
   return (
     <select
-      className={`w-full border border-slate-300 rounded-lg px-3 py-2 text-base md:text-sm shadow-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition ${className}`}
+      className={`w-full border border-slate-300 rounded-lg px-3 py-2 text-base md:text-sm shadow-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition font-normal ${className}`}
       {...props}
     >
         {children}
@@ -104,7 +106,7 @@ export function Select({ className = "", children, ...props }: React.SelectHTMLA
 
 export function Label({ children, className = "", ...props }: React.LabelHTMLAttributes<HTMLLabelElement>) {
   return (
-    <label className={`text-xs font-medium text-slate-400 block ${className}`} {...props}>
+    <label className={`text-xs font-bold tracking-wide text-slate-400 block ${className}`} {...props}>
       {children}
     </label>
   );
@@ -119,7 +121,7 @@ interface BadgeProps {
 }
 
 export function Badge({ children, variant, className = "", color }: BadgeProps) {
-  const baseClasses = "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap border";
+  const baseClasses = "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold whitespace-nowrap border tracking-wide";
   
   let variantClasses = "";
   if (color) {
@@ -150,7 +152,8 @@ export function Badge({ children, variant, className = "", color }: BadgeProps) 
 export function Section({ title, children, className = "" }: { title: string; children?: React.ReactNode; className?: string }) {
   return (
     <section className={`space-y-4 ${className}`}>
-        <h3 className="text-xl font-bold text-white flex items-center gap-2">{title}</h3>
+        {/* Updated to font-black tracking-tighter */}
+        <h3 className="text-xl font-black text-white tracking-tighter flex items-center gap-2">{title}</h3>
         <div className="space-y-4">
             {children}
         </div>

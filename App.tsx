@@ -49,7 +49,7 @@ function ToastContainer({ toasts, onClose }: { toasts: Toast[]; onClose: (id: st
         >
           <div>
             <h4 className="font-bold text-sm">{t.title}</h4>
-            <p className="text-xs opacity-90 mt-1">{t.message}</p>
+            <p className="text-xs opacity-90 mt-1 font-light">{t.message}</p>
           </div>
           <button onClick={() => onClose(t.id)} className="text-current opacity-50 hover:opacity-100">✕</button>
         </div>
@@ -68,7 +68,7 @@ function InfoModal({ title, children, onClose }: { title: string; children?: Rea
                     <CardTitle>{title}</CardTitle>
                     <button onClick={onClose} className="text-slate-400 hover:text-white text-xl font-bold">✕</button>
                 </CardHeader>
-                <CardContent className="p-6 text-sm text-slate-300 space-y-4 leading-relaxed">
+                <CardContent className="p-6 text-sm text-slate-300 space-y-4 leading-relaxed font-light">
                     {children}
                 </CardContent>
                 <div className="p-4 border-t border-slate-800 bg-slate-900 sticky bottom-0 text-right">
@@ -88,11 +88,11 @@ function TaskPreviewModal({ task, onConfirm, onCancel }: { task: Partial<Task>; 
             <Card className="w-full max-w-2xl bg-slate-900 border-slate-700 max-h-[90vh] overflow-y-auto shadow-2xl">
                 <CardHeader className="border-b border-slate-800">
                     <CardTitle>🔍 Vérifiez votre demande</CardTitle>
-                    <p className="text-slate-400 text-sm">Relisez bien les informations avant de soumettre.</p>
+                    <p className="text-slate-400 text-sm font-light">Relisez bien les informations avant de soumettre.</p>
                 </CardHeader>
                 <CardContent className="space-y-6 pt-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
-                        <div><span className="text-slate-500 uppercase text-xs font-bold tracking-wider">Titre</span> <div className="font-medium text-white text-lg">{task.title}</div></div>
+                        <div><span className="text-slate-500 uppercase text-xs font-bold tracking-wider">Titre</span> <div className="font-extrabold text-white text-lg tracking-tight">{task.title}</div></div>
                         
                          {/* REORDERED: Category & Scope right below Title */}
                         <div><span className="text-slate-500 uppercase text-xs font-bold tracking-wider">Catégorie</span> <div className="font-medium text-white">{catInfo?.label}</div></div>
@@ -114,7 +114,7 @@ function TaskPreviewModal({ task, onConfirm, onCancel }: { task: Partial<Task>; 
                     
                     <div>
                         <span className="text-slate-500 uppercase text-xs font-bold tracking-wider block mb-2">Détails</span>
-                        <div className="p-4 bg-slate-800/50 rounded-xl border border-slate-700 text-slate-300 text-sm whitespace-pre-wrap leading-relaxed">{task.details || "Aucun détail supplémentaire."}</div>
+                        <div className="p-4 bg-slate-800/50 rounded-xl border border-slate-700 text-slate-300 text-sm whitespace-pre-wrap leading-relaxed font-light">{task.details || "Aucun détail supplémentaire."}</div>
                     </div>
 
                     <div className="flex justify-end gap-3 pt-6 border-t border-slate-800">
@@ -185,16 +185,16 @@ function Ledger({ entries, usersMap, onDelete, isAdmin }: { entries: LedgerEntry
             <table className="w-full text-sm text-left text-slate-300">
               <thead className="text-xs text-slate-400 uppercase bg-slate-950">
                 <tr>
-                  <th className="px-4 py-4 font-medium">Date</th>
-                  <th className="px-4 py-4 font-medium">Type</th>
-                  <th className="px-4 py-4 font-medium">Travail</th>
-                  <th className="px-4 py-4 font-medium">Payeur</th>
-                  <th className="px-4 py-4 font-medium">Bénéficiaire</th>
-                  <th className="px-4 py-4 text-right font-medium">Montant</th>
+                  <th className="px-4 py-4 font-bold">Date</th>
+                  <th className="px-4 py-4 font-bold">Type</th>
+                  <th className="px-4 py-4 font-bold">Travail</th>
+                  <th className="px-4 py-4 font-bold">Payeur</th>
+                  <th className="px-4 py-4 font-bold">Bénéficiaire</th>
+                  <th className="px-4 py-4 text-right font-bold">Montant</th>
                   {isAdmin && <th className="px-4 py-4 text-center w-10"></th>}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800 bg-slate-900/20">
+              <tbody className="divide-y divide-slate-800 bg-slate-900/20 font-light">
                 {entries.map((e) => (
                   <tr key={e.id} className="hover:bg-slate-800/30 transition-colors">
                     <td className="px-4 py-3 whitespace-nowrap">{new Date(e.at).toLocaleDateString()}</td>
@@ -295,7 +295,7 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDel
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
-                <h2 className="text-3xl font-bold text-white tracking-tight">👥 Annuaire</h2>
+                <h2 className="text-3xl font-black text-white tracking-tighter">👥 Annuaire</h2>
                 <div className="flex items-center gap-3">
                      <Badge className="bg-slate-800 text-slate-400 border-slate-700">{users.length} membres</Badge>
                      {(me.role === 'admin' || me.role === 'council') && (
@@ -345,7 +345,7 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDel
                                         </div>
                                         <div>
                                             <div className="font-bold text-lg text-white leading-tight min-h-[1.5rem]">{u.firstName} {u.lastName}</div>
-                                            <div className="text-xs text-slate-400">{u.email}</div>
+                                            <div className="text-xs text-slate-400 font-light">{u.email}</div>
                                         </div>
                                     </div>
                                     {canEdit && !isDeleted && (
@@ -372,11 +372,11 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDel
                                 <div className="flex justify-between items-center bg-slate-900/30 p-2 rounded-lg border border-slate-700/50">
                                     <div className="text-center flex-1 border-r border-slate-700/50">
                                         <div className="text-lg font-bold text-amber-400">{avgRating ? avgRating : '-'} <span className="text-xs text-slate-500 font-normal">/5</span></div>
-                                        <div className="text-[9px] text-slate-500 uppercase">Moyenne</div>
+                                        <div className="text-[9px] text-slate-500 uppercase font-bold">Moyenne</div>
                                     </div>
                                     <div className="text-center flex-1">
                                         <div className="text-lg font-bold text-white">{totalTasks}</div>
-                                        <div className="text-[9px] text-slate-500 uppercase">Travaux</div>
+                                        <div className="text-[9px] text-slate-500 uppercase font-bold">Travaux</div>
                                     </div>
                                 </div>
 
@@ -423,7 +423,7 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDel
                                                             <span className="font-mono text-emerald-400 font-bold">+{t.awardedAmount}€</span>
                                                         </div>
                                                         <div className="flex justify-between items-center">
-                                                            <span className="text-slate-600">{new Date(t.completionAt!).toLocaleDateString()}</span>
+                                                            <span className="text-slate-600 font-light">{new Date(t.completionAt!).toLocaleDateString()}</span>
                                                             {/* Ratings */}
                                                             {t.ratings && t.ratings.length > 0 && (
                                                                 <div className="flex gap-0.5 items-center bg-slate-950/50 px-1.5 py-0.5 rounded">
@@ -527,7 +527,7 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDel
                     <Card className="w-full max-w-md bg-slate-900 border-slate-700">
                         <CardHeader><CardTitle>Inviter un résident</CardTitle></CardHeader>
                         <CardContent className="space-y-4">
-                            <p className="text-sm text-slate-400 mb-2">Envoyez une invitation par email pour rejoindre CoproSmart.</p>
+                            <p className="text-sm text-slate-400 mb-2 font-light">Envoyez une invitation par email pour rejoindre CoproSmart.</p>
                             <div className="space-y-1.5">
                                 <Label>Email du voisin</Label>
                                 <Input type="email" placeholder="voisin@exemple.com" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} />
@@ -586,7 +586,7 @@ function CreateTaskPage({ onBack, onCreate }: { onBack: () => void, onCreate: (t
         <div className="max-w-3xl mx-auto space-y-6 pb-20">
              <Button variant="ghost" onClick={onBack} className="mb-4 pl-0 hover:bg-transparent hover:text-white">← Retour au tableau de bord</Button>
              
-             <h2 className="text-3xl font-bold text-white mb-6">Nouvelle tâche</h2>
+             <h2 className="text-3xl font-black text-white mb-6 tracking-tighter">Nouvelle tâche</h2>
              
              <div className="space-y-8">
                 {/* 1. QUOI */}
@@ -762,7 +762,7 @@ function SharedFooter() {
         <footer className="mt-20 border-t border-slate-800/50 py-8 text-center">
             <div className="flex items-center justify-center gap-2 mb-4 opacity-50 grayscale hover:grayscale-0 transition-all duration-500">
                 <span className="text-2xl">🏢</span>
-                <span className="font-bold text-white tracking-tight">CoproSmart <span className="text-indigo-500">v0.2.10</span></span>
+                <span className="font-bold text-white tracking-tight">CoproSmart <span className="text-indigo-500">v0.2.11</span></span>
             </div>
             <div className="flex justify-center gap-6 text-xs text-slate-500">
                 <button onClick={() => setShowCGU(true)} className="hover:text-slate-300 transition-colors">Conditions Générales d'Utilisation</button>

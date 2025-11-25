@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import type { Task, User, Rating, Bid } from '../types';
 import { Button, Card, Input, Label, Badge } from './ui';
@@ -75,7 +76,7 @@ function BidBox({ task, onBid, onCancel }: BidBoxProps) {
         <div className="border border-slate-700 rounded-xl p-4 space-y-4 bg-slate-900/50 shadow-inner mt-4">
             <div className="flex justify-between items-center border-b border-slate-800 pb-2">
                 <div className="text-xs text-slate-400 font-bold uppercase tracking-wider">Nouvelle offre</div>
-                <div className="text-xs text-slate-400">
+                <div className="text-xs text-slate-400 font-light">
                     Départ: <b className="text-slate-300">{task.startingPrice} €</b>
                     {hasBids && <> • Actuelle: <b className="text-indigo-400">{currentPrice} €</b></>}
                 </div>
@@ -320,7 +321,8 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                         <div className="flex flex-col min-w-0 gap-1 w-full">
                             {/* MAIN LINE: Title and Badges inline */}
                             <div className="flex flex-wrap items-center gap-2">
-                                <h3 className="font-bold text-sm md:text-base text-white truncate leading-tight mr-2">{task.title}</h3>
+                                {/* Title made extrabold */}
+                                <h3 className="font-extrabold text-sm md:text-base text-white truncate leading-tight mr-2 tracking-tight">{task.title}</h3>
                                 
                                 <Badge className="bg-slate-900/50 text-slate-400 border-slate-700 gap-1">
                                     <MapPinIcon className="w-3 h-3" /> {task.location}
@@ -351,11 +353,11 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                             </div>
                             
                             {/* UNIFIED SUMMARY LINE (Visible for all statuses) */}
-                            <div className="text-[11px] text-slate-400 mt-1.5 flex flex-wrap gap-2 items-center">
-                                <span>Créé par <span className="text-slate-300">{creatorName}</span></span>
+                            <div className="text-[11px] text-slate-400 mt-1.5 flex flex-wrap gap-2 items-center font-light">
+                                <span>Créé par <span className="text-slate-300 font-normal">{creatorName}</span></span>
                                 <span className="text-slate-600">•</span>
                                 {task.awardedTo ? (
-                                    <span>Attribué à <span className="text-slate-300">{awardedToName}</span></span>
+                                    <span>Attribué à <span className="text-slate-300 font-normal">{awardedToName}</span></span>
                                 ) : (
                                     <span className="italic opacity-50">Non attribué</span>
                                 )}
@@ -410,7 +412,7 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                                 </div>
                             )}
                             <div className={task.photo ? 'md:col-span-2' : 'md:col-span-3'}>
-                                <p className="text-sm text-slate-300 bg-slate-900/30 p-3 rounded-lg border border-slate-800/50 whitespace-pre-wrap">{task.details || "Aucune description détaillée."}</p>
+                                <p className="text-sm text-slate-300 bg-slate-900/30 p-3 rounded-lg border border-slate-800/50 whitespace-pre-wrap font-light">{task.details || "Aucune description détaillée."}</p>
                             </div>
                         </div>
                         

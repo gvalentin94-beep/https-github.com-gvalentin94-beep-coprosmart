@@ -316,8 +316,8 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDel
                         canEdit = true; // Admin can edit everyone
                         if (!isMe) canBan = true; // Admin can ban everyone except self
                     } else if (me.role === 'council') {
-                        // CS can edit: Self AND Owners. Cannot edit other CS or Admin.
-                        if (isMe || u.role === 'owner') canEdit = true;
+                        // CS can edit: Self ONLY (changed from Self AND Owners)
+                        if (isMe) canEdit = true;
                         // CS can ban: Owners only.
                         if (u.role === 'owner') canBan = true;
                     } else if (me.role === 'owner') {

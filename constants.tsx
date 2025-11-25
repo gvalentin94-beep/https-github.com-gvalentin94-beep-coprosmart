@@ -27,24 +27,24 @@ export const RATING_LEGEND: { [key: number]: string } = {
     5: "Excellent - Au-delà des attentes"
 };
 
-// COLORS: Neutral backgrounds (slate-800), Colored Text/Icons/Borders
+// COLORS: Flat Design - Solid backgrounds, White text (mostly)
 export const CATEGORIES = [
-  { id: "ampoule", label: "Ampoule / Lumière", icon: <LightbulbIcon />, colorClass: "text-amber-400 bg-slate-800 border-slate-700" },
-  { id: "porte", label: "Porte / Serrure", icon: <KeyIcon />, colorClass: "text-sky-400 bg-slate-800 border-slate-700" },
-  { id: "encombrants", label: "Encombrants", icon: <ArchiveBoxIcon />, colorClass: "text-rose-400 bg-slate-800 border-slate-700" },
-  { id: "divers", label: "Divers", icon: <SparklesIcon />, colorClass: "text-fuchsia-400 bg-slate-800 border-slate-700" },
+  { id: "ampoule", label: "Ampoule / Lumière", icon: <LightbulbIcon />, colorClass: "bg-amber-500 text-slate-900" },
+  { id: "porte", label: "Porte / Serrure", icon: <KeyIcon />, colorClass: "bg-sky-500 text-white" },
+  { id: "encombrants", label: "Encombrants", icon: <ArchiveBoxIcon />, colorClass: "bg-rose-500 text-white" },
+  { id: "divers", label: "Divers", icon: <SparklesIcon />, colorClass: "bg-fuchsia-500 text-white" },
 ];
 
 export const SCOPES = [
-  { id: "copro", label: "Parties communes (crédit charges)", icon: <BuildingOfficeIcon />, colorClass: "text-indigo-400 bg-indigo-400/10 border-indigo-400/20" },
-  { id: "apartment", label: "Partie privative (main à la main)", icon: <HomeIcon />, colorClass: "text-fuchsia-400 bg-fuchsia-400/10 border-fuchsia-400/20" },
+  { id: "copro", label: "Parties communes", icon: <BuildingOfficeIcon />, colorClass: "bg-indigo-600 text-white" },
+  { id: "apartment", label: "Partie privative", icon: <HomeIcon />, colorClass: "bg-purple-600 text-white" },
 ];
 
 export const WARRANTY_OPTIONS = [
-    { val: "0", label: "Sans", icon: <NoShieldIcon />, colorClass: "text-slate-400 bg-slate-400/10 border-slate-400/20" },
-    { val: "30", label: "1 mois", icon: <ShieldCheckIcon />, colorClass: "text-emerald-400 bg-emerald-400/10 border-emerald-400/20" },
-    { val: "180", label: "6 mois", icon: <ShieldCheckIcon />, colorClass: "text-sky-400 bg-sky-400/10 border-sky-400/20" },
-    { val: "365", label: "1 an", icon: <ShieldCheckIcon />, colorClass: "text-indigo-400 bg-indigo-400/10 border-indigo-400/20" },
+    { val: "0", label: "Sans garantie", icon: <NoShieldIcon />, colorClass: "bg-slate-600 text-slate-200" },
+    { val: "30", label: "Garantie 1 mois", icon: <ShieldCheckIcon />, colorClass: "bg-emerald-600 text-white" },
+    { val: "180", label: "Garantie 6 mois", icon: <ShieldCheckIcon />, colorClass: "bg-sky-600 text-white" },
+    { val: "365", label: "Garantie 1 an", icon: <ShieldCheckIcon />, colorClass: "bg-indigo-600 text-white" },
 ];
 
 export const TASK_STATUS_CONFIG: { [key: string]: { label: string; color: string; icon: React.ReactElement<{ className?: string }> } } = {
@@ -166,7 +166,7 @@ export function MapPinIcon({ className = "h-5 w-5" }: { className?: string }) {
 export function ShieldCheckIcon({ className = "h-5 w-5" }: { className?: string }) {
     return (
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 0 1-1.043 3.296 3.745 3.745 0 0 1-3.296 1.043A3.745 3.745 0 0 1 12 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 0 1-3.296-1.043 3.745 3.745 0 0 1-1.043-3.296A3.745 3.745 0 0 1 12 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 0 1 3.296 1.043 3.746 3.746 0 0 1 1.043 3.296A3.745 3.745 0 0 1 21 12Z" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 0 1-1.043 3.296 3.745 3.745 0 0 1-3.296 1.043A3.745 3.745 0 0 1 12 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 0 1-3.296-1.043 3.745 3.745 0 0 1-1.043-3.296A3.745 3.745 0 0 1 21 12Z" />
         </svg>
     );
 }

@@ -63,7 +63,7 @@ export function CardHeader({ children, className = "" }: CardChildProps) {
 
 export function CardTitle({ children, className = "" }: CardChildProps) {
   // Updated to use font-black tracking-tight for consistency
-  return <h2 className={`font-black text-lg text-white tracking-tight ${className}`}>{children}</h2>;
+  return <h2 className={`font-extrabold text-lg text-white tracking-tight ${className}`}>{children}</h2>;
 }
 
 export function CardDescription({ children, className = "" }: CardChildProps) {
@@ -121,27 +121,28 @@ interface BadgeProps {
 }
 
 export function Badge({ children, variant, className = "", color }: BadgeProps) {
-  const baseClasses = "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold whitespace-nowrap border tracking-wide";
+  const baseClasses = "inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-bold whitespace-nowrap tracking-wide";
   
   let variantClasses = "";
   if (color) {
-      // Dark mode colors: darker background, lighter text
+      // Flat Design: Solid Colors are passed directly via className in constants, or mapped here if needed.
+      // Since constants.tsx now passes full classes like "bg-amber-500 text-white", we mostly rely on className overriding.
       const colorMap: { [key: string]: string } = {
-          amber: 'bg-amber-900/30 text-amber-200 border-amber-800',
-          indigo: 'bg-indigo-900/30 text-indigo-200 border-indigo-800',
-          sky: 'bg-sky-900/30 text-sky-200 border-sky-800',
-          emerald: 'bg-emerald-900/30 text-emerald-200 border-emerald-800',
-          rose: 'bg-rose-900/30 text-rose-200 border-rose-800',
-          fuchsia: 'bg-fuchsia-900/30 text-fuchsia-200 border-fuchsia-800',
+          amber: 'bg-amber-500 text-slate-900',
+          indigo: 'bg-indigo-600 text-white',
+          sky: 'bg-sky-500 text-white',
+          emerald: 'bg-emerald-600 text-white',
+          rose: 'bg-rose-600 text-white',
+          fuchsia: 'bg-fuchsia-600 text-white',
       };
-      variantClasses = colorMap[color] || "bg-slate-800 text-slate-300 border-slate-700";
+      variantClasses = colorMap[color] || "bg-slate-700 text-white";
   } else {
       variantClasses = {
-        default: "bg-indigo-900/50 text-indigo-100 border-indigo-700",
-        secondary: "bg-slate-800 text-slate-300 border-slate-700",
-        outline: "border-slate-600 text-slate-400 bg-transparent",
-        destructive: "bg-rose-900/50 text-rose-200 border-rose-800",
-        success: "bg-emerald-900/50 text-emerald-200 border-emerald-800",
+        default: "bg-indigo-600 text-white",
+        secondary: "bg-slate-700 text-slate-200",
+        outline: "border border-slate-600 text-slate-400 bg-transparent",
+        destructive: "bg-rose-600 text-white",
+        success: "bg-emerald-600 text-white",
       }[variant || 'default'];
   }
 

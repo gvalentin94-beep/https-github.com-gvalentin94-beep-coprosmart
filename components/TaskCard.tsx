@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import type { Task, User, Rating, Bid } from '../types';
 import { Button, Card, Input, Label, Badge } from './ui';
-import { CATEGORIES, TASK_STATUS_CONFIG, SCOPES, WARRANTY_OPTIONS, MapPinIcon, RATING_LEGEND } from '../constants';
+import { CATEGORIES, TASK_STATUS_CONFIG, SCOPES, WARRANTY_OPTIONS, RATING_LEGEND } from '../constants';
 
 // --- Sub-components defined in the same file to keep file count low ---
 
@@ -324,27 +324,24 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                                 {/* Title made extrabold */}
                                 <h3 className="font-extrabold text-sm md:text-base text-white truncate leading-tight mr-2 tracking-tight">{task.title}</h3>
                                 
-                                <Badge className="bg-slate-900/50 text-slate-400 border-slate-700 gap-1">
-                                    <MapPinIcon className="w-3 h-3" /> {task.location}
+                                <Badge className="bg-slate-700 text-slate-300 border-none">
+                                    {task.location}
                                 </Badge>
                                 
                                 {categoryInfo && (
-                                    <Badge className={`${categoryInfo.colorClass} gap-1`}>
-                                        {React.cloneElement(categoryInfo.icon, { className: 'w-3 h-3' })}
+                                    <Badge className={`${categoryInfo.colorClass} border-none`}>
                                         {categoryInfo.label}
                                     </Badge>
                                 )}
                                 
                                 {scopeInfo && (
-                                    <Badge className={`${scopeInfo.colorClass} gap-1`}>
-                                        {React.cloneElement(scopeInfo.icon, { className: 'w-3 h-3' })}
+                                    <Badge className={`${scopeInfo.colorClass} border-none`}>
                                         {scopeInfo.label}
                                     </Badge>
                                 )}
 
                                 {warrantyInfo && (
-                                    <Badge className={`${warrantyInfo.colorClass} gap-1`}>
-                                        {React.cloneElement(warrantyInfo.icon, { className: 'w-3 h-3' })}
+                                    <Badge className={`${warrantyInfo.colorClass} border-none`}>
                                         {warrantyInfo.label}
                                     </Badge>
                                 )}
@@ -412,7 +409,7 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                                 </div>
                             )}
                             <div className={task.photo ? 'md:col-span-2' : 'md:col-span-3'}>
-                                <p className="text-sm text-slate-300 bg-slate-900/30 p-3 rounded-lg border border-slate-800/50 whitespace-pre-wrap font-light">{task.details || "Aucune description détaillée."}</p>
+                                <p className="text-sm text-slate-300 bg-slate-900/30 p-3 rounded-lg border border-slate-800/50 whitespace-pre-wrap font-light">{task.details || "Aucun détail supplémentaire."}</p>
                             </div>
                         </div>
                         

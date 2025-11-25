@@ -1,27 +1,10 @@
-
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import type { Task, LedgerEntry, User, RegisteredUser, UserRole, TaskCategory, TaskScope, Bid, Rating } from './types';
+import React, { useState, useEffect, useCallback } from 'react';
+import type { Task, LedgerEntry, User, RegisteredUser, TaskCategory, TaskScope, Bid, Rating } from './types';
 import { useAuth, api } from './services/api';
-import { Button, Card, CardContent, CardHeader, CardTitle, Label, Input, Textarea, Select, Badge, Section } from './components/ui';
+import { Button, Card, CardContent, CardHeader, CardTitle, Label, Input, Textarea, Select, Badge } from './components/ui';
 import { TaskCard } from './components/TaskCard';
-import { LOCATIONS, CATEGORIES, SCOPES, WARRANTY_OPTIONS, COUNCIL_MIN_APPROVALS, ROLES, MAX_TASK_PRICE, AVATARS } from './constants';
+import { LOCATIONS, CATEGORIES, SCOPES, WARRANTY_OPTIONS, COUNCIL_MIN_APPROVALS, ROLES, AVATARS } from './constants';
 import { LoginCard } from './components/LoginCard';
-
-// ... (Keep existing constants and helpers: Toast, InfoModal, Ledger, UserDirectory etc.) ...
-// RE-INSERTING THEM FOR COMPLETENESS AS I AM REWRITING THE WHOLE FILE TO BE SAFE
-
-const OPEN_EMPTY_MESSAGES = [
-    "Tout va bien dans la copro ! 🏖️",
-    "Calme plat. Arrosez les plantes ! 🌿",
-    "Pas d'ampoule grillée. Miracle ! 💡",
-    "Le Conseil Syndical se repose. 😎",
-];
-
-const PROGRESS_EMPTY_MESSAGES = [
-    "Les artisans se reposent... 🛠️",
-    "Silence radio sur le chantier. 🤫",
-    "Tout est calme. Trop calme. 🕵️‍♂️"
-];
 
 interface Toast { id: string; title: string; message: string; type: 'info' | 'success' | 'error'; }
 
@@ -65,7 +48,115 @@ function SharedFooter() {
     );
 }
 
-// --- COMPACT CREATE TASK PAGE ---
+function Ledger({ entries, usersMap, onDelete, isAdmin }: { entries: LedgerEntry[], usersMap: Record<string, string>, onDelete: (id: string) => void, isAdmin: boolean }) {
+  if (entries.length === 0) return <div className="text-center text-slate-500 italic py-10">Aucune transaction.</div>;
+  return (
+    <div className="space-y-4">
+      <h3 className="text-xl font-black text-white tracking-tighter">Comptabilité</h3>
+      <Card className="overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs text-left">
+            <thead className="bg-slate-900 text-slate-400 uppercase font-bold">
+              <tr>
+                <th className="p-3">Date</th>
+                <th className="p-3">Type</th>
+                <th className="p-3">De</th>
+                <th className="p-3">À</th>
+                <th className="p-3 text-right">Montant</th>
+                {isAdmin && <th className="p-3"></th>}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-700">
+              {entries.map(e => (
+                <tr key={e.id} className="hover:bg-slate-700/50">
+                  <td className="p-3">{new Date(e.at).toLocaleDateString()}</td>
+                  <td className="p-3">
+                    {e.type === 'charge_credit' ? <Badge color="emerald">Crédit charges</Badge> : <Badge color="indigo">Paiement</Badge>}
+                    <div className="text-[10px] text-slate-500 mt-1">{e.taskTitle}</div>
+                  </td>
+                  <td className="p-3">{usersMap[e.payer] || e.payer}</td>
+                  <td className="p-3">{usersMap[e.payee] || e.payee}</td>
+                  <td className="p-3 text-right font-bold font-mono">{e.amount} €</td>
+                  {isAdmin && <td className="p-3 text-right"><button onClick={() => e.id && onDelete(e.id)} className="text-rose-500 hover:text-white">✕</button></td>}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDeleteRating, onInviteUser, onDeleteUser }: { users: RegisteredUser[], tasks: Task[], me: User, onBan: (e:string)=>void, onRestore: (e:string)=>void, onUpdateUser: (e:string, u:any)=>void, onDeleteRating: (t:string, i:number)=>void, onInviteUser: (e:string)=>void, onDeleteUser: (e:string)=>void }) {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [inviteEmail, setInviteEmail] = useState("");
+
+  const filtered = users.filter(u => 
+    (u.firstName?.toLowerCase() || "").includes(searchTerm.toLowerCase()) || 
+    (u.lastName?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+    (u.email?.toLowerCase() || "").includes(searchTerm.toLowerCase())
+  );
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-end">
+        <h3 className="text-xl font-black text-white tracking-tighter">Annuaire</h3>
+        <div className="text-xs text-slate-400">{users.length} membres</div>
+      </div>
+
+      {['admin', 'council'].includes(me.role) && (
+        <Card className="p-4 bg-indigo-900/10 border-indigo-900/50">
+          <h4 className="font-bold text-indigo-400 mb-2 text-sm">Inviter un voisin</h4>
+          <div className="flex gap-2">
+            <Input 
+              placeholder="email@voisin.com" 
+              value={inviteEmail} 
+              onChange={e => setInviteEmail(e.target.value)} 
+              className="!bg-slate-900 !border-slate-700 !text-white h-9 text-xs"
+            />
+            <Button size="sm" onClick={() => { onInviteUser(inviteEmail); setInviteEmail(""); }} className="bg-indigo-600 h-9">Envoyer</Button>
+          </div>
+        </Card>
+      )}
+
+      <Input 
+        placeholder="Rechercher..." 
+        value={searchTerm} 
+        onChange={e => setSearchTerm(e.target.value)}
+        className="!bg-slate-800 border-slate-700 text-white"
+      />
+
+      <div className="grid gap-3">
+        {filtered.map(u => (
+          <Card key={u.id} className="flex items-center p-3 gap-3 bg-slate-800 border-slate-700">
+            <div className="text-2xl bg-slate-700 rounded-full w-10 h-10 flex items-center justify-center">
+              {u.avatar || AVATARS[Math.abs(u.email.length) % AVATARS.length]}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-white truncate">{u.firstName} {u.lastName}</span>
+                {u.role === 'admin' && <Badge className="bg-rose-600 text-[10px]">Admin</Badge>}
+                {u.role === 'council' && <Badge className="bg-amber-500 text-slate-900 text-[10px]">Conseil</Badge>}
+              </div>
+              <div className="text-xs text-slate-500 truncate">{u.email}</div>
+            </div>
+            {me.role === 'admin' && u.id !== me.id && (
+              <div className="flex gap-2">
+                {u.status === 'deleted' ? 
+                  <Button size="sm" onClick={() => onRestore(u.email)} className="bg-emerald-600 h-7 text-[10px]">Restaurer</Button> :
+                  <Button size="sm" onClick={() => onBan(u.email)} variant="destructive" className="h-7 text-[10px]">Bannir</Button>
+                }
+                <Button size="sm" onClick={() => onDeleteUser(u.email)} variant="ghost" className="text-rose-500 h-7 text-[10px]">Suppr.</Button>
+              </div>
+            )}
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function CreateTaskPage({ onBack, onCreate }: { onBack: () => void, onCreate: (task: any) => void }) {
     const [title, setTitle] = useState("");
     const [category, setCategory] = useState<TaskCategory>("ampoule");
@@ -99,7 +190,6 @@ function CreateTaskPage({ onBack, onCreate }: { onBack: () => void, onCreate: (t
              </div>
              
              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* LEFT COL: Definition */}
                 <div className="space-y-4">
                     <div className="space-y-1">
                         <Label>Titre</Label>
@@ -134,7 +224,6 @@ function CreateTaskPage({ onBack, onCreate }: { onBack: () => void, onCreate: (t
                     </div>
                 </div>
 
-                {/* RIGHT COL: Logistics */}
                 <div className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-1">
@@ -173,7 +262,6 @@ function CreateTaskPage({ onBack, onCreate }: { onBack: () => void, onCreate: (t
     );
 }
 
-// --- REUSED COMPONENTS ---
 function UserValidationQueue({ pendingUsers, onApprove, onReject }: { pendingUsers: RegisteredUser[], onApprove: (email: string) => void, onReject: (email: string) => void }) {
     const [processing, setProcessing] = useState<string | null>(null);
     const handleAction = async (email: string, action: 'approve' | 'reject') => {
@@ -199,9 +287,7 @@ function UserValidationQueue({ pendingUsers, onApprove, onReject }: { pendingUse
     );
 }
 
-// --- MAIN DASHBOARD & APP ---
 function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
-  // State & Data Loading... (Same as before, kept concise here for brevity)
   const [tasks, setTasks] = useState<Task[]>([]);
   const [ledger, setLedger] = useState<LedgerEntry[]>([]);
   const [pendingUsers, setPendingUsers] = useState<RegisteredUser[]>([]);
@@ -227,7 +313,6 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
       setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 5000);
   };
 
-  // --- HANDLERS (Simplified calls) ---
   const handleCreateTask = async (d: any) => { try { const id = await api.createTask({...d, status:'pending'}, user.id); if(['council','admin'].includes(user.role)) await api.addApproval(id, user.id); setCurrentView('home'); loadData(); } catch(e:any){ addToast("Erreur", e.message, "error"); }};
   const handleApprove = async (id: string) => { try { await api.addApproval(id, user.id); const t = tasks.find(x=>x.id===id); if (user.role==='admin' || (t && t.approvals.length+1 >= COUNCIL_MIN_APPROVALS)) await api.updateTaskStatus(id, 'open', {biddingStartedAt: null}); loadData(); } catch(e:any){ addToast("Erreur", e.message, "error"); }};
   const handleReject = async (id: string) => { try { await api.addRejection(id, user.id); await api.updateTaskStatus(id, 'rejected'); loadData(); } catch(e:any){ addToast("Erreur", e.message, "error"); }};
@@ -236,7 +321,6 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
   const handleComplete = async (id: string) => { try { const t=tasks.find(x=>x.id===id); if(!t) return; await api.updateTaskStatus(id, 'completed', {validatedBy: user.id}); await api.createLedgerEntry({taskId: id, type: t.scope==='copro'?'charge_credit':'apartment_payment', payerId: t.scope==='copro'?null:t.createdById, payeeId: t.awardedToId, amount: t.awardedAmount}); loadData(); } catch(e:any){ addToast("Erreur", e.message, "error"); }};
   const handleRate = async (id: string, r: any) => { try { await api.addRating(id, r, user.id); loadData(); } catch(e:any){ addToast("Erreur", e.message, "error"); }};
   
-  // ... (User handlers similar to previous, omitted for brevity in this update block but included in final file)
   const handleBanUser = async(e:string)=>{try{await api.updateUserStatus(e,'deleted');loadData();}catch(x:any){addToast("Err",x.message,"error")}}
   const handleRestoreUser = async(e:string)=>{try{await api.updateUserStatus(e,'active');loadData();}catch(x:any){addToast("Err",x.message,"error")}}
   const handleDeleteUser = async(e:string)=>{try{await api.deleteUserProfile(e);loadData();}catch(x:any){addToast("Err",x.message,"error")}}
@@ -248,6 +332,7 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
   const handleRejectWork = async(id:string)=>{try{await api.updateTaskStatus(id,'awarded');loadData();}catch(x:any){addToast("Err",x.message,"error")}}
   const handleApproveUser = async(e:string)=>{try{await api.approveUser(e);loadData();}catch(x:any){addToast("Err",x.message,"error")}}
   const handleRejectUser = async(e:string)=>{try{await api.rejectUser(e);loadData();}catch(x:any){addToast("Err",x.message,"error")}}
+  const handleDeleteLedger = async (id: string) => { try { await api.deleteLedgerEntry(id); loadData(); } catch (e: any) { addToast("Erreur", e.message, "error"); } };
 
   const pendingTasks = tasks.filter(t => t.status === 'pending');
   const openTasks = tasks.filter(t => t.status === 'open');
@@ -258,7 +343,6 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
     <div className="min-h-screen bg-slate-950 text-slate-200 font-sans pb-10">
       <ToastContainer toasts={toasts} onClose={id => setToasts(prev => prev.filter(t => t.id !== id))} />
       
-      {/* HEADER */}
       <header className="bg-slate-900 border-b border-slate-800 sticky top-0 z-40 h-14 flex items-center px-4 justify-between">
          <div className="flex items-center gap-2 cursor-pointer" onClick={() => setCurrentView('home')}>
             <h1 className="text-lg font-black text-white tracking-tighter">CoproSmart.</h1>
@@ -283,9 +367,6 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
       <main className="max-w-4xl mx-auto px-4 py-6">
         {currentView === 'create-task' ? <CreateTaskPage onBack={() => setCurrentView('home')} onCreate={handleCreateTask} /> :
          currentView === 'directory' ? (
-             // We need to import UserDirectory component or define it. Assuming it's defined above in the full file or imported.
-             // For brevity in this update, I assume UserDirectory is available.
-             // Re-using the one from previous context but passing props.
              <UserDirectory users={directoryUsers} tasks={tasks} me={user} onBan={handleBanUser} onRestore={handleRestoreUser} onUpdateUser={handleUpdateUser} onDeleteRating={handleDeleteRating} onInviteUser={handleInviteUser} onDeleteUser={handleDeleteUser} />
          ) :
          currentView === 'ledger' ? <Ledger entries={ledger} usersMap={usersMap} onDelete={handleDeleteLedger} isAdmin={user.role === 'admin'} /> :

@@ -49,7 +49,7 @@ function ToastContainer({ toasts, onClose }: { toasts: Toast[]; onClose: (id: st
         >
           <div>
             <h4 className="font-bold text-sm">{t.title}</h4>
-            <p className="text-xs opacity-90 mt-1 font-light">{t.message}</p>
+            <p className="text-xs opacity-90 mt-1">{t.message}</p>
           </div>
           <button onClick={() => onClose(t.id)} className="text-current opacity-50 hover:opacity-100">✕</button>
         </div>
@@ -68,7 +68,7 @@ function InfoModal({ title, children, onClose }: { title: string; children?: Rea
                     <CardTitle>{title}</CardTitle>
                     <button onClick={onClose} className="text-slate-400 hover:text-white text-xl font-bold">✕</button>
                 </CardHeader>
-                <CardContent className="p-6 text-sm text-slate-300 space-y-4 leading-relaxed font-light">
+                <CardContent className="p-6 text-sm text-slate-300 space-y-4 leading-relaxed">
                     {children}
                 </CardContent>
                 <div className="p-4 border-t border-slate-800 bg-slate-900 sticky bottom-0 text-right">
@@ -88,11 +88,11 @@ function TaskPreviewModal({ task, onConfirm, onCancel }: { task: Partial<Task>; 
             <Card className="w-full max-w-2xl bg-slate-900 border-slate-700 max-h-[90vh] overflow-y-auto shadow-2xl">
                 <CardHeader className="border-b border-slate-800">
                     <CardTitle>🔍 Vérifiez votre demande</CardTitle>
-                    <p className="text-slate-400 text-sm font-light">Relisez bien les informations avant de soumettre.</p>
+                    <p className="text-slate-400 text-sm">Relisez bien les informations avant de soumettre.</p>
                 </CardHeader>
                 <CardContent className="space-y-6 pt-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
-                        <div><span className="text-slate-500 uppercase text-xs font-bold tracking-wider">Titre</span> <div className="font-extrabold text-white text-lg tracking-tight">{task.title}</div></div>
+                        <div><span className="text-slate-500 uppercase text-xs font-bold tracking-wider">Titre</span> <div className="font-medium text-white text-lg">{task.title}</div></div>
                         
                          {/* REORDERED: Category & Scope right below Title */}
                         <div><span className="text-slate-500 uppercase text-xs font-bold tracking-wider">Catégorie</span> <div className="font-medium text-white">{catInfo?.label}</div></div>
@@ -114,7 +114,7 @@ function TaskPreviewModal({ task, onConfirm, onCancel }: { task: Partial<Task>; 
                     
                     <div>
                         <span className="text-slate-500 uppercase text-xs font-bold tracking-wider block mb-2">Détails</span>
-                        <div className="p-4 bg-slate-800/50 rounded-xl border border-slate-700 text-slate-300 text-sm whitespace-pre-wrap leading-relaxed font-light">{task.details || "Aucun détail supplémentaire."}</div>
+                        <div className="p-4 bg-slate-800/50 rounded-xl border border-slate-700 text-slate-300 text-sm whitespace-pre-wrap leading-relaxed">{task.details || "Aucun détail supplémentaire."}</div>
                     </div>
 
                     <div className="flex justify-end gap-3 pt-6 border-t border-slate-800">
@@ -185,16 +185,16 @@ function Ledger({ entries, usersMap, onDelete, isAdmin }: { entries: LedgerEntry
             <table className="w-full text-sm text-left text-slate-300">
               <thead className="text-xs text-slate-400 uppercase bg-slate-950">
                 <tr>
-                  <th className="px-4 py-4 font-bold">Date</th>
-                  <th className="px-4 py-4 font-bold">Type</th>
-                  <th className="px-4 py-4 font-bold">Travail</th>
-                  <th className="px-4 py-4 font-bold">Payeur</th>
-                  <th className="px-4 py-4 font-bold">Bénéficiaire</th>
-                  <th className="px-4 py-4 text-right font-bold">Montant</th>
+                  <th className="px-4 py-4 font-medium">Date</th>
+                  <th className="px-4 py-4 font-medium">Type</th>
+                  <th className="px-4 py-4 font-medium">Travail</th>
+                  <th className="px-4 py-4 font-medium">Payeur</th>
+                  <th className="px-4 py-4 font-medium">Bénéficiaire</th>
+                  <th className="px-4 py-4 text-right font-medium">Montant</th>
                   {isAdmin && <th className="px-4 py-4 text-center w-10"></th>}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800 bg-slate-900/20 font-light">
+              <tbody className="divide-y divide-slate-800 bg-slate-900/20">
                 {entries.map((e) => (
                   <tr key={e.id} className="hover:bg-slate-800/30 transition-colors">
                     <td className="px-4 py-3 whitespace-nowrap">{new Date(e.at).toLocaleDateString()}</td>
@@ -602,59 +602,49 @@ function CreateTaskPage({ onBack, onCreate }: { onBack: () => void, onCreate: (t
                             />
                         </div>
 
-                        {/* Category Selection - Rich Buttons */}
-                         <div className="space-y-1.5">
-                            <Label className="text-slate-300">Catégorie</Label>
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                                {CATEGORIES.map(cat => {
-                                    const isSelected = category === cat.id;
-                                    return (
-                                        <button
-                                            key={cat.id}
-                                            onClick={() => setCategory(cat.id as TaskCategory)}
-                                            className={`
-                                                relative flex flex-col items-center justify-center gap-2 p-4 rounded-xl border transition-all
-                                                ${isSelected 
-                                                    ? `bg-white border-white ring-2 ring-indigo-500 ring-offset-2 ring-offset-slate-900` 
-                                                    : 'bg-slate-800 border-slate-700 hover:bg-slate-750 text-slate-400 hover:border-slate-500'
-                                                }
-                                            `}
-                                        >
-                                            <div className={`${isSelected ? cat.colorClass.replace('bg-slate-800', '').replace('border-slate-700', '') : 'text-slate-500'}`}>
-                                                {React.cloneElement(cat.icon, { className: "w-8 h-8" })}
-                                            </div>
-                                            <span className={`text-xs font-bold ${isSelected ? 'text-slate-900' : ''}`}>{cat.label}</span>
-                                        </button>
-                                    );
-                                })}
+                        {/* Grid Layout for Flat Selectors */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                             {/* Category Selection - Flat */}
+                             <div className="space-y-1.5">
+                                <Label className="text-slate-300">Catégorie</Label>
+                                <div className="flex flex-wrap gap-2">
+                                    {CATEGORIES.map(cat => {
+                                        const isSelected = category === cat.id;
+                                        const bg = isSelected ? cat.colorClass.split(' ')[0] : 'bg-slate-800';
+                                        const text = isSelected ? 'text-white' : 'text-slate-400';
+                                        
+                                        return (
+                                            <button
+                                                key={cat.id}
+                                                onClick={() => setCategory(cat.id as TaskCategory)}
+                                                className={`px-3 py-2 rounded-full text-xs font-bold transition-all border ${isSelected ? 'border-transparent scale-105' : 'border-slate-700 hover:border-slate-500'} ${bg} ${text}`}
+                                            >
+                                                {cat.label}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
                             </div>
-                        </div>
 
-                        {/* Scope Selection - Rich Buttons */}
-                        <div className="space-y-1.5">
-                            <Label className="text-slate-300">Concerne</Label>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                {SCOPES.map(s => {
-                                    const isSelected = scope === s.id;
-                                    return (
-                                        <button
-                                            key={s.id}
-                                            onClick={() => setScope(s.id as TaskScope)}
-                                            className={`
-                                                flex items-center gap-3 p-4 rounded-xl border transition-all text-left
-                                                ${isSelected 
-                                                    ? 'bg-white border-white ring-2 ring-indigo-500 ring-offset-2 ring-offset-slate-900' 
-                                                    : 'bg-slate-800 border-slate-700 hover:bg-slate-750 text-slate-400'
-                                                }
-                                            `}
-                                        >
-                                            <div className={`${isSelected ? s.colorClass.split(' ')[0] : 'text-slate-500'}`}>
-                                                {React.cloneElement(s.icon, { className: "w-6 h-6" })}
-                                            </div>
-                                            <span className={`font-bold text-sm ${isSelected ? 'text-slate-900' : ''}`}>{s.label}</span>
-                                        </button>
-                                    );
-                                })}
+                            {/* Scope Selection - Flat */}
+                            <div className="space-y-1.5">
+                                <Label className="text-slate-300">Concerne</Label>
+                                <div className="flex flex-wrap gap-2">
+                                    {SCOPES.map(s => {
+                                        const isSelected = scope === s.id;
+                                        const bg = isSelected ? s.colorClass.split(' ')[0] : 'bg-slate-800';
+                                        const text = isSelected ? 'text-white' : 'text-slate-400';
+                                        return (
+                                            <button
+                                                key={s.id}
+                                                onClick={() => setScope(s.id as TaskScope)}
+                                                className={`px-3 py-2 rounded-full text-xs font-bold transition-all border ${isSelected ? 'border-transparent scale-105' : 'border-slate-700 hover:border-slate-500'} ${bg} ${text}`}
+                                            >
+                                                {s.label}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -689,6 +679,26 @@ function CreateTaskPage({ onBack, onCreate }: { onBack: () => void, onCreate: (t
                         </div>
                     </div>
                     
+                    <div className="space-y-3">
+                         <Label className="text-slate-300">Garantie souhaitée</Label>
+                         <div className="flex flex-wrap gap-2">
+                             {WARRANTY_OPTIONS.map(w => {
+                                 const isSelected = warrantyDays === w.val;
+                                 const bg = isSelected ? w.colorClass.split(' ')[0] : 'bg-slate-800';
+                                 const text = isSelected ? 'text-white' : 'text-slate-400';
+                                 return (
+                                     <button
+                                        key={w.val}
+                                        onClick={() => setWarrantyDays(w.val)}
+                                        className={`px-3 py-2 rounded-full text-xs font-bold transition-all border ${isSelected ? 'border-transparent scale-105' : 'border-slate-700 hover:border-slate-500'} ${bg} ${text}`}
+                                     >
+                                         {w.label}
+                                     </button>
+                                 );
+                             })}
+                         </div>
+                    </div>
+
                     <div className="space-y-1.5">
                         <Label className="text-slate-300">Description détaillée</Label>
                         <Textarea 
@@ -699,44 +709,14 @@ function CreateTaskPage({ onBack, onCreate }: { onBack: () => void, onCreate: (t
                         />
                     </div>
 
-                    <div className="space-y-3">
-                         <Label className="text-slate-300">Garantie souhaitée</Label>
-                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                             {WARRANTY_OPTIONS.map(w => {
-                                 const isSelected = warrantyDays === w.val;
-                                 return (
-                                     <button
-                                        key={w.val}
-                                        onClick={() => setWarrantyDays(w.val)}
-                                        className={`
-                                            flex flex-col items-center justify-center p-3 rounded-lg border transition-all
-                                            ${isSelected 
-                                                ? 'bg-white border-white ring-2 ring-indigo-500 ring-offset-2 ring-offset-slate-900' 
-                                                : 'bg-slate-800 border-slate-700 text-slate-400'
-                                            }
-                                        `}
-                                     >
-                                         <div className={`${isSelected ? w.colorClass.split(' ')[0] : 'text-slate-500'}`}>
-                                             {React.cloneElement(w.icon, { className: "w-5 h-5 mb-1" })}
-                                         </div>
-                                         <span className={`text-xs font-bold ${isSelected ? 'text-slate-900' : ''}`}>{w.label}</span>
-                                     </button>
-                                 );
-                             })}
-                         </div>
-                    </div>
-
                     <div className="space-y-1.5">
                         <Label className="text-slate-300">Photo (Optionnel)</Label>
-                        <div className="border-2 border-dashed border-slate-700 rounded-xl p-8 flex flex-col items-center justify-center text-slate-500 hover:border-slate-500 hover:bg-slate-800/50 transition cursor-pointer relative">
+                        <div className="border-2 border-dashed border-slate-700 rounded-xl p-4 flex flex-col items-center justify-center text-slate-500 hover:border-slate-500 hover:bg-slate-800/50 transition cursor-pointer relative h-32">
                             <input type="file" accept="image/*" onChange={handlePhotoUpload} className="absolute inset-0 opacity-0 cursor-pointer" />
                             {photo ? (
-                                <img src={photo} alt="Preview" className="max-h-48 rounded shadow-lg" />
+                                <img src={photo} alt="Preview" className="h-full rounded shadow-lg" />
                             ) : (
-                                <>
-                                    <span className="text-4xl mb-2">📷</span>
-                                    <span>Cliquez pour ajouter une photo</span>
-                                </>
+                                <span className="text-sm">📷 Ajouter une photo</span>
                             )}
                         </div>
                     </div>
@@ -1172,7 +1152,7 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
       <header className="bg-slate-900/80 backdrop-blur-md border-b border-slate-800 sticky top-0 z-40">
         <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
             <div className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition" onClick={() => setCurrentView('home')}>
-                <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-bold shadow-lg shadow-indigo-500/30">C</div>
+                {/* REMOVED "C" LOGO SQUARE */}
                 <div className="leading-none">
                     <h1 className="text-xl font-black text-white tracking-tighter">CoproSmart.</h1>
                     <p className="text-[10px] text-slate-400 font-black tracking-tighter">On réduit nos charges de copropriété.</p>

@@ -324,10 +324,8 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                                 {/* Title made extrabold */}
                                 <h3 className="font-extrabold text-sm md:text-base text-white truncate leading-tight mr-2 tracking-tight">{task.title}</h3>
                                 
-                                <Badge className="bg-slate-700 text-slate-300 border-none">
-                                    {task.location}
-                                </Badge>
-                                
+                                {/* Reordered Badges: Category > Scope > Location > Warranty */}
+                                {/* NO ICONS - FLAT DESIGN */}
                                 {categoryInfo && (
                                     <Badge className={`${categoryInfo.colorClass} border-none`}>
                                         {categoryInfo.label}
@@ -339,6 +337,10 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                                         {scopeInfo.label}
                                     </Badge>
                                 )}
+
+                                <Badge className="bg-slate-700 text-slate-300 border-none">
+                                    {task.location}
+                                </Badge>
 
                                 {warrantyInfo && (
                                     <Badge className={`${warrantyInfo.colorClass} border-none`}>

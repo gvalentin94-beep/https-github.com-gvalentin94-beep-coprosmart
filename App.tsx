@@ -762,7 +762,7 @@ function SharedFooter() {
         <footer className="mt-20 border-t border-slate-800/50 py-8 text-center">
             <div className="flex items-center justify-center gap-2 mb-4 opacity-50 grayscale hover:grayscale-0 transition-all duration-500">
                 <span className="text-2xl">🏢</span>
-                <span className="font-bold text-white tracking-tight">CoproSmart <span className="text-indigo-500">v0.2.4</span></span>
+                <span className="font-bold text-white tracking-tight">CoproSmart <span className="text-indigo-500">v0.2.10</span></span>
             </div>
             <div className="flex justify-center gap-6 text-xs text-slate-500">
                 <button onClick={() => setShowCGU(true)} className="hover:text-slate-300 transition-colors">Conditions Générales d'Utilisation</button>
@@ -851,23 +851,25 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
     addToast("Notification envoyée", subject, "info");
 
     // 2. Real Email Sending via Backend
-    try {
-        await fetch('/api/send-email', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                to: recipients,
-                subject: subject,
-                html: `<div style="font-family: sans-serif; padding: 20px; color: #333;">
-                        <h2 style="color: #4f46e5;">CoproSmart Notification</h2>
-                        <p>${message}</p>
-                        <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;" />
-                        <p style="font-size: 12px; color: #666;">Ceci est un message automatique de votre copropriété.</p>
-                       </div>`
-            })
-        });
-    } catch (e) {
-        console.error("Failed to send email", e);
+    if (recipients.length > 0) {
+        try {
+            await fetch('/api/send-email', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    to: recipients,
+                    subject: subject,
+                    html: `<div style="font-family: sans-serif; padding: 20px; color: #333;">
+                            <h2 style="color: #4f46e5;">CoproSmart Notification</h2>
+                            <p>${message}</p>
+                            <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;" />
+                            <p style="font-size: 12px; color: #666;">Ceci est un message automatique de votre copropriété.</p>
+                        </div>`
+                })
+            });
+        } catch (e) {
+            console.error("Failed to send email", e);
+        }
     }
   };
 

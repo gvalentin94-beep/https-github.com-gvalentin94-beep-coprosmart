@@ -37,6 +37,7 @@ interface CardProps {
   children?: React.ReactNode;
   className?: string;
   padding?: 'none' | 'sm' | 'md';
+  key?: React.Key;
 }
 
 export function Card({ children, className = "", padding = 'md' }: CardProps) {

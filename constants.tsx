@@ -26,7 +26,7 @@ export const RATING_LEGEND: { [key: number]: string } = {
     5: "Excellent"
 };
 
-// SOLID FLAT COLORS
+// SOLID FLAT COLORS (No icons needed in labels anymore, managed in UI)
 export const CATEGORIES = [
   { id: "ampoule", label: "Ampoule", colorClass: "bg-amber-500 text-slate-900" },
   { id: "porte", label: "Porte", colorClass: "bg-sky-500 text-white" },
@@ -50,7 +50,7 @@ export const TASK_STATUS_CONFIG: { [key: string]: { label: string; color: string
   pending: { label: "En validation", color: "amber" },
   open: { label: "Offres ouvertes", color: "indigo" },
   awarded: { label: "Attribuée", color: "sky" },
-  verification: { label: "Contrôle", color: "fuchsia" },
+  verification: { label: "Attente contrôle", color: "fuchsia" },
   completed: { label: "Terminée", color: "emerald" },
   rejected: { label: "Rejetée", color: "rose" },
 };

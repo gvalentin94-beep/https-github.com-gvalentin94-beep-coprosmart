@@ -56,22 +56,15 @@ function BidBox({ task, onBid, onCancel }: BidBoxProps) {
     const maxDateStr = maxDate.toISOString().split('T')[0];
     
     return (
-        <div className="border-t border-slate-700 pt-3 mt-3 space-y-3">
-            <div className="flex justify-between items-center text-xs text-slate-400">
-                <span className="font-bold uppercase">Votre offre</span>
-                <span>Actuel: <b className="text-white">{currentPrice} €</b></span>
-            </div>
+        <div className="border-t border-slate-700 pt-2 mt-2 space-y-2">
             <div className="flex gap-2">
-                <div className="w-24">
-                    <Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-8 font-bold text-indigo-600 text-center !bg-white" placeholder="Prix" />
+                <div className="w-20">
+                    <Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-7 font-bold text-indigo-600 text-center !bg-white text-xs" placeholder="Prix" />
                 </div>
                 <div className="flex-1">
-                    <Input type="date" value={plannedExecutionDate} onChange={(e) => setPlannedExecutionDate(e.target.value)} min={today} max={maxDateStr} className="h-8 text-xs !bg-white text-slate-900" />
+                    <Input type="date" value={plannedExecutionDate} onChange={(e) => setPlannedExecutionDate(e.target.value)} min={today} max={maxDateStr} className="h-7 text-xs !bg-white text-slate-900" />
                 </div>
-            </div>
-            <div className="flex gap-2">
-                <Button variant="ghost" size="sm" className="flex-1 h-8" onClick={onCancel}>Annuler</Button>
-                <Button size="sm" className="flex-1 h-8 bg-indigo-600 hover:bg-indigo-500 text-white" onClick={handleBid}>Valider</Button>
+                <Button size="sm" className="h-7 bg-indigo-600 hover:bg-indigo-500 text-white text-xs" onClick={handleBid}>Valider</Button>
             </div>
         </div>
     );
@@ -85,19 +78,19 @@ function RatingBox({ onSubmit }: RatingBoxProps) {
     const [open, setOpen] = useState(false);
     const [stars, setStars] = useState(5);
 
-    if (!open) return <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); setOpen(true); }} className="h-7 text-xs border-slate-600 text-slate-400 hover:text-white">⭐ Noter</Button>;
+    if (!open) return <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); setOpen(true); }} className="h-6 text-[10px] border-slate-600 text-slate-400 hover:text-white">⭐ Noter</Button>;
 
     return (
-        <div className="absolute right-0 bottom-10 z-10 bg-slate-900 border border-slate-700 p-3 rounded-lg shadow-xl w-48">
-            <div className="flex justify-center gap-1 mb-2">
+        <div className="absolute right-0 top-0 z-10 bg-slate-900 border border-slate-700 p-2 rounded shadow-xl w-40">
+            <div className="flex justify-center gap-1 mb-1">
                 {[1,2,3,4,5].map(s => (
-                    <button key={s} onClick={() => setStars(s)} className={`text-lg ${s <= stars ? 'grayscale-0' : 'grayscale opacity-30'}`}>⭐</button>
+                    <button key={s} onClick={() => setStars(s)} className={`text-sm ${s <= stars ? 'grayscale-0' : 'grayscale opacity-30'}`}>⭐</button>
                 ))}
             </div>
-            <p className="text-[10px] text-center text-slate-400 mb-2">{RATING_LEGEND[stars]}</p>
+            <p className="text-[9px] text-center text-slate-400 mb-2">{RATING_LEGEND[stars]}</p>
             <div className="flex justify-between">
-                <button onClick={() => setOpen(false)} className="text-xs text-slate-500 hover:text-white">Annuler</button>
-                <button onClick={() => onSubmit({ stars, comment: "" })} className="text-xs font-bold text-indigo-400 hover:text-indigo-300">Valider</button>
+                <button onClick={() => setOpen(false)} className="text-[10px] text-slate-500 hover:text-white">Annuler</button>
+                <button onClick={() => onSubmit({ stars, comment: "" })} className="text-[10px] font-bold text-indigo-400 hover:text-indigo-300">Valider</button>
             </div>
         </div>
     );
@@ -118,10 +111,10 @@ function Countdown({ startedAt }: { startedAt: string }) {
         return () => clearInterval(interval);
     }, [startedAt]);
     if (!timeLeft) return null;
-    return <span className="text-[10px] font-mono text-indigo-400 ml-2 bg-indigo-900/20 px-1 rounded">⏱ {timeLeft}</span>;
+    return <span className="text-[10px] font-mono text-indigo-400 ml-2">⏱ {timeLeft}</span>;
 }
 
-interface TaskCardProps {
+export interface TaskCardProps {
   task: Task;
   me: User;
   usersMap?: Record<string, string>; 
@@ -137,6 +130,7 @@ interface TaskCardProps {
   onReject?: () => void;
   onRequestVerification?: () => void;
   onRejectWork?: () => void;
+  key?: React.Key;
 }
 
 export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRate, onDeleteRating, onDelete, canDelete, onApprove, onReject, onRequestVerification, onRejectWork }: TaskCardProps) {
@@ -177,60 +171,60 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
     // ACTION BUTTONS
     let ActionButton = null;
     if (task.status === 'open') {
-        if (canBid) ActionButton = <Button size="sm" onClick={(e) => { e.stopPropagation(); setShowBidForm(!showBidForm); }} className="h-7 text-xs bg-indigo-600 hover:bg-indigo-500 text-white whitespace-nowrap">Miser</Button>;
+        if (canBid) ActionButton = <Button size="sm" onClick={(e) => { e.stopPropagation(); setShowBidForm(!showBidForm); }} className="h-6 text-[10px] bg-indigo-600 hover:bg-indigo-500 text-white whitespace-nowrap">Miser</Button>;
         else ActionButton = <span className="text-[10px] text-slate-500 italic">Offre envoyée</span>;
     } else if (canManualAward) {
-        ActionButton = <Button size="sm" onClick={onAward} className="h-7 text-xs bg-emerald-600 hover:bg-emerald-500 whitespace-nowrap">{isAdmin && isTimerRunning ? '⚡ Attribuer' : 'Attribuer'}</Button>;
+        ActionButton = <Button size="sm" onClick={onAward} className="h-6 text-[10px] bg-emerald-600 hover:bg-emerald-500 whitespace-nowrap">{isAdmin && isTimerRunning ? '⚡ Attribuer' : 'Attribuer'}</Button>;
     } else if (task.status === 'awarded' && isAssignee && onRequestVerification) {
-        ActionButton = <Button size="sm" onClick={onRequestVerification} className="h-7 text-xs bg-fuchsia-600 hover:bg-fuchsia-500 whitespace-nowrap">J'ai fini</Button>;
+        ActionButton = <Button size="sm" onClick={onRequestVerification} className="h-6 text-[10px] bg-fuchsia-600 hover:bg-fuchsia-500 whitespace-nowrap">Terminer</Button>;
     } else if (task.status === 'verification' && canVerify && onRejectWork) {
         ActionButton = (
             <div className="flex gap-1">
-                <Button size="sm" onClick={onComplete} className="h-7 text-xs bg-emerald-600 hover:bg-emerald-500 px-2">Valider</Button>
-                <Button size="sm" onClick={onRejectWork} variant="destructive" className="h-7 text-xs px-2">Refuser</Button>
+                <Button size="sm" onClick={onComplete} className="h-6 text-[10px] bg-emerald-600 hover:bg-emerald-500 px-2">Valider</Button>
+                <Button size="sm" onClick={onRejectWork} variant="destructive" className="h-6 text-[10px] px-2">Refuser</Button>
             </div>
         );
     } else if (task.status === 'pending' && onApprove && onReject) {
         ActionButton = (
              <div className="flex gap-1">
-                <Button size="sm" onClick={onApprove} disabled={hasApproved && !isAdmin} className="h-7 px-2 bg-emerald-600 text-xs">OK</Button>
-                <Button size="sm" onClick={onReject} variant="destructive" className="h-7 px-2 text-xs">Non</Button>
+                <Button size="sm" onClick={onApprove} disabled={hasApproved && !isAdmin} className="h-6 px-2 bg-emerald-600 text-[10px]">OK</Button>
+                <Button size="sm" onClick={onReject} variant="destructive" className="h-6 px-2 text-[10px]">Non</Button>
             </div>
         );
     }
 
-    // Quality Status Text
     let qualityText = "En attente";
     if (task.status === 'completed' && validatorName) qualityText = `Validé par ${validatorName}`;
     else if (task.status === 'rejected') qualityText = `Rejeté par ${rejectorName}`;
     else if (task.status === 'verification') qualityText = "À vérifier";
 
     return (
-        <Card className={`bg-slate-800 border-l-4 ${style.border} hover:bg-slate-800/80 transition-colors`}>
-            <div className="p-3">
-                {/* ROW 1: Title & Price */}
-                <div className="flex justify-between items-start mb-2">
-                    <h3 className="font-extrabold text-white text-sm leading-tight mr-2 line-clamp-1">{task.title}</h3>
-                    <div className="font-mono font-bold text-white text-sm whitespace-nowrap">{displayPrice}€</div>
+        <Card className={`bg-slate-800 border-l-[3px] ${style.border} p-0 shadow-none mb-1`}>
+            <div className="p-2 flex flex-col gap-1">
+                {/* LINE 1: Title & Price */}
+                <div className="flex justify-between items-center">
+                    <h3 className="font-extrabold text-white text-sm leading-none truncate">{task.title}</h3>
+                    <span className="font-mono font-bold text-white text-sm">{displayPrice}€</span>
                 </div>
 
-                {/* ROW 2: Badges (Flat, No Icons, Ordered) */}
-                <div className="flex flex-wrap gap-1.5 mb-2">
-                    {categoryInfo && <Badge className={`${categoryInfo.colorClass} border-none text-[10px]`}>{categoryInfo.label}</Badge>}
-                    {scopeInfo && <Badge className={`${scopeInfo.colorClass} border-none text-[10px]`}>{scopeInfo.label}</Badge>}
-                    <Badge className="bg-slate-700 text-slate-300 border-none text-[10px]">{task.location}</Badge>
-                    {warrantyInfo && <Badge className={`${warrantyInfo.colorClass} border-none text-[10px]`}>{warrantyInfo.label}</Badge>}
+                {/* LINE 2: Badges (Ordered: Cat > Scope > Loc > Warranty) */}
+                <div className="flex flex-wrap gap-1 items-center">
+                    {categoryInfo && <Badge className={`${categoryInfo.colorClass} border-none text-[9px] py-0 px-1.5 rounded-sm`}>{categoryInfo.label}</Badge>}
+                    {scopeInfo && <Badge className={`${scopeInfo.colorClass} border-none text-[9px] py-0 px-1.5 rounded-sm`}>{scopeInfo.label}</Badge>}
+                    <Badge className="bg-slate-700 text-slate-300 border-none text-[9px] py-0 px-1.5 rounded-sm">{task.location}</Badge>
+                    {warrantyInfo && <Badge className={`${warrantyInfo.colorClass} border-none text-[9px] py-0 px-1.5 rounded-sm`}>{warrantyInfo.label}</Badge>}
                     {task.status === 'open' && task.biddingStartedAt && <Countdown startedAt={task.biddingStartedAt} />}
                 </div>
 
-                {/* ROW 3: Meta & Actions */}
-                <div className="flex items-center justify-between pt-1 border-t border-slate-700/50">
-                    <div className="text-[10px] text-slate-500 flex flex-col leading-tight">
-                        <span>Créé par {creatorName}</span>
-                        <span>Attrib. {task.awardedTo ? awardedToName : '-'} • Ctrl: {qualityText}</span>
+                {/* LINE 3: Meta & Actions */}
+                <div className="flex justify-between items-center pt-1 border-t border-slate-700/50">
+                    <div className="text-[9px] text-slate-500 flex gap-2 truncate">
+                        <span>Par {creatorName}</span>
+                        {task.awardedTo && <span>• Attribué à {awardedToName}</span>}
+                        <span>• Ctrl: {qualityText}</span>
                     </div>
                     
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 shrink-0">
                         {ActionButton}
                         
                         {/* Rating */}
@@ -238,11 +232,11 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                             {task.status === 'completed' && !hasRated && !isAssignee ? (
                                 <RatingBox onSubmit={onRate} />
                             ) : (
-                                <Button size="sm" variant="outline" disabled className="h-7 text-[10px] border-slate-700 text-slate-600 opacity-30 px-2">⭐</Button>
+                                <Button size="sm" variant="outline" disabled className="h-6 text-[10px] border-slate-700 text-slate-600 opacity-30 px-2">⭐</Button>
                             )}
                         </div>
 
-                        <button onClick={() => setShowDetails(!showDetails)} className="text-[10px] text-slate-500 hover:text-white underline">
+                        <button onClick={() => setShowDetails(!showDetails)} className="text-[10px] text-slate-500 hover:text-white px-1">
                             {showDetails ? '▼' : '►'}
                         </button>
                     </div>
@@ -252,16 +246,15 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                 {showBidForm && <BidBox task={task} onBid={onBid} onCancel={() => setShowBidForm(false)} />}
                 
                 {showDetails && (
-                    <div className="mt-3 pt-2 border-t border-slate-700 space-y-3 animate-in fade-in duration-200 text-xs text-slate-300">
-                        {task.photo && <img src={task.photo} alt="Photo" className="w-full h-32 object-cover rounded border border-slate-700" />}
-                        <p className="p-2 bg-slate-900/50 rounded border border-slate-700/50 whitespace-pre-wrap">{task.details || "Pas de description."}</p>
+                    <div className="mt-2 pt-2 border-t border-slate-700 space-y-2 animate-in fade-in duration-200 text-xs text-slate-300">
+                        {task.photo && <img src={task.photo} alt="Photo" className="w-full h-24 object-cover rounded border border-slate-700" />}
+                        <p className="p-2 bg-slate-900/50 rounded whitespace-pre-wrap text-[11px]">{task.details || "Pas de description."}</p>
                         
-                        {/* Bids History */}
                         {task.status === 'open' && task.bids?.length > 0 && (
                              <div>
-                                <p className="font-bold text-slate-500 mb-1">Offres</p>
+                                <p className="font-bold text-slate-500 mb-1 text-[10px]">Offres</p>
                                 {task.bids.map((b, i) => (
-                                    <div key={i} className="flex justify-between p-1 bg-slate-900/30 rounded mb-1">
+                                    <div key={i} className="flex justify-between p-1 bg-slate-900/30 rounded mb-1 text-[10px]">
                                         <span>{b.amount}€ ({usersMap?.[b.by] || b.by})</span>
                                         <span className="text-slate-500">{new Date(b.plannedExecutionDate).toLocaleDateString()}</span>
                                     </div>
@@ -269,11 +262,10 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                              </div>
                         )}
 
-                        {/* Ratings */}
                         {task.status === 'completed' && (
                             <div>
                                 {task.ratings?.map((r, i) => (
-                                    <div key={i} className="flex justify-between items-center bg-slate-900/50 p-1 rounded mb-1">
+                                    <div key={i} className="flex justify-between items-center bg-slate-900/50 p-1 rounded mb-1 text-[10px]">
                                         <span className="text-amber-400 tracking-widest">{Array(r.stars).fill('⭐').join('')}</span>
                                         {canDelete && onDeleteRating && <button onClick={() => onDeleteRating(task.id, i)} className="text-rose-500 hover:underline">Suppr</button>}
                                     </div>
@@ -282,7 +274,7 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                         )}
 
                         {canDelete && (
-                            <Button size="sm" variant="ghost" className="w-full h-6 text-rose-500 hover:text-rose-400 text-[10px]" onClick={onDelete}>Supprimer la tâche</Button>
+                            <Button size="sm" variant="ghost" className="w-full h-5 text-rose-500 hover:text-rose-400 text-[10px]" onClick={onDelete}>Supprimer</Button>
                         )}
                     </div>
                 )}

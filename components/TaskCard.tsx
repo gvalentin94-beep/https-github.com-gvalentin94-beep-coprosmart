@@ -171,7 +171,7 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
     // ACTION BUTTONS
     let ActionButton = null;
     if (task.status === 'open') {
-        if (canBid) ActionButton = <Button size="sm" onClick={(e) => { e.stopPropagation(); setShowBidForm(!showBidForm); }} className="h-6 text-[10px] bg-indigo-600 hover:bg-indigo-500 text-white whitespace-nowrap">Miser</Button>;
+        if (canBid) ActionButton = <Button size="sm" onClick={(e) => { e.stopPropagation(); setShowBidForm(!showBidForm); }} className="h-6 text-[10px] bg-indigo-600 hover:bg-indigo-500 text-white whitespace-nowrap">Faire une offre</Button>;
         else ActionButton = <span className="text-[10px] text-slate-500 italic">Offre envoyée</span>;
     } else if (canManualAward) {
         ActionButton = <Button size="sm" onClick={onAward} className="h-6 text-[10px] bg-emerald-600 hover:bg-emerald-500 whitespace-nowrap">{isAdmin && isTimerRunning ? '⚡ Attribuer' : 'Attribuer'}</Button>;

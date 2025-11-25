@@ -291,13 +291,6 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDel
         }
     };
 
-    // Fixed Filter TS Error
-    const [searchTerm, setSearchTerm] = useState("");
-    const filteredUsers = users.filter((u: RegisteredUser) => 
-        (u.firstName?.toLowerCase() || "").includes(searchTerm.toLowerCase()) || 
-        (u.lastName?.toLowerCase() || "").includes(searchTerm.toLowerCase())
-    );
-
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
@@ -309,17 +302,9 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDel
                      )}
                 </div>
             </div>
-
-            {/* Search Bar */}
-            <Input 
-                placeholder="Rechercher..." 
-                value={searchTerm} 
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
-                className="!bg-slate-800 border-slate-700 text-white"
-            />
             
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredUsers.map((u: RegisteredUser) => {
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {users.map((u: RegisteredUser) => {
                     const isMe = u.email === me.email;
                     
                     // --- PERMISSIONS LOGIC ---
@@ -341,8 +326,6 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDel
 
                     const isDeleted = u.status === 'deleted';
                     const history = tasks.filter(t => t.status === 'completed' && t.awardedTo === u.email);
-                    const totalTasks = history.length;
-                    
                     // Calculate Average Rating
                     const allRatings = history.flatMap(t => t.ratings);
                     const avgRating = allRatings.length > 0 
@@ -351,15 +334,16 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDel
                     
                     return (
                         <Card key={u.email} className={`border-slate-700 bg-slate-800/50 hover:border-slate-600 transition-all ${isDeleted ? 'opacity-50 grayscale' : ''} relative overflow-hidden`}>
-                            <CardContent className="p-5 space-y-4">
+                            <CardContent className="p-4 space-y-3">
                                 <div className="flex justify-between items-start">
                                     <div className="flex items-center gap-3">
-                                        <div className="w-12 h-12 rounded-full bg-indigo-500/20 flex items-center justify-center text-2xl border border-indigo-500/30 shadow-inner">
+                                        <div className="w-12 h-12 rounded-full bg-indigo-500/20 flex items-center justify-center text-2xl border border-indigo-500/30 shadow-inner overflow-hidden">
                                             {u.avatar || AVATARS[0]}
                                         </div>
                                         <div>
                                             <div className="font-bold text-lg text-white leading-tight min-h-[1.5rem]">{u.firstName} {u.lastName}</div>
                                             <div className="text-xs text-slate-400">{u.email}</div>
+                                            {avgRating && <div className="text-xs font-bold text-amber-400 mt-0.5">⭐ {avgRating}/5</div>}
                                         </div>
                                     </div>
                                     {canEdit && !isDeleted && (
@@ -382,17 +366,6 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDel
                                     {isDeleted && <Badge variant="destructive">Banni</Badge>}
                                 </div>
                                 
-                                {/* SUMMARY STATS */}
-                                <div className="flex justify-between items-center bg-slate-900/30 p-2 rounded-lg border border-slate-700/50">
-                                    <div className="text-center flex-1 border-r border-slate-700/50">
-                                        <div className="text-lg font-bold text-amber-400">{avgRating ? avgRating : '-'} <span className="text-xs text-slate-500 font-normal">/5</span></div>
-                                        <div className="text-[9px] text-slate-500 uppercase">Moyenne</div>
-                                    </div>
-                                    <div className="text-center flex-1">
-                                        <div className="text-lg font-bold text-white">{totalTasks}</div>
-                                        <div className="text-[9px] text-slate-500 uppercase">Travaux</div>
-                                    </div>
-                                </div>
 
                                 {/* Ban & Delete Actions */}
                                 {canBan && (
@@ -767,7 +740,7 @@ function SharedFooter() {
         <footer className="mt-20 border-t border-slate-800/50 py-8 text-center">
             <div className="flex items-center justify-center gap-2 mb-4 opacity-50 grayscale hover:grayscale-0 transition-all duration-500">
                 <span className="text-2xl">🏢</span>
-                <span className="font-bold text-white tracking-tight">CoproSmart <span className="text-indigo-500">v0.2.23</span></span>
+                <span className="font-bold text-white tracking-tight">CoproSmart <span className="text-indigo-500">v0.2.24</span></span>
             </div>
             <div className="flex justify-center gap-6 text-xs text-slate-500">
                 <button onClick={() => setShowCGU(true)} className="hover:text-slate-300 transition-colors">Conditions Générales d'Utilisation</button>
@@ -1208,7 +1181,7 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
                                   user.role === 'council' ? 'bg-amber-900/50 text-amber-200' : 
                                   'bg-slate-800 text-slate-400'}`}
                         >
-                            {ROLES.find(r => r.id === user.role)?.label}
+                            {ROLES.find((r: any) => r.id === user.role)?.label}
                         </Badge>
                     </div>
                     

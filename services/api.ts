@@ -476,23 +476,21 @@ export const api = {
             </div>
         `;
         
-        try {
-            const response = await fetch('/api/send-email', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ to: email, subject, html })
-            });
+        // Remove silent error swallowing so user sees the problem in UI
+        const response = await fetch('/api/send-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ to: email, subject, html })
+        });
 
-            if (!response.ok) {
-                 // Check if it's a 404 (common in dev without backend)
-                 throw new Error(`Status: ${response.status}`);
-            }
-        } catch (e) {
-            // Graceful fallback for demo/dev environments
-            console.warn("L'envoi d'email a échoué (backend absent ou erreur). Simulation de l'envoi.", e);
-            console.info(`[SIMULATION EMAIL] À: ${email}, Sujet: ${subject}`);
-            // Return success to the UI
-            return;
+        if (!response.ok) {
+             const errData = await response.json().catch(() => ({}));
+             // Specific handling for 404 in dev environment where api function might be missing
+             if (response.status === 404) {
+                 console.warn("API route not found. Simulating success for dev environment.");
+                 return;
+             }
+             throw new Error(errData.error || `Erreur serveur mail (${response.status})`);
         }
     },
 

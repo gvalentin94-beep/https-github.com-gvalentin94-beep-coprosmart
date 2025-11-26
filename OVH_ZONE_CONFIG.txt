@@ -4,34 +4,35 @@ $TTL 3600
 	IN NS     dns16.ovh.net.
 
 ; --- 1. EMAILS (RECEPTION & ENVOI) ---
-; MX pour recevoir vos emails sur OVH
+; MX pour recevoir vos emails sur OVH (Ne pas toucher)
 	IN MX 1   mx0.mail.ovh.net.
 	IN MX 5   mx1.mail.ovh.net.
 	IN MX 50  mx2.mail.ovh.net.
 	IN MX 100 mx3.mail.ovh.net.
 
-; SPF combiné (Autorise OVH et Resend à envoyer des emails)
+; SPF combiné (Autorise OVH et Resend à envoyer des emails pour vous)
 	IN TXT    "v=spf1 include:mx.ovh.com include:resend.com ~all"
 
-; DMARC (Bonnes pratiques, mode monitoring)
+; DMARC (Sécurité email - mode surveillance "none")
 _dmarc	IN TXT	"v=DMARC1;p=none;"
 
-; --- 2. CONFIGURATION RESEND (SOUS-DOMAINE 'send') ---
-; Si vous avez configuré Resend avec le sous-domaine 'send' (ex: send.coprosmart.com)
-; Note: Si votre dashboard Resend indique 'bounces', remplacez 'send' par 'bounces' ci-dessous.
+; --- 2. CONFIGURATION RESEND (Sous-domaine 'send') ---
+; Région: Europe (eu-west-1)
 
+; MX pour gérer les erreurs d'envoi (Bounces) sur le sous-domaine 'send'
 send	IN MX 10 feedback-smtp.eu-west-1.amazonses.com.
+
+; SPF spécifique pour le sous-domaine 'send'
 send	IN TXT	 "v=spf1 include:amazonses.com ~all"
 
-; DKIM Resend (Signature)
-; Remplacer la valeur ci-dessous par celle fournie dans le dashboard Resend (commence par p=)
-resend._domainkey	IN TXT	"p=REMPLACER_PAR_VOTRE_CLE_RESEND_ICI"
+; DKIM Resend (Signature cryptographique)
+resend._domainkey	IN TXT	"p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQD3Nf+r0XXcy3/sftBIMbASSIgNUHJ6rUZndLjNxoPvKsmiIPkSKIO5Wlm4vFnL4UkSoo7GViydu5mU73whFLYUDd7YkGbvXxjhFExiKTwWQt4HkD13C3YCs7lNF84Uef3iRz0DlPrSDyT3Z6lp7MKo1otgk202PsNqOIj1qWb25wIDAQAB"
 
 ; --- 3. SITE WEB (VERCEL) ---
 	IN A      76.76.21.21
 www	IN CNAME  cname.vercel-dns.com.
 
-; --- 4. AUTRES (OVH par défaut) ---
+; --- 4. AUTRES (OVH par défaut & FTP) ---
 ftp	IN CNAME  coprosmart.com.
 _autodiscover._tcp		IN SRV   0 0 443 zimbra1.mail.ovh.net.
 ovhmo-selector-1._domainkey	IN CNAME ovhmo-selector-1._domainkey.4306644.ib.dkim.mail.ovh.net.coprosmart.com.

@@ -1173,19 +1173,23 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
                     <div className="h-6 w-px bg-slate-800 mx-2 hidden md:block"></div>
                     
                     <div className="flex flex-col items-end">
-                         <div className="text-right leading-none">
+                         <div className="text-right leading-none mb-1">
                             <div className="text-sm font-bold text-white">{user.firstName} {user.lastName.toUpperCase()}</div>
                             <div className="text-[10px] text-slate-400">{user.email}</div>
                         </div>
-                        <Badge 
-                            variant="outline" 
-                            className={`mt-1 h-4 text-[9px] border-0 
-                                ${user.role === 'admin' ? 'bg-rose-900/50 text-rose-200' : 
-                                  user.role === 'council' ? 'bg-amber-900/50 text-amber-200' : 
-                                  'bg-slate-800 text-slate-400'}`}
-                        >
-                            {ROLES.find((r: any) => r.id === user.role)?.label}
-                        </Badge>
+                        
+                        <div className="flex gap-1">
+                            {user.role === 'council' ? (
+                                 <>
+                                     <Badge className="bg-amber-500 text-slate-900 border-amber-400 font-bold shadow-[0_0_10px_rgba(245,158,11,0.3)] text-[9px] h-5">Conseil Syndical</Badge>
+                                     <Badge className="bg-slate-700 text-[9px] h-5">Copropriétaire</Badge>
+                                 </>
+                             ) : (
+                                 <Badge className={`text-[9px] h-5 ${user.role === 'admin' ? 'bg-rose-900/40 text-rose-200 border-rose-800' : 'bg-slate-700 text-slate-300'}`}>
+                                    {ROLES.find((r: any) => r.id === user.role)?.label}
+                                </Badge>
+                             )}
+                        </div>
                     </div>
                     
                     <Button 

@@ -1,5 +1,5 @@
 $TTL 3600
-@	IN SOA dns16.ovh.net. tech.ovh.net. (2025112505 86400 3600 3600000 60)
+@	IN SOA dns16.ovh.net. tech.ovh.net. (2025112605 86400 3600 3600000 60)
 	IN NS     ns16.ovh.net.
 	IN NS     dns16.ovh.net.
 
@@ -13,18 +13,25 @@ $TTL 3600
 ; SPF combiné (Autorise OVH et Resend à envoyer des emails)
 	IN TXT    "v=spf1 include:mx.ovh.com include:resend.com ~all"
 
-; MX pour gérer les erreurs d'envoi Resend (Bounces)
-bounces	IN MX 10 feedback-smtp.us-east-1.amazonses.com.
+; DMARC (Bonnes pratiques, mode monitoring)
+_dmarc	IN TXT	"v=DMARC1;p=none;"
 
-; DKIM Resend (Signature) - A COMPLETER
+; --- 2. CONFIGURATION RESEND (SOUS-DOMAINE 'send') ---
+; Si vous avez configuré Resend avec le sous-domaine 'send' (ex: send.coprosmart.com)
+; Note: Si votre dashboard Resend indique 'bounces', remplacez 'send' par 'bounces' ci-dessous.
+
+send	IN MX 10 feedback-smtp.eu-west-1.amazonses.com.
+send	IN TXT	 "v=spf1 include:amazonses.com ~all"
+
+; DKIM Resend (Signature)
 ; Remplacer la valeur ci-dessous par celle fournie dans le dashboard Resend (commence par p=)
 resend._domainkey	IN TXT	"p=REMPLACER_PAR_VOTRE_CLE_RESEND_ICI"
 
-; --- 2. SITE WEB (VERCEL) ---
+; --- 3. SITE WEB (VERCEL) ---
 	IN A      76.76.21.21
 www	IN CNAME  cname.vercel-dns.com.
 
-; --- 3. AUTRES (OVH par défaut) ---
+; --- 4. AUTRES (OVH par défaut) ---
 ftp	IN CNAME  coprosmart.com.
 _autodiscover._tcp		IN SRV   0 0 443 zimbra1.mail.ovh.net.
 ovhmo-selector-1._domainkey	IN CNAME ovhmo-selector-1._domainkey.4306644.ib.dkim.mail.ovh.net.coprosmart.com.

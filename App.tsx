@@ -49,7 +49,7 @@ function ToastContainer({ toasts, onClose }: { toasts: Toast[]; onClose: (id: st
         >
           <div>
             <h4 className="font-bold text-sm">{t.title}</h4>
-            <p className="text-xs opacity-90 mt-1">{t.message}</p>
+            <p className="text-xs opacity-90 mt-1 break-words">{t.message}</p>
           </div>
           <button onClick={() => onClose(t.id)} className="text-current opacity-50 hover:opacity-100">✕</button>
         </div>
@@ -846,10 +846,21 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
                         </div>`
                 })
             });
-            if (!res.ok) throw new Error(`API Error: ${res.status}`);
+
+            // Handle potential errors from Resend (e.g., Free tier limit)
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => ({}));
+                console.error("Email send failed:", errorData);
+                // Specifically warn about free tier issues
+                if (errorData.error && (errorData.error.includes("onboarding") || errorData.error.includes("verified"))) {
+                     addToast("Erreur Email", "Domaine non vérifié : impossible d'envoyer aux autres utilisateurs.", "error");
+                } else if (errorData.error) {
+                     addToast("Erreur Email", `Echec envoi: ${errorData.error}`, "error");
+                }
+            }
         } catch (e) {
             console.warn("Backend notification failed (simulation mode)", e);
-            console.log(`[SIMULATED NOTIF] To: ${recipients}, Subject: ${subject}`);
+            // Don't toast for network errors in simulation/dev mode unless critical
         }
     }
   };

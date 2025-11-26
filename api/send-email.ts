@@ -1,10 +1,8 @@
 
 import { Resend } from 'resend';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 export default async function handler(request: any, response: any) {
-  // CORS headers to allow requests from the frontend
+  // CORS headers
   response.setHeader('Access-Control-Allow-Credentials', true);
   response.setHeader('Access-Control-Allow-Origin', '*');
   response.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
@@ -23,6 +21,13 @@ export default async function handler(request: any, response: any) {
   }
 
   try {
+    const apiKey = process.env.RESEND_API_KEY;
+    if (!apiKey) {
+        console.error("Missing RESEND_API_KEY");
+        return response.status(500).json({ error: 'Server configuration error: Missing Email API Key' });
+    }
+
+    const resend = new Resend(apiKey);
     const { to, subject, html } = request.body;
 
     if (!to || !subject || !html) {
@@ -30,19 +35,23 @@ export default async function handler(request: any, response: any) {
     }
 
     // Use configured sender email or fallback to Resend testing domain
-    // Once you verify your domain in Resend (DNS), add SENDER_EMAIL='ne-pas-repondre@votre-domaine.com' to your environment variables.
     const senderEmail = process.env.SENDER_EMAIL || 'onboarding@resend.dev';
 
-    const data = await resend.emails.send({
+    const { data, error } = await resend.emails.send({
       from: `CoproSmart <${senderEmail}>`, 
       to: to,
       subject: subject,
       html: html,
     });
 
+    if (error) {
+        console.error('Resend API Error:', error);
+        return response.status(400).json({ error: error.message, details: error });
+    }
+
     return response.status(200).json(data);
   } catch (error: any) {
-    console.error('Email error:', error);
+    console.error('Email handler exception:', error);
     return response.status(500).json({ error: error.message });
   }
 }

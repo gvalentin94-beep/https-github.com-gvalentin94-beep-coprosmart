@@ -21,20 +21,23 @@ export default async function handler(request: any, response: any) {
   }
 
   try {
-    const apiKey = process.env.RESEND_API_KEY;
+    // Trim to avoid copy-paste whitespace issues
+    const apiKey = process.env.RESEND_API_KEY ? process.env.RESEND_API_KEY.trim() : "";
+    
     if (!apiKey) {
         console.error("Missing RESEND_API_KEY");
-        return response.status(500).json({ error: 'Server configuration error: Missing Email API Key' });
+        return response.status(500).json({ error: 'Configuration serveur : Clé API Email manquante' });
     }
 
     const resend = new Resend(apiKey);
     const { to, subject, html } = request.body;
 
     if (!to || !subject || !html) {
-        return response.status(400).json({ error: 'Missing required fields' });
+        return response.status(400).json({ error: 'Champs obligatoires manquants (to, subject, html)' });
     }
 
     // Use configured sender email or fallback to Resend testing domain
+    // IMPORTANT: If using a custom domain, SENDER_EMAIL must match the verified domain.
     const senderEmail = process.env.SENDER_EMAIL || 'onboarding@resend.dev';
 
     const { data, error } = await resend.emails.send({
@@ -46,6 +49,7 @@ export default async function handler(request: any, response: any) {
 
     if (error) {
         console.error('Resend API Error:', error);
+        // Pass the specific error message to the frontend
         return response.status(400).json({ error: error.message, details: error });
     }
 

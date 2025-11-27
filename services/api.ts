@@ -29,7 +29,7 @@ const mapProfile = (p: any): RegisteredUser => ({
     firstName: p.first_name,
     lastName: p.last_name,
     role: p.role,
-    residence: p.residence,
+    residence: p.residence || "Résidence Watteau", // Fallback for legacy users
     status: p.status,
     avatar: p.avatar
 });
@@ -44,7 +44,7 @@ const mapTask = (t: any): Task => ({
     startingPrice: t.starting_price,
     warrantyDays: t.warranty_days,
     status: t.status,
-    residence: t.residence,
+    residence: t.residence || "Résidence Watteau",
     createdBy: t.created_by_profile?.email || 'Unknown',
     createdById: t.created_by,
     createdAt: t.created_at,
@@ -96,7 +96,7 @@ const mapTask = (t: any): Task => ({
 const mapLedger = (l: any): LedgerEntry => ({
     id: l.id,
     taskId: l.task_id,
-    residence: l.residence,
+    residence: l.residence || "Résidence Watteau",
     type: l.type,
     payer: l.payer_profile?.email || (l.type === 'charge_credit' ? 'Copro' : 'Unknown'),
     payee: l.payee_profile?.email || 'Unknown',
@@ -134,7 +134,7 @@ export const useAuth = () => {
                             firstName: profile.first_name,
                             lastName: profile.last_name,
                             role: profile.role,
-                            residence: profile.residence
+                            residence: profile.residence || "Résidence Watteau" // Handle legacy null residence
                         });
                     }
                 }
@@ -238,7 +238,7 @@ export const api = {
             firstName: profile.first_name,
             lastName: profile.last_name,
             role: profile.role,
-            residence: profile.residence
+            residence: profile.residence || "Résidence Watteau" // Handle legacy null
         };
     },
     
@@ -265,13 +265,11 @@ export const api = {
 
     // --- DATA ---
 
-    // Modified to filter by residence
+    // Modified to filter by residence (Handling Legacy Nulls)
     readTasks: async (residence: string): Promise<Task[]> => {
         if (!supabaseUrl) return [];
 
-        const { data, error } = await supabase
-            .from('tasks')
-            .select(`
+        let query = supabase.from('tasks').select(`
                 *,
                 created_by_profile:created_by(email),
                 awarded_to_profile:awarded_to(email),
@@ -281,9 +279,16 @@ export const api = {
                 rejections(*, user_profile:user_id(email)),
                 ratings(*),
                 deleted_ratings(*, deleter_profile:deleted_by(email))
-            `)
-            .eq('residence', residence)
-            .order('created_at', { ascending: false });
+            `);
+
+        // If filtering for "Résidence Watteau", also include legacy rows where residence is null
+        if (residence === "Résidence Watteau") {
+            query = query.or(`residence.eq."${residence}",residence.is.null`);
+        } else {
+            query = query.eq('residence', residence);
+        }
+
+        const { data, error } = await query.order('created_at', { ascending: false });
         
         if (error) {
             console.error(error);
@@ -384,16 +389,21 @@ export const api = {
     readLedger: async (residence: string): Promise<LedgerEntry[]> => {
         if (!supabaseUrl) return [];
         
-        const { data, error } = await supabase
-            .from('ledger')
-            .select(`
+        let query = supabase.from('ledger').select(`
                 *,
                 payer_profile:payer_id(email),
                 payee_profile:payee_id(email),
                 tasks(title, created_by_profile:created_by(email))
-            `)
-            .eq('residence', residence)
-            .order('created_at', { ascending: false });
+            `);
+
+        if (residence === "Résidence Watteau") {
+            query = query.or(`residence.eq."${residence}",residence.is.null`);
+        } else {
+            query = query.eq('residence', residence);
+        }
+
+        const { data, error } = await query.order('created_at', { ascending: false });
+
         if (error) return [];
         return data.map(mapLedger);
     },
@@ -419,11 +429,19 @@ export const api = {
     
     getPendingUsers: async (residence: string): Promise<RegisteredUser[]> => {
         if (!supabaseUrl) return [];
-        const { data } = await supabase
+        
+        let query = supabase
             .from('profiles')
             .select('*')
-            .eq('status', 'pending')
-            .eq('residence', residence);
+            .eq('status', 'pending');
+
+        if (residence === "Résidence Watteau") {
+            query = query.or(`residence.eq."${residence}",residence.is.null`);
+        } else {
+            query = query.eq('residence', residence);
+        }
+
+        const { data } = await query;
         return (data || []).map(mapProfile);
     },
     
@@ -514,11 +532,15 @@ export const api = {
 
     getDirectory: async (residence: string): Promise<RegisteredUser[]> => {
         if (!supabaseUrl) return [];
-        const { data } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('residence', residence)
-            .order('last_name');
+        let query = supabase.from('profiles').select('*');
+
+        if (residence === "Résidence Watteau") {
+            query = query.or(`residence.eq."${residence}",residence.is.null`);
+        } else {
+            query = query.eq('residence', residence);
+        }
+
+        const { data } = await query.order('last_name');
         return (data || []).map(mapProfile);
     },
 

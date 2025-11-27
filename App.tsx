@@ -7,6 +7,15 @@ import { TaskCard } from './components/TaskCard';
 import { LOCATIONS, CATEGORIES, SCOPES, WARRANTY_OPTIONS, COUNCIL_MIN_APPROVALS, ROLES, MAX_TASK_PRICE, AVATARS, RESIDENCES } from './constants';
 import { LoginCard } from './components/LoginCard';
 
+// --- Safe Version Access ---
+const APP_VERSION = (() => {
+    try {
+        return (import.meta as any)?.env?.PACKAGE_VERSION || '0.2.28';
+    } catch {
+        return '0.2.28';
+    }
+})();
+
 // --- Constants for Random Messages ---
 const OPEN_EMPTY_MESSAGES = [
     "Tout va bien dans la copro, rien à signaler ! 🏖️",
@@ -936,7 +945,7 @@ export default function App() {
       return (
           <>
             <LoginCard onLogin={setUser} />
-            <div className="fixed bottom-2 right-2 text-[10px] text-slate-700 font-mono">v{import.meta.env.PACKAGE_VERSION || '0.2.26'}</div>
+            <div className="fixed bottom-2 right-2 text-[10px] text-slate-700 font-mono">v{APP_VERSION}</div>
           </>
       );
   }
@@ -1266,7 +1275,7 @@ export default function App() {
 
       {/* FOOTER */}
       <footer className="mt-20 py-8 text-center text-slate-600 text-xs border-t border-slate-900 bg-slate-950">
-        <p>CoproSmart v{import.meta.env.PACKAGE_VERSION || '0.2.26'} — Simple. Local. Gagnant-Gagnant.</p>
+        <p>CoproSmart v{APP_VERSION} — Simple. Local. Gagnant-Gagnant.</p>
       </footer>
 
       {/* PREVIEW MODAL */}

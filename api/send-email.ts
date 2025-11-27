@@ -24,9 +24,12 @@ export default async function handler(request: any, response: any) {
     // Trim to avoid copy-paste whitespace issues
     const apiKey = process.env.RESEND_API_KEY ? process.env.RESEND_API_KEY.trim() : "";
     
+    // Server-side logging to debug Vercel Env Vars (Does not expose the full key)
+    console.log(`[Email Service] Tentative d'envoi. Clé API présente : ${!!apiKey}, Longueur : ${apiKey.length}`);
+
     if (!apiKey) {
-        console.error("Missing RESEND_API_KEY");
-        return response.status(500).json({ error: 'Configuration serveur : Clé API Email manquante' });
+        console.error("[Email Service] Erreur critique : RESEND_API_KEY est vide.");
+        return response.status(500).json({ error: 'Configuration serveur : Clé API Email manquante (Vérifiez les variables d\'environnement Vercel)' });
     }
 
     const resend = new Resend(apiKey);
@@ -39,6 +42,7 @@ export default async function handler(request: any, response: any) {
     // Use configured sender email or fallback to Resend testing domain
     // IMPORTANT: If using a custom domain, SENDER_EMAIL must match the verified domain.
     const senderEmail = process.env.SENDER_EMAIL || 'onboarding@resend.dev';
+    console.log(`[Email Service] Expéditeur configuré : ${senderEmail}`);
 
     const { data, error } = await resend.emails.send({
       from: `CoproSmart <${senderEmail}>`, 
@@ -48,14 +52,15 @@ export default async function handler(request: any, response: any) {
     });
 
     if (error) {
-        console.error('Resend API Error:', error);
+        console.error('[Email Service] Erreur Resend API :', error);
         // Pass the specific error message to the frontend
         return response.status(400).json({ error: error.message, details: error });
     }
 
+    console.log('[Email Service] Email envoyé avec succès:', data);
     return response.status(200).json(data);
   } catch (error: any) {
-    console.error('Email handler exception:', error);
+    console.error('[Email Service] Exception non gérée :', error);
     return response.status(500).json({ error: error.message });
   }
 }

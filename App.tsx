@@ -10,9 +10,9 @@ import { LoginCard } from './components/LoginCard';
 // --- Safe Version Access ---
 const APP_VERSION = (() => {
     try {
-        return (import.meta as any)?.env?.PACKAGE_VERSION || '0.2.28';
+        return (import.meta as any)?.env?.PACKAGE_VERSION || '0.2.29';
     } catch {
-        return '0.2.28';
+        return '0.2.29';
     }
 })();
 
@@ -25,15 +25,6 @@ const OPEN_EMPTY_MESSAGES = [
     "Le Conseil Syndical est au chômage technique (pour le moment). 😎",
     "Rien à faire ? C'est le moment de dire bonjour à vos voisins ! 👋",
     "Aucune mission pour nos super-héros du quotidien. 🦸‍♂️"
-];
-
-const PROGRESS_EMPTY_MESSAGES = [
-    "Les artisans se reposent... ou tout est déjà réparé ! 🛠️",
-    "Silence radio sur le chantier. 🤫",
-    "Ça bosse dur (ou ça prend le café). ☕",
-    "Les outils sont rangés, les travaux sont finis ? 🧰",
-    "Aucun bruit de perceuse... profitez du silence ! 🎵",
-    "Tout est calme. Trop calme. 🕵️‍♂️"
 ];
 
 // --- Toast Notification System ---
@@ -68,25 +59,6 @@ function ToastContainer({ toasts, onClose }: { toasts: Toast[]; onClose: (id: st
 }
 
 // --- Helper Components ---
-
-function InfoModal({ title, children, onClose }: { title: string; children?: React.ReactNode; onClose: () => void }) {
-    return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-            <Card className="w-full max-w-2xl bg-slate-900 border-slate-700 max-h-[80vh] overflow-y-auto shadow-2xl">
-                <CardHeader className="border-b border-slate-800 flex flex-row justify-between items-center sticky top-0 bg-slate-900 z-10">
-                    <CardTitle>{title}</CardTitle>
-                    <button onClick={onClose} className="text-slate-400 hover:text-white text-xl font-bold">✕</button>
-                </CardHeader>
-                <CardContent className="p-6 text-sm text-slate-300 space-y-4 leading-relaxed">
-                    {children}
-                </CardContent>
-                <div className="p-4 border-t border-slate-800 bg-slate-900 sticky bottom-0 text-right">
-                    <Button onClick={onClose}>Fermer</Button>
-                </div>
-            </Card>
-        </div>
-    );
-}
 
 function TaskPreviewModal({ task, onConfirm, onCancel }: { task: Partial<Task>; onConfirm: () => void; onCancel: () => void }) {
     const catInfo = CATEGORIES.find((c: any) => c.id === task.category);
@@ -550,33 +522,6 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDel
     );
 }
 
-// --- Admin Residence Selector ---
-function AdminResidenceSelector({ onSelect }: { onSelect: (res: string) => void }) {
-    return (
-        <div className="h-screen w-full flex flex-col items-center justify-center bg-slate-950 p-4">
-            <div className="max-w-md w-full space-y-8 animate-in fade-in zoom-in duration-500">
-                <div className="text-center space-y-2">
-                    <h1 className="text-4xl font-black text-white tracking-tighter">Portail Admin</h1>
-                    <p className="text-indigo-300">Sélectionnez la résidence à administrer</p>
-                </div>
-                
-                <div className="grid gap-3">
-                    {RESIDENCES.map((res) => (
-                        <button 
-                            key={res}
-                            onClick={() => onSelect(res)}
-                            className="group p-6 bg-slate-800 hover:bg-indigo-900/40 border border-slate-700 hover:border-indigo-500 rounded-xl transition-all text-left flex items-center justify-between"
-                        >
-                            <span className="font-bold text-white text-lg">{res}</span>
-                            <span className="text-slate-500 group-hover:text-indigo-400 text-2xl">→</span>
-                        </button>
-                    ))}
-                </div>
-            </div>
-        </div>
-    );
-}
-
 // --- Main App Component ---
 
 export default function App() {
@@ -590,7 +535,8 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   
   // Multi-residency State
-  const [selectedResidence, setSelectedResidence] = useState<string | null>(null);
+  // Default to Watteau to ensure legacy data visibility on load
+  const [selectedResidence, setSelectedResidence] = useState<string | null>("Résidence Watteau");
   
   // UI State
   const [tab, setTab] = useState<'dashboard' | 'tasks' | 'directory' | 'ledger'>('dashboard');
@@ -643,27 +589,13 @@ export default function App() {
   // Handle Residence Selection Logic
   useEffect(() => {
     if (user) {
-        if (user.role === 'admin') {
-            // Admin must select residence manually (reset to null on login if not already set)
-            // But we don't want to reset if they just refreshed page, so we keep state if exists?
-            // For now, prompt admin every time "user" changes (login) if no state.
-            if (!selectedResidence) {
-                // Do nothing, wait for AdminResidenceSelector
-            } else {
-                 refreshData();
-            }
-        } else {
-            // Standard user is locked to their profile residence
-            if (user.residence !== selectedResidence) {
-                setSelectedResidence(user.residence);
-            } else {
-                refreshData();
-            }
+        // Only force set if user has a specific residence locked in profile
+        // and it's different from current (e.g. user logs in as TEST, switch from Watteau)
+        if (user.role !== 'admin' && user.residence && user.residence !== selectedResidence) {
+            setSelectedResidence(user.residence);
+        } else if (selectedResidence) {
+            refreshData();
         }
-        
-        if (user.role === 'council' || user.role === 'admin') setTab('dashboard');
-    } else {
-        setSelectedResidence(null);
     }
   }, [user, refreshData, selectedResidence]);
 
@@ -939,7 +871,7 @@ export default function App() {
       }
   };
 
-  if (authLoading) return <div className="h-screen w-full flex items-center justify-center bg-slate-950 text-indigo-500">Chargement...</div>;
+  if (authLoading) return <div className="h-screen w-full flex items-center justify-center bg-slate-900 text-indigo-500">Chargement...</div>;
 
   if (!user) {
       return (
@@ -950,19 +882,9 @@ export default function App() {
       );
   }
 
-  // --- RENDER ADMIN SELECTOR OR MAIN APP ---
-  
-  // If user is Admin and has NOT selected a residence yet, show the selector
-  if (user.role === 'admin' && !selectedResidence) {
-      return <AdminResidenceSelector onSelect={setSelectedResidence} />;
-  }
-
-  // Standard Render Logic
   const activeTasks = tasks.filter(t => ['open', 'awarded', 'verification'].includes(t.status));
   const completedTasks = tasks.filter(t => t.status === 'completed');
   const pendingTasks = tasks.filter(t => t.status === 'pending');
-  
-  const myPendingActionCount = pendingTasks.length + tasks.filter(t => t.status === 'verification' && (user.role === 'council' || user.role === 'admin')).length;
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-200 pb-20 md:pb-0 font-sans selection:bg-indigo-500/30">
@@ -974,9 +896,13 @@ export default function App() {
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-black tracking-tighter text-white">CoproSmart<span className="text-indigo-500">.</span></h1>
             {user.role === 'admin' && selectedResidence && (
-                <button onClick={() => setSelectedResidence(null)} className="hidden md:block bg-indigo-900/30 hover:bg-indigo-900/50 text-indigo-300 text-xs px-2 py-1 rounded border border-indigo-500/30 transition-colors">
-                    {selectedResidence} 🔄
-                </button>
+                 <Select 
+                    value={selectedResidence} 
+                    onChange={(e) => { setSelectedResidence(e.target.value); }}
+                    className="hidden md:block !w-auto !py-1 !pl-2 !pr-8 text-xs !bg-indigo-900/30 !border-indigo-500/30 text-indigo-300 rounded hover:bg-indigo-900/50 transition-colors"
+                >
+                    {RESIDENCES.map(r => <option key={r} value={r}>{r}</option>)}
+                </Select>
             )}
             {loading && <span className="animate-spin text-indigo-500">⟳</span>}
           </div>

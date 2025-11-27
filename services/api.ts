@@ -283,7 +283,7 @@ export const api = {
 
         // If filtering for "Résidence Watteau", also include legacy rows where residence is null
         if (residence === "Résidence Watteau") {
-            query = query.or(`residence.eq."${residence}",residence.is.null`);
+            query = query.or(`residence.eq.Résidence Watteau,residence.is.null`);
         } else {
             query = query.eq('residence', residence);
         }
@@ -397,7 +397,7 @@ export const api = {
             `);
 
         if (residence === "Résidence Watteau") {
-            query = query.or(`residence.eq."${residence}",residence.is.null`);
+            query = query.or(`residence.eq.Résidence Watteau,residence.is.null`);
         } else {
             query = query.eq('residence', residence);
         }
@@ -436,7 +436,7 @@ export const api = {
             .eq('status', 'pending');
 
         if (residence === "Résidence Watteau") {
-            query = query.or(`residence.eq."${residence}",residence.is.null`);
+            query = query.or(`residence.eq.Résidence Watteau,residence.is.null`);
         } else {
             query = query.eq('residence', residence);
         }
@@ -535,7 +535,7 @@ export const api = {
         let query = supabase.from('profiles').select('*');
 
         if (residence === "Résidence Watteau") {
-            query = query.or(`residence.eq."${residence}",residence.is.null`);
+            query = query.or(`residence.eq.Résidence Watteau,residence.is.null`);
         } else {
             query = query.eq('residence', residence);
         }

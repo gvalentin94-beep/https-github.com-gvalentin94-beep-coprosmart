@@ -4,7 +4,7 @@ import type { Task, LedgerEntry, User, RegisteredUser, UserRole, TaskCategory, T
 import { useAuth, api } from './services/api';
 import { Button, Card, CardContent, CardHeader, CardTitle, Label, Input, Textarea, Select, Badge, Section } from './components/ui';
 import { TaskCard } from './components/TaskCard';
-import { LOCATIONS, CATEGORIES, SCOPES, WARRANTY_OPTIONS, COUNCIL_MIN_APPROVALS, ROLES, MAX_TASK_PRICE, AVATARS } from './constants';
+import { LOCATIONS, CATEGORIES, SCOPES, WARRANTY_OPTIONS, COUNCIL_MIN_APPROVALS, ROLES, MAX_TASK_PRICE, AVATARS, RESIDENCES } from './constants';
 import { LoginCard } from './components/LoginCard';
 
 // --- Constants for Random Messages ---
@@ -541,6 +541,33 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDel
     );
 }
 
+// --- Admin Residence Selector ---
+function AdminResidenceSelector({ onSelect }: { onSelect: (res: string) => void }) {
+    return (
+        <div className="h-screen w-full flex flex-col items-center justify-center bg-slate-950 p-4">
+            <div className="max-w-md w-full space-y-8 animate-in fade-in zoom-in duration-500">
+                <div className="text-center space-y-2">
+                    <h1 className="text-4xl font-black text-white tracking-tighter">Portail Admin</h1>
+                    <p className="text-indigo-300">Sélectionnez la résidence à administrer</p>
+                </div>
+                
+                <div className="grid gap-3">
+                    {RESIDENCES.map((res) => (
+                        <button 
+                            key={res}
+                            onClick={() => onSelect(res)}
+                            className="group p-6 bg-slate-800 hover:bg-indigo-900/40 border border-slate-700 hover:border-indigo-500 rounded-xl transition-all text-left flex items-center justify-between"
+                        >
+                            <span className="font-bold text-white text-lg">{res}</span>
+                            <span className="text-slate-500 group-hover:text-indigo-400 text-2xl">→</span>
+                        </button>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+}
+
 // --- Main App Component ---
 
 export default function App() {
@@ -552,6 +579,9 @@ export default function App() {
   const [pendingUsers, setPendingUsers] = useState<RegisteredUser[]>([]);
   const [users, setUsers] = useState<RegisteredUser[]>([]);
   const [loading, setLoading] = useState(false);
+  
+  // Multi-residency State
+  const [selectedResidence, setSelectedResidence] = useState<string | null>(null);
   
   // UI State
   const [tab, setTab] = useState<'dashboard' | 'tasks' | 'directory' | 'ledger'>('dashboard');
@@ -581,14 +611,14 @@ export default function App() {
   };
 
   const refreshData = useCallback(async () => {
-    if (!user) return;
+    if (!user || !selectedResidence) return;
     setLoading(true);
     try {
         const [t, l, p, u] = await Promise.all([
-            api.readTasks(),
-            api.readLedger(),
-            api.getPendingUsers(),
-            api.getDirectory()
+            api.readTasks(selectedResidence),
+            api.readLedger(selectedResidence),
+            api.getPendingUsers(selectedResidence),
+            api.getDirectory(selectedResidence)
         ]);
         setTasks(t);
         setLedger(l);
@@ -599,19 +629,39 @@ export default function App() {
     } finally {
         setLoading(false);
     }
-  }, [user]);
+  }, [user, selectedResidence]);
 
+  // Handle Residence Selection Logic
   useEffect(() => {
     if (user) {
-        refreshData();
+        if (user.role === 'admin') {
+            // Admin must select residence manually (reset to null on login if not already set)
+            // But we don't want to reset if they just refreshed page, so we keep state if exists?
+            // For now, prompt admin every time "user" changes (login) if no state.
+            if (!selectedResidence) {
+                // Do nothing, wait for AdminResidenceSelector
+            } else {
+                 refreshData();
+            }
+        } else {
+            // Standard user is locked to their profile residence
+            if (user.residence !== selectedResidence) {
+                setSelectedResidence(user.residence);
+            } else {
+                refreshData();
+            }
+        }
+        
         if (user.role === 'council' || user.role === 'admin') setTab('dashboard');
+    } else {
+        setSelectedResidence(null);
     }
-  }, [user, refreshData]);
+  }, [user, refreshData, selectedResidence]);
 
   // --- Actions ---
 
   const handleCreateTask = async () => {
-    if (!user) return;
+    if (!user || !selectedResidence) return;
     try {
         await api.createTask({
             title: newTaskTitle,
@@ -623,7 +673,7 @@ export default function App() {
             warrantyDays: Number(newTaskWarranty),
             status: 'pending',
             photo: newTaskPhoto || undefined
-        }, user.id);
+        }, user.id, selectedResidence);
         
         notify("Demande créée", "En attente de validation par le Conseil Syndical.", "success");
         setPreviewTask(null);
@@ -648,7 +698,7 @@ export default function App() {
   };
 
   const handleApproveTask = async (task: Task) => {
-      if (!user) return;
+      if (!user || !selectedResidence) return;
       try {
           // Admin bypass
           if (user.role === 'admin') {
@@ -662,7 +712,7 @@ export default function App() {
           await api.addApproval(task.id, user.id);
           // Check if we reached threshold (optimistic check, ideally backend handles this)
           // We reload data to check count
-          const updatedTasks = await api.readTasks();
+          const updatedTasks = await api.readTasks(selectedResidence);
           const updatedTask = updatedTasks.find(t => t.id === task.id);
           
           if (updatedTask && updatedTask.approvals.length >= COUNCIL_MIN_APPROVALS) {
@@ -742,7 +792,7 @@ export default function App() {
   };
 
   const handleComplete = async (task: Task) => {
-      if (!user) return;
+      if (!user || !selectedResidence) return;
       try {
           await api.updateTaskStatus(task.id, 'completed', { validatedBy: user.email });
           
@@ -755,7 +805,7 @@ export default function App() {
                   payerId: null, // System/Copro
                   payeeId: task.awardedToId || task.bids.find(b => b.by === task.awardedTo)?.userId, // Need UUID
                   amount: task.awardedAmount
-              });
+              }, selectedResidence);
           } else {
               // 1. Private: Payer is Creator, Payee is Worker
                await api.createLedgerEntry({
@@ -764,7 +814,7 @@ export default function App() {
                   payerId: task.createdById,
                   payeeId: task.awardedToId || task.bids.find(b => b.by === task.awardedTo)?.userId,
                   amount: task.awardedAmount
-              });
+              }, selectedResidence);
           }
 
           notify("Terminé !", "Travaux validés et écritures comptables générées.", "success");
@@ -891,8 +941,14 @@ export default function App() {
       );
   }
 
-  // --- RENDER MAIN APP ---
+  // --- RENDER ADMIN SELECTOR OR MAIN APP ---
   
+  // If user is Admin and has NOT selected a residence yet, show the selector
+  if (user.role === 'admin' && !selectedResidence) {
+      return <AdminResidenceSelector onSelect={setSelectedResidence} />;
+  }
+
+  // Standard Render Logic
   const activeTasks = tasks.filter(t => ['open', 'awarded', 'verification'].includes(t.status));
   const completedTasks = tasks.filter(t => t.status === 'completed');
   const pendingTasks = tasks.filter(t => t.status === 'pending');
@@ -908,6 +964,11 @@ export default function App() {
         <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-black tracking-tighter text-white">CoproSmart<span className="text-indigo-500">.</span></h1>
+            {user.role === 'admin' && selectedResidence && (
+                <button onClick={() => setSelectedResidence(null)} className="hidden md:block bg-indigo-900/30 hover:bg-indigo-900/50 text-indigo-300 text-xs px-2 py-1 rounded border border-indigo-500/30 transition-colors">
+                    {selectedResidence} 🔄
+                </button>
+            )}
             {loading && <span className="animate-spin text-indigo-500">⟳</span>}
           </div>
           

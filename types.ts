@@ -10,6 +10,7 @@ export interface User {
   firstName: string;
   lastName: string;
   role: UserRole;
+  residence: string;
 }
 
 export interface RegisteredUser extends User {
@@ -25,6 +26,7 @@ export interface Me {
   firstName: string;
   lastName: string;
   role: UserRole;
+  residence: string;
 }
 
 export interface Bid {
@@ -69,6 +71,7 @@ export interface Task {
   startingPrice: number;
   warrantyDays: number;
   status: TaskStatus;
+  residence: string;
   createdBy: string; // Email for display
   createdById?: string; // UUID
   createdAt: string;
@@ -89,6 +92,7 @@ export interface Task {
 export interface LedgerEntry {
   id?: string;
   taskId: string;
+  residence: string;
   type: "charge_credit" | "apartment_payment";
   payer: string;
   payee: string;

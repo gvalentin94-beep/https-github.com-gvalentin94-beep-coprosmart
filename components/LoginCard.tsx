@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { api } from '../services/api';
 import type { User, UserRole } from '../types';
-import { ROLES } from '../constants';
+import { ROLES, RESIDENCES } from '../constants';
 import { Button, Card, CardContent, CardHeader, CardTitle, Input, Label, Select } from './ui';
 
 interface LoginCardProps {
@@ -17,7 +17,7 @@ export function LoginCard({ onLogin }: LoginCardProps) {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [role, setRole] = useState<UserRole>("owner");
-  const [residence, setResidence] = useState("Résidence Watteau");
+  const [residence, setResidence] = useState(RESIDENCES[0]);
   
   // Identity fields
   const [firstName, setFirstName] = useState("");
@@ -50,7 +50,7 @@ export function LoginCard({ onLogin }: LoginCardProps) {
     setPassword("");
     setConfirmPassword("");
     setRole("owner");
-    setResidence("Résidence Watteau");
+    setResidence(RESIDENCES[0]);
     setFirstName("");
     setLastName("");
     setErr("");
@@ -75,7 +75,7 @@ export function LoginCard({ onLogin }: LoginCardProps) {
     try {
       setErr("");
       // REVERTED: Standard pending status only
-      await api.signUp(email.trim(), password, role, firstName.trim(), lastName.trim());
+      await api.signUp(email.trim(), password, role, firstName.trim(), lastName.trim(), residence);
       
       setSuccessMsg("Compte créé ! En attente de validation par le Conseil Syndical.");
       setTimeout(() => {
@@ -235,7 +235,7 @@ export function LoginCard({ onLogin }: LoginCardProps) {
                         onChange={(e) => setResidence(e.target.value)}
                         className="!bg-white !text-slate-900"
                     >
-                        <option value="Résidence Watteau">Résidence Watteau</option>
+                        {RESIDENCES.map(r => <option key={r} value={r}>{r}</option>)}
                     </Select>
                     </div>
                     <div className="space-y-1.5">

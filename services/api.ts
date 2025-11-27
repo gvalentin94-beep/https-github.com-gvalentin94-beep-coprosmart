@@ -29,6 +29,7 @@ const mapProfile = (p: any): RegisteredUser => ({
     firstName: p.first_name,
     lastName: p.last_name,
     role: p.role,
+    residence: p.residence,
     status: p.status,
     avatar: p.avatar
 });
@@ -43,6 +44,7 @@ const mapTask = (t: any): Task => ({
     startingPrice: t.starting_price,
     warrantyDays: t.warranty_days,
     status: t.status,
+    residence: t.residence,
     createdBy: t.created_by_profile?.email || 'Unknown',
     createdById: t.created_by,
     createdAt: t.created_at,
@@ -94,6 +96,7 @@ const mapTask = (t: any): Task => ({
 const mapLedger = (l: any): LedgerEntry => ({
     id: l.id,
     taskId: l.task_id,
+    residence: l.residence,
     type: l.type,
     payer: l.payer_profile?.email || (l.type === 'charge_credit' ? 'Copro' : 'Unknown'),
     payee: l.payee_profile?.email || 'Unknown',
@@ -130,7 +133,8 @@ export const useAuth = () => {
                             email: profile.email,
                             firstName: profile.first_name,
                             lastName: profile.last_name,
-                            role: profile.role
+                            role: profile.role,
+                            residence: profile.residence
                         });
                     }
                 }
@@ -159,7 +163,7 @@ export const api = {
     
     // --- AUTH ---
     
-    signUp: async (email: string, password: string, role: UserRole, firstName: string, lastName: string): Promise<UserStatus> => {
+    signUp: async (email: string, password: string, role: UserRole, firstName: string, lastName: string, residence: string): Promise<UserStatus> => {
         if (!supabaseUrl) throw new Error("La base de données n'est pas connectée.");
         
         // 1. Create Auth User
@@ -177,6 +181,7 @@ export const api = {
             first_name: firstName,
             last_name: lastName,
             role: role,
+            residence: residence,
             status: 'pending' // Always pending by default
         });
         if (profileError) throw profileError;
@@ -198,12 +203,15 @@ export const api = {
             
         // AUTO-REPAIR: If profile is missing (e.g. RLS failure during signup), create it now
         if (!profile) {
+            // Default to first residence if unknown during repair
+            const defaultRes = "Résidence Watteau";
             const { error: insertError } = await supabase.from('profiles').insert({
                 id: data.user.id,
                 email: email,
                 first_name: '', 
                 last_name: '',
                 role: 'owner',
+                residence: defaultRes,
                 status: 'pending'
             });
             
@@ -229,7 +237,8 @@ export const api = {
             email: profile.email,
             firstName: profile.first_name,
             lastName: profile.last_name,
-            role: profile.role
+            role: profile.role,
+            residence: profile.residence
         };
     },
     
@@ -256,7 +265,8 @@ export const api = {
 
     // --- DATA ---
 
-    readTasks: async (): Promise<Task[]> => {
+    // Modified to filter by residence
+    readTasks: async (residence: string): Promise<Task[]> => {
         if (!supabaseUrl) return [];
 
         const { data, error } = await supabase
@@ -272,6 +282,7 @@ export const api = {
                 ratings(*),
                 deleted_ratings(*, deleter_profile:deleted_by(email))
             `)
+            .eq('residence', residence)
             .order('created_at', { ascending: false });
         
         if (error) {
@@ -281,7 +292,7 @@ export const api = {
         return data.map(mapTask);
     },
 
-    createTask: async (task: Partial<Task>, userId: string): Promise<string> => {
+    createTask: async (task: Partial<Task>, userId: string, residence: string): Promise<string> => {
         const { data, error } = await supabase.from('tasks').insert({
             title: task.title,
             category: task.category,
@@ -292,6 +303,7 @@ export const api = {
             warranty_days: task.warrantyDays,
             status: task.status,
             created_by: userId,
+            residence: residence, // Ensure task is created in user's residence
             photo: task.photo
         }).select('id').single();
         
@@ -369,7 +381,7 @@ export const api = {
     },
 
     // --- LEDGER ---
-    readLedger: async (): Promise<LedgerEntry[]> => {
+    readLedger: async (residence: string): Promise<LedgerEntry[]> => {
         if (!supabaseUrl) return [];
         
         const { data, error } = await supabase
@@ -380,14 +392,16 @@ export const api = {
                 payee_profile:payee_id(email),
                 tasks(title, created_by_profile:created_by(email))
             `)
+            .eq('residence', residence)
             .order('created_at', { ascending: false });
         if (error) return [];
         return data.map(mapLedger);
     },
 
-    createLedgerEntry: async (entry: any): Promise<void> => {
+    createLedgerEntry: async (entry: any, residence: string): Promise<void> => {
         const { error } = await supabase.from('ledger').insert({
             task_id: entry.taskId,
+            residence: residence,
             type: entry.type,
             payer_id: entry.payerId,
             payee_id: entry.payeeId,
@@ -403,9 +417,13 @@ export const api = {
 
     // --- USER MANAGEMENT ---
     
-    getPendingUsers: async (): Promise<RegisteredUser[]> => {
+    getPendingUsers: async (residence: string): Promise<RegisteredUser[]> => {
         if (!supabaseUrl) return [];
-        const { data } = await supabase.from('profiles').select('*').eq('status', 'pending');
+        const { data } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('status', 'pending')
+            .eq('residence', residence);
         return (data || []).map(mapProfile);
     },
     
@@ -494,9 +512,13 @@ export const api = {
         }
     },
 
-    getDirectory: async (): Promise<RegisteredUser[]> => {
+    getDirectory: async (residence: string): Promise<RegisteredUser[]> => {
         if (!supabaseUrl) return [];
-        const { data } = await supabase.from('profiles').select('*').order('last_name');
+        const { data } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('residence', residence)
+            .order('last_name');
         return (data || []).map(mapProfile);
     },
 

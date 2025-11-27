@@ -123,7 +123,6 @@ export interface TaskCardProps {
   onComplete: () => void;
   onRate: (rating: Omit<Rating, 'at' | 'byHash'>) => void;
   onDeleteRating?: (taskId: string, ratingIndex: number) => void;
-  onPayApartment: () => void;
   onDelete: () => void;
   canDelete: boolean;
   onApprove?: () => void;

@@ -494,4 +494,728 @@ function UserDirectory({ users, tasks, me, onBan, onRestore, onUpdateUser, onDel
                             {/* Role: ONLY ADMIN can change role */}
                             {me.role === 'admin' && (
                                 <div className="space-y-1.5">
-                                    <
+                                    <Label>Rôle</Label>
+                                    <Select 
+                                        value={editRole} 
+                                        onChange={(e) => setEditRole(e.target.value as UserRole)}
+                                    >
+                                        {ROLES.map((r: any) => <option key={r.id} value={r.id}>{r.label}</option>)}
+                                    </Select>
+                                </div>
+                            )}
+
+                            <div className="flex gap-2 pt-2">
+                                <Button className="flex-1 bg-indigo-600" onClick={handleSaveUser}>Enregistrer</Button>
+                                <Button variant="outline" className="flex-1" onClick={() => setEditingUser(null)}>Annuler</Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+            )}
+
+            {/* Invite Modal */}
+            {isInviting && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+                    <Card className="w-full max-w-md bg-slate-900 border-slate-700">
+                        <CardHeader><CardTitle>Inviter un résident</CardTitle></CardHeader>
+                        <CardContent className="space-y-4">
+                            <p className="text-sm text-slate-400">Un email sera envoyé avec les instructions pour rejoindre la copropriété.</p>
+                            <div className="space-y-1.5">
+                                <Label>Email</Label>
+                                <Input 
+                                    type="email" 
+                                    value={inviteEmail} 
+                                    onChange={(e) => setInviteEmail(e.target.value)} 
+                                    placeholder="voisin@exemple.com"
+                                />
+                            </div>
+                            <div className="flex gap-2 pt-2">
+                                <Button className="flex-1 bg-indigo-600" onClick={handleInviteUserSubmit}>Envoyer l'invitation</Button>
+                                <Button variant="outline" className="flex-1" onClick={() => setIsInviting(false)}>Annuler</Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+            )}
+        </div>
+    );
+}
+
+// --- Main App Component ---
+
+export default function App() {
+  const { user, setUser, loading: authLoading } = useAuth();
+  
+  // Data State
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [ledger, setLedger] = useState<LedgerEntry[]>([]);
+  const [pendingUsers, setPendingUsers] = useState<RegisteredUser[]>([]);
+  const [users, setUsers] = useState<RegisteredUser[]>([]);
+  const [loading, setLoading] = useState(false);
+  
+  // UI State
+  const [tab, setTab] = useState<'dashboard' | 'tasks' | 'directory' | 'ledger'>('dashboard');
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  
+  // Create Task Form State
+  const [newTaskTitle, setNewTaskTitle] = useState("");
+  const [newTaskCategory, setNewTaskCategory] = useState<TaskCategory>("ampoule");
+  const [newTaskScope, setNewTaskScope] = useState<TaskScope>("copro");
+  const [newTaskLocation, setNewTaskLocation] = useState(LOCATIONS[0]);
+  const [newTaskDetails, setNewTaskDetails] = useState("");
+  const [newTaskPrice, setNewTaskPrice] = useState("20");
+  const [newTaskWarranty, setNewTaskWarranty] = useState("0");
+  const [newTaskPhoto, setNewTaskPhoto] = useState<string | null>(null);
+
+  const [previewTask, setPreviewTask] = useState<Partial<Task> | null>(null);
+
+  // Derived State
+  const usersMap = useMemo(() => {
+    return users.reduce((acc, u) => ({ ...acc, [u.email]: `${u.firstName} ${u.lastName}` }), {} as Record<string, string>);
+  }, [users]);
+
+  const notify = (title: string, message: string, type: 'success' | 'error' | 'info' = 'info') => {
+    const id = Math.random().toString(36).substring(7);
+    setToasts(prev => [...prev, { id, title, message, type }]);
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 5000);
+  };
+
+  const refreshData = useCallback(async () => {
+    if (!user) return;
+    setLoading(true);
+    try {
+        const [t, l, p, u] = await Promise.all([
+            api.readTasks(),
+            api.readLedger(),
+            api.getPendingUsers(),
+            api.getDirectory()
+        ]);
+        setTasks(t);
+        setLedger(l);
+        setPendingUsers(p);
+        setUsers(u);
+    } catch (e) {
+        console.error(e);
+    } finally {
+        setLoading(false);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (user) {
+        refreshData();
+        if (user.role === 'council' || user.role === 'admin') setTab('dashboard');
+    }
+  }, [user, refreshData]);
+
+  // --- Actions ---
+
+  const handleCreateTask = async () => {
+    if (!user) return;
+    try {
+        await api.createTask({
+            title: newTaskTitle,
+            category: newTaskCategory,
+            scope: newTaskScope,
+            location: newTaskLocation,
+            details: newTaskDetails,
+            startingPrice: Number(newTaskPrice),
+            warrantyDays: Number(newTaskWarranty),
+            status: 'pending',
+            photo: newTaskPhoto || undefined
+        }, user.id);
+        
+        notify("Demande créée", "En attente de validation par le Conseil Syndical.", "success");
+        setPreviewTask(null);
+        // Reset form
+        setNewTaskTitle(""); setNewTaskDetails(""); setNewTaskPrice("20"); setNewTaskPhoto(null);
+        refreshData();
+        setTab('tasks');
+    } catch (e) {
+        notify("Erreur", "Impossible de créer la demande.", "error");
+    }
+  };
+
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (file) {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+              setNewTaskPhoto(reader.result as string);
+          };
+          reader.readAsDataURL(file);
+      }
+  };
+
+  const handleApproveTask = async (task: Task) => {
+      if (!user) return;
+      try {
+          // Admin bypass
+          if (user.role === 'admin') {
+              await api.updateTaskStatus(task.id, 'open', { biddingStartedAt: new Date().toISOString() });
+              notify("Validé", "La demande est ouverte aux offres (Admin).", "success");
+              refreshData();
+              return;
+          }
+
+          // Council Vote Logic
+          await api.addApproval(task.id, user.id);
+          // Check if we reached threshold (optimistic check, ideally backend handles this)
+          // We reload data to check count
+          const updatedTasks = await api.readTasks();
+          const updatedTask = updatedTasks.find(t => t.id === task.id);
+          
+          if (updatedTask && updatedTask.approvals.length >= COUNCIL_MIN_APPROVALS) {
+               await api.updateTaskStatus(task.id, 'open', { biddingStartedAt: new Date().toISOString() });
+               notify("Validé", "La demande est maintenant ouverte aux offres !", "success");
+          } else {
+               notify("Voté", "Votre validation a été enregistrée.", "success");
+          }
+          refreshData();
+      } catch (e) {
+          notify("Erreur", "Impossible de valider.", "error");
+      }
+  };
+
+  const handleRejectTask = async (task: Task) => {
+      if (!user) return;
+      try {
+           await api.addRejection(task.id, user.id);
+           await api.updateTaskStatus(task.id, 'rejected');
+           notify("Rejeté", "La demande a été refusée.", "info");
+           refreshData();
+      } catch (e) {
+           notify("Erreur", "Impossible de rejeter.", "error");
+      }
+  };
+
+  const handleBid = async (task: Task, bid: Omit<Bid, 'by' | 'at'>) => {
+    if (!user) return;
+    try {
+        await api.addBid(task.id, bid, user.id);
+        notify("Offre envoyée", `Votre offre de ${bid.amount}€ a été enregistrée.`, "success");
+        refreshData();
+    } catch (e) {
+        notify("Erreur", "Impossible d'envoyer l'offre.", "error");
+    }
+  };
+
+  const handleAward = async (task: Task) => {
+      if (!user) return;
+      // Logic: Find lowest bid
+      if (!task.bids || task.bids.length === 0) return;
+      
+      const winningBid = task.bids.reduce((min, b) => b.amount < min.amount ? b : min, task.bids[0]);
+      
+      try {
+          await api.updateTaskStatus(task.id, 'awarded', { 
+              awardedTo: winningBid.by, // Storing Email for now as per schema
+              awardedAmount: winningBid.amount 
+          });
+          
+          // Notify Winner
+          await api.inviteUser(winningBid.by, "CoproSmart (Notification)"); // Reusing invite for simple notif
+          
+          notify("Attribué !", `Mission confiée à ${usersMap[winningBid.by] || winningBid.by} pour ${winningBid.amount}€.`, "success");
+          refreshData();
+      } catch (e) {
+          notify("Erreur", "Attribution échouée.", "error");
+      }
+  };
+  
+  const handleRequestVerification = async (task: Task) => {
+      try {
+          await api.updateTaskStatus(task.id, 'verification');
+          notify("Envoyé", "Le Conseil Syndical va vérifier les travaux.", "success");
+          refreshData();
+      } catch (e) { notify("Erreur", "Action impossible", "error"); }
+  };
+
+  const handleRejectWork = async (task: Task) => {
+      try {
+          // Logic: Revert to awarded status? Or keep in verification with a flag?
+          // Simple: Revert to 'awarded' so worker can fix.
+          await api.updateTaskStatus(task.id, 'awarded'); 
+          notify("Refusé", "Le travail a été refusé. L'intervenant doit corriger.", "error");
+          refreshData();
+      } catch (e) { notify("Erreur", "Action impossible", "error"); }
+  };
+
+  const handleComplete = async (task: Task) => {
+      if (!user) return;
+      try {
+          await api.updateTaskStatus(task.id, 'completed', { validatedBy: user.email });
+          
+          // GENERATE LEDGER ENTRIES
+          if (task.scope === 'copro') {
+              // 1. Credit the worker (Charge Credit)
+              await api.createLedgerEntry({
+                  taskId: task.id,
+                  type: 'charge_credit',
+                  payerId: null, // System/Copro
+                  payeeId: task.awardedToId || task.bids.find(b => b.by === task.awardedTo)?.userId, // Need UUID
+                  amount: task.awardedAmount
+              });
+          } else {
+              // 1. Private: Payer is Creator, Payee is Worker
+               await api.createLedgerEntry({
+                  taskId: task.id,
+                  type: 'apartment_payment',
+                  payerId: task.createdById,
+                  payeeId: task.awardedToId || task.bids.find(b => b.by === task.awardedTo)?.userId,
+                  amount: task.awardedAmount
+              });
+          }
+
+          notify("Terminé !", "Travaux validés et écritures comptables générées.", "success");
+          refreshData();
+      } catch (e) {
+          notify("Erreur", "Validation échouée.", "error");
+      }
+  };
+
+  const handleRate = async (task: Task, rating: Omit<Rating, 'at' | 'byHash'>) => {
+      if (!user) return;
+      try {
+          await api.addRating(task.id, rating, user.id);
+          notify("Merci", "Votre avis a été enregistré.", "success");
+          refreshData();
+      } catch (e) { notify("Erreur", "Impossible de noter.", "error"); }
+  };
+
+  const handleDeleteRating = async (taskId: string, idx: number) => {
+      if (!user) return;
+      if (confirm("Supprimer cet avis ?")) {
+          await api.deleteRating(taskId, idx, user.id);
+          refreshData();
+      }
+  };
+
+  const handleDeleteTask = async (task: Task) => {
+      if (confirm("Êtes-vous sûr de vouloir supprimer cette demande ?")) {
+          try {
+              await api.deleteTask(task.id);
+              notify("Supprimé", "La demande a été effacée.", "info");
+              refreshData();
+          } catch (e) { notify("Erreur", "Suppression impossible.", "error"); }
+      }
+  };
+
+  const handleApproveUser = async (email: string) => {
+      try {
+          await api.approveUser(email);
+          notify("Utilisateur validé", `${email} a rejoint la copropriété.`, "success");
+          refreshData();
+      } catch (e: any) { notify("Erreur", e.message, "error"); }
+  };
+
+  const handleRejectUser = async (email: string) => {
+      if(confirm(`Rejeter l'inscription de ${email} ?`)) {
+        try {
+            await api.rejectUser(email);
+            notify("Utilisateur rejeté", `${email} a été refusé.`, "info");
+            refreshData();
+        } catch (e: any) { notify("Erreur", e.message, "error"); }
+      }
+  };
+  
+  const handleBanUser = async (email: string) => {
+      if (confirm(`Bannir ${email} ? Il ne pourra plus se connecter.`)) {
+          try {
+              await api.updateUserStatus(email, 'rejected'); // or 'deleted' but rejected keeps record
+              notify("Banni", "L'accès a été révoqué.", "info");
+              refreshData();
+          } catch (e: any) { notify("Erreur", e.message, "error"); }
+      }
+  };
+
+  const handleRestoreUser = async (email: string) => {
+      try {
+          await api.updateUserStatus(email, 'active');
+          notify("Rétabli", "L'accès a été restauré.", "success");
+          refreshData();
+      } catch (e: any) { notify("Erreur", e.message, "error"); }
+  };
+  
+  const handlePermanentlyDeleteUser = async (email: string) => {
+      if(confirm(`SUPPRIMER DÉFINITIVEMENT ${email} ? Cette action est irréversible.`)) {
+          try {
+              await api.deleteUserProfile(email);
+              notify("Supprimé", "Compte supprimé définitivement.", "info");
+              refreshData();
+          } catch (e: any) { notify("Erreur", e.message, "error"); }
+      }
+  };
+  
+  const handleInviteUser = async (email: string) => {
+        try {
+            await api.inviteUser(email, `${user!.firstName} ${user!.lastName}`);
+            notify("Invitation envoyée", `Un email a été envoyé à ${email}`, "success");
+        } catch (e: any) {
+            console.error(e);
+            let msg = e.message || "Erreur inconnue";
+            if (msg.toLowerCase().includes("api key")) {
+                msg = "Clé API invalide. Vérifiez la configuration Vercel (RESEND_API_KEY).";
+            }
+            notify("Erreur d'envoi", msg, "error");
+        }
+  };
+
+  const handleUpdateUser = async (email: string, updates: any) => {
+      try {
+          await api.updateUser(email, updates);
+          notify("Profil mis à jour", "Les modifications ont été enregistrées.", "success");
+          refreshData();
+          // If we updated ourselves, refresh auth context potentially? 
+          // For now, page refresh might be needed for deep changes, but name/avatar updates reflects in 'users' list.
+      } catch (e: any) { notify("Erreur", e.message, "error"); }
+  };
+  
+  const handleDeleteLedgerEntry = async (id: string) => {
+      if (confirm("Supprimer cette écriture comptable ?")) {
+          try {
+              await api.deleteLedgerEntry(id);
+              refreshData();
+          } catch (e) { notify("Erreur", "Impossible de supprimer.", "error"); }
+      }
+  };
+
+  if (authLoading) return <div className="h-screen w-full flex items-center justify-center bg-slate-950 text-indigo-500">Chargement...</div>;
+
+  if (!user) {
+      return (
+          <>
+            <LoginCard onLogin={setUser} />
+            <div className="fixed bottom-2 right-2 text-[10px] text-slate-700 font-mono">v{import.meta.env.PACKAGE_VERSION || '0.2.26'}</div>
+          </>
+      );
+  }
+
+  // --- RENDER MAIN APP ---
+  
+  const activeTasks = tasks.filter(t => ['open', 'awarded', 'verification'].includes(t.status));
+  const completedTasks = tasks.filter(t => t.status === 'completed');
+  const pendingTasks = tasks.filter(t => t.status === 'pending');
+  
+  const myPendingActionCount = pendingTasks.length + tasks.filter(t => t.status === 'verification' && (user.role === 'council' || user.role === 'admin')).length;
+
+  return (
+    <div className="min-h-screen bg-slate-950 text-slate-200 pb-20 md:pb-0 font-sans selection:bg-indigo-500/30">
+      <ToastContainer toasts={toasts} onClose={(id) => setToasts(prev => prev.filter(t => t.id !== id))} />
+
+      {/* HEADER */}
+      <header className="sticky top-0 z-40 bg-slate-900/80 backdrop-blur-md border-b border-slate-800 shadow-lg">
+        <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-black tracking-tighter text-white">CoproSmart<span className="text-indigo-500">.</span></h1>
+            {loading && <span className="animate-spin text-indigo-500">⟳</span>}
+          </div>
+          
+          <div className="flex items-center gap-4">
+             <div className="text-right hidden sm:block leading-tight">
+                 <div className="text-sm font-bold text-white">{user.firstName} {user.lastName}</div>
+                 <div className="flex justify-end gap-1 mt-0.5">
+                     {user.role === 'council' ? (
+                         <>
+                             <Badge className="bg-amber-500 text-slate-900 border-none text-[9px] py-0">Conseil Syndical</Badge>
+                             <Badge className="bg-slate-700 text-slate-300 border-none text-[9px] py-0">Copropriétaire</Badge>
+                         </>
+                     ) : (
+                         <Badge className="bg-slate-700 text-slate-300 border-none text-[10px] py-0">{ROLES.find((r: any) => r.id === user.role)?.label}</Badge>
+                     )}
+                 </div>
+             </div>
+             <Button size="sm" variant="ghost" onClick={() => { api.logout(); setUser(null); }} className="text-slate-400 hover:text-white">
+                Déconnexion
+             </Button>
+          </div>
+        </div>
+      </header>
+
+      {/* MOBILE NAV */}
+      <nav className="md:hidden fixed bottom-0 left-0 w-full bg-slate-900 border-t border-slate-800 z-50 flex justify-around p-2 pb-safe">
+        <button onClick={() => setTab('dashboard')} className={`flex flex-col items-center p-2 text-xs ${tab === 'dashboard' ? 'text-indigo-400 font-bold' : 'text-slate-500'}`}>
+            <span className="text-lg">🏠</span> Accueil
+        </button>
+        <button onClick={() => setTab('tasks')} className={`flex flex-col items-center p-2 text-xs ${tab === 'tasks' ? 'text-indigo-400 font-bold' : 'text-slate-500'}`}>
+            <span className="text-lg">📋</span> Demandes
+        </button>
+        <button onClick={() => setTab('directory')} className={`flex flex-col items-center p-2 text-xs ${tab === 'directory' ? 'text-indigo-400 font-bold' : 'text-slate-500'}`}>
+            <span className="text-lg">👥</span> Annuaire
+        </button>
+        <button onClick={() => setTab('ledger')} className={`flex flex-col items-center p-2 text-xs ${tab === 'ledger' ? 'text-indigo-400 font-bold' : 'text-slate-500'}`}>
+            <span className="text-lg">📒</span> Comptes
+        </button>
+      </nav>
+
+      {/* DESKTOP NAV */}
+      <div className="hidden md:block bg-slate-900 border-b border-slate-800">
+          <div className="max-w-5xl mx-auto px-4 flex gap-8 text-sm">
+             <button onClick={() => setTab('dashboard')} className={`py-3 border-b-2 transition-colors ${tab === 'dashboard' ? 'border-indigo-500 text-white font-bold' : 'border-transparent text-slate-400 hover:text-white'}`}>Tableau de bord</button>
+             <button onClick={() => setTab('tasks')} className={`py-3 border-b-2 transition-colors ${tab === 'tasks' ? 'border-indigo-500 text-white font-bold' : 'border-transparent text-slate-400 hover:text-white'}`}>Toutes les demandes</button>
+             <button onClick={() => setTab('directory')} className={`py-3 border-b-2 transition-colors ${tab === 'directory' ? 'border-indigo-500 text-white font-bold' : 'border-transparent text-slate-400 hover:text-white'}`}>Annuaire</button>
+             <button onClick={() => setTab('ledger')} className={`py-3 border-b-2 transition-colors ${tab === 'ledger' ? 'border-indigo-500 text-white font-bold' : 'border-transparent text-slate-400 hover:text-white'}`}>Comptabilité</button>
+          </div>
+      </div>
+
+      {/* MAIN CONTENT */}
+      <main className="max-w-5xl mx-auto p-4 md:p-6 space-y-8 animate-in fade-in duration-500">
+        
+        {/* DASHBOARD TAB */}
+        {tab === 'dashboard' && (
+            <>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <Card className="md:col-span-2 bg-gradient-to-br from-indigo-900/50 to-slate-900 border-indigo-500/30">
+                        <CardHeader><CardTitle>👋 Bonjour {user.firstName}</CardTitle></CardHeader>
+                        <CardContent>
+                            <div className="flex gap-4">
+                                <div className="flex-1 bg-slate-900/50 p-3 rounded-lg border border-slate-700">
+                                    <div className="text-2xl font-black text-white">{activeTasks.length}</div>
+                                    <div className="text-xs text-slate-400 uppercase font-bold tracking-wider">En cours</div>
+                                </div>
+                                <div className="flex-1 bg-slate-900/50 p-3 rounded-lg border border-slate-700">
+                                    <div className="text-2xl font-black text-emerald-400">{completedTasks.length}</div>
+                                    <div className="text-xs text-slate-400 uppercase font-bold tracking-wider">Terminées</div>
+                                </div>
+                                {(user.role === 'council' || user.role === 'admin') && (
+                                    <div className={`flex-1 p-3 rounded-lg border ${pendingUsers.length > 0 ? 'bg-amber-900/20 border-amber-500/50 animate-pulse' : 'bg-slate-900/50 border-slate-700'}`}>
+                                        <div className={`text-2xl font-black ${pendingUsers.length > 0 ? 'text-amber-400' : 'text-slate-500'}`}>{pendingUsers.length}</div>
+                                        <div className="text-xs text-slate-400 uppercase font-bold tracking-wider">Inscriptions</div>
+                                    </div>
+                                )}
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <Card className="bg-slate-800/50 border-slate-700">
+                        <CardHeader><CardTitle>Besoin d'aide ?</CardTitle></CardHeader>
+                        <CardContent>
+                            <p className="text-sm text-slate-400 mb-4">Signalez un problème dans la copropriété. C'est rapide et utile pour tous.</p>
+                            <Button className="w-full bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/20" onClick={() => setTab('tasks')}>+ Nouvelle demande</Button>
+                        </CardContent>
+                    </Card>
+                </div>
+
+                {(user.role === 'council' || user.role === 'admin') && (
+                     <UserValidationQueue pendingUsers={pendingUsers} onApprove={handleApproveUser} onReject={handleRejectUser} />
+                )}
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    {/* LEFT COL: TASKS IN PROGRESS */}
+                    <Section title="📌 Ça se passe maintenant">
+                         {activeTasks.length === 0 ? (
+                             <Card className="border-dashed border-slate-800 bg-transparent"><CardContent className="text-center text-slate-500 py-8 italic">{OPEN_EMPTY_MESSAGES[Math.floor(Math.random() * OPEN_EMPTY_MESSAGES.length)]}</CardContent></Card>
+                         ) : (
+                             activeTasks.map(t => (
+                                 <TaskCard 
+                                    key={t.id} 
+                                    task={t} 
+                                    me={user} 
+                                    usersMap={usersMap}
+                                    onBid={(b) => handleBid(t, b)}
+                                    onAward={() => handleAward(t)}
+                                    onComplete={() => handleComplete(t)}
+                                    onRate={(r) => handleRate(t, r)}
+                                    onDelete={() => handleDeleteTask(t)}
+                                    canDelete={user.role === 'admin' || (t.createdBy === user.email && t.status === 'open' && (!t.bids || t.bids.length === 0))}
+                                    onRequestVerification={() => handleRequestVerification(t)}
+                                    onRejectWork={() => handleRejectWork(t)}
+                                 />
+                             ))
+                         )}
+                    </Section>
+
+                    {/* RIGHT COL: VALIDATION & HISTORY */}
+                    <div className="space-y-8">
+                        {(pendingTasks.length > 0) && (
+                            <Section title={`⚖️ À valider (${pendingTasks.length})`}>
+                                {pendingTasks.map(t => (
+                                    <TaskCard 
+                                        key={t.id} 
+                                        task={t} 
+                                        me={user}
+                                        usersMap={usersMap}
+                                        onBid={() => {}}
+                                        onAward={() => {}}
+                                        onComplete={() => {}}
+                                        onRate={() => {}}
+                                        onDelete={() => handleDeleteTask(t)}
+                                        canDelete={user.role === 'admin' || t.createdBy === user.email}
+                                        onApprove={() => handleApproveTask(t)}
+                                        onReject={() => handleRejectTask(t)}
+                                    />
+                                ))}
+                            </Section>
+                        )}
+                        
+                        <Section title="✅ Récemment terminé">
+                            {completedTasks.slice(0, 3).map(t => (
+                                 <TaskCard 
+                                    key={t.id} 
+                                    task={t} 
+                                    me={user} 
+                                    usersMap={usersMap}
+                                    onBid={() => {}}
+                                    onAward={() => {}}
+                                    onComplete={() => {}}
+                                    onRate={(r) => handleRate(t, r)}
+                                    onDeleteRating={handleDeleteRating}
+                                    onDelete={() => {}} // Completed tasks usually not deleted
+                                    canDelete={false} 
+                                 />
+                            ))}
+                            {completedTasks.length === 0 && <p className="text-slate-500 italic text-sm">Aucun historique récent.</p>}
+                        </Section>
+                    </div>
+                </div>
+            </>
+        )}
+
+        {/* TASKS TAB (Create & List All) */}
+        {tab === 'tasks' && (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                {/* CREATE FORM */}
+                <div className="lg:col-span-1">
+                    <Card className="bg-slate-900 border-indigo-500/30 sticky top-24">
+                        <CardHeader className="bg-indigo-900/20 border-b border-indigo-500/20">
+                            <CardTitle className="text-indigo-100">✨ Nouvelle demande</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4 pt-4">
+                            <div className="space-y-1.5">
+                                <Label>Titre court</Label>
+                                <Input value={newTaskTitle} onChange={(e) => setNewTaskTitle(e.target.value)} placeholder="Ex: Ampoule hall entrée" maxLength={40} />
+                            </div>
+                            
+                            <div className="grid grid-cols-2 gap-2">
+                                <div className="space-y-1.5">
+                                    <Label>Catégorie</Label>
+                                    <Select value={newTaskCategory} onChange={(e) => setNewTaskCategory(e.target.value as TaskCategory)}>
+                                        {CATEGORIES.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
+                                    </Select>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <Label>Concerne</Label>
+                                    <Select value={newTaskScope} onChange={(e) => setNewTaskScope(e.target.value as TaskScope)}>
+                                        {SCOPES.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
+                                    </Select>
+                                </div>
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <Label>Emplacement</Label>
+                                <Select value={newTaskLocation} onChange={(e) => setNewTaskLocation(e.target.value)}>
+                                    {LOCATIONS.map(l => <option key={l} value={l}>{l}</option>)}
+                                </Select>
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <Label>Détails</Label>
+                                <Textarea value={newTaskDetails} onChange={(e) => setNewTaskDetails(e.target.value)} placeholder="Décrivez le problème..." />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2">
+                                <div className="space-y-1.5">
+                                    <Label>Prix départ (€)</Label>
+                                    <Input type="number" value={newTaskPrice} onChange={(e) => setNewTaskPrice(e.target.value)} max={MAX_TASK_PRICE} />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <Label>Garantie souhaitée</Label>
+                                    <Select value={newTaskWarranty} onChange={(e) => setNewTaskWarranty(e.target.value)}>
+                                        {WARRANTY_OPTIONS.map(w => <option key={w.val} value={w.val}>{w.label}</option>)}
+                                    </Select>
+                                </div>
+                            </div>
+                            
+                            <div className="space-y-1.5">
+                                <Label>Photo (optionnel)</Label>
+                                <Input type="file" accept="image/*" onChange={handlePhotoUpload} className="text-xs file:mr-2 file:py-1 file:px-2 file:rounded-full file:border-0 file:text-xs file:bg-indigo-600 file:text-white hover:file:bg-indigo-500" />
+                            </div>
+
+                            <Button className="w-full mt-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold" onClick={() => setPreviewTask({
+                                title: newTaskTitle,
+                                category: newTaskCategory,
+                                scope: newTaskScope,
+                                location: newTaskLocation,
+                                details: newTaskDetails,
+                                startingPrice: Number(newTaskPrice),
+                                warrantyDays: Number(newTaskWarranty),
+                                photo: newTaskPhoto || undefined
+                            })}>
+                                Vérifier et Publier
+                            </Button>
+                        </CardContent>
+                    </Card>
+                </div>
+
+                {/* LIST */}
+                <div className="lg:col-span-2 space-y-8">
+                     <Section title="Toutes les demandes">
+                        <div className="space-y-4">
+                            {tasks.map(t => (
+                                <TaskCard 
+                                    key={t.id} 
+                                    task={t} 
+                                    me={user} 
+                                    usersMap={usersMap}
+                                    onBid={(b) => handleBid(t, b)}
+                                    onAward={() => handleAward(t)}
+                                    onComplete={() => handleComplete(t)}
+                                    onRate={(r) => handleRate(t, r)}
+                                    onDeleteRating={handleDeleteRating}
+                                    onDelete={() => handleDeleteTask(t)}
+                                    canDelete={user.role === 'admin' || t.createdBy === user.email}
+                                    onApprove={() => handleApproveTask(t)}
+                                    onReject={() => handleRejectTask(t)}
+                                    onRequestVerification={() => handleRequestVerification(t)}
+                                    onRejectWork={() => handleRejectWork(t)}
+                                />
+                            ))}
+                        </div>
+                     </Section>
+                </div>
+            </div>
+        )}
+
+        {/* DIRECTORY TAB */}
+        {tab === 'directory' && (
+            <UserDirectory 
+                users={users} 
+                tasks={tasks} 
+                me={user} 
+                onBan={handleBanUser} 
+                onRestore={handleRestoreUser}
+                onUpdateUser={handleUpdateUser}
+                onDeleteRating={handleDeleteRating}
+                onInviteUser={handleInviteUser}
+                onDeleteUser={handlePermanentlyDeleteUser}
+            />
+        )}
+
+        {/* LEDGER TAB */}
+        {tab === 'ledger' && (
+            <Ledger 
+                entries={ledger} 
+                usersMap={usersMap} 
+                onDelete={handleDeleteLedgerEntry} 
+                isAdmin={user.role === 'admin'} 
+            />
+        )}
+
+      </main>
+
+      {/* FOOTER */}
+      <footer className="mt-20 py-8 text-center text-slate-600 text-xs border-t border-slate-900 bg-slate-950">
+        <p>CoproSmart v{import.meta.env.PACKAGE_VERSION || '0.2.26'} — Simple. Local. Gagnant-Gagnant.</p>
+      </footer>
+
+      {/* PREVIEW MODAL */}
+      {previewTask && (
+          <TaskPreviewModal 
+              task={previewTask} 
+              onConfirm={handleCreateTask} 
+              onCancel={() => setPreviewTask(null)} 
+          />
+      )}
+    </div>
+  );
+}

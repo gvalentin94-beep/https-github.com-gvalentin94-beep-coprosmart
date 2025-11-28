@@ -175,16 +175,35 @@ export const api = {
         if (!data.user) throw new Error("Erreur lors de la création du compte.");
 
         // 2. Create Profile linked to Auth ID
-        const { error: profileError } = await supabase.from('profiles').insert({
-            id: data.user.id,
-            email,
-            first_name: firstName,
-            last_name: lastName,
-            role: role,
-            residence: residence,
-            status: 'pending' // Always pending by default
-        });
-        if (profileError) throw profileError;
+        // Try with residence first
+        try {
+            const { error: profileError } = await supabase.from('profiles').insert({
+                id: data.user.id,
+                email,
+                first_name: firstName,
+                last_name: lastName,
+                role: role,
+                residence: residence,
+                status: 'pending' // Always pending by default
+            });
+            if (profileError) throw profileError;
+        } catch (e: any) {
+            // Fallback: If 'residence' column missing, insert without it
+             if (e.message?.includes('column') || e.code === '42703') {
+                const { error: legacyError } = await supabase.from('profiles').insert({
+                    id: data.user.id,
+                    email,
+                    first_name: firstName,
+                    last_name: lastName,
+                    role: role,
+                    // residence omitted
+                    status: 'pending'
+                });
+                if (legacyError) throw legacyError;
+             } else {
+                 throw e;
+             }
+        }
 
         return 'pending';
     },
@@ -205,7 +224,7 @@ export const api = {
         if (!profile) {
             // Default to first residence if unknown during repair
             const defaultRes = "Résidence Watteau";
-            const { error: insertError } = await supabase.from('profiles').insert({
+            const profilePayload: any = {
                 id: data.user.id,
                 email: email,
                 first_name: '', 
@@ -213,12 +232,18 @@ export const api = {
                 role: 'owner',
                 residence: defaultRes,
                 status: 'pending'
-            });
-            
-            if (!insertError) {
-                const { data: newProfile } = await supabase.from('profiles').select('*').eq('id', data.user.id).single();
-                profile = newProfile;
+            };
+
+            try {
+                await supabase.from('profiles').insert(profilePayload);
+            } catch {
+                // Fallback for missing column
+                delete profilePayload.residence;
+                await supabase.from('profiles').insert(profilePayload);
             }
+            
+            const { data: newProfile } = await supabase.from('profiles').select('*').eq('id', data.user.id).single();
+            profile = newProfile;
         }
 
         if (!profile) throw new Error("Profil introuvable. Contactez l'administrateur.");
@@ -265,11 +290,10 @@ export const api = {
 
     // --- DATA ---
 
-    // Modified to filter by residence (Handling Legacy Nulls)
     readTasks: async (residence: string): Promise<Task[]> => {
         if (!supabaseUrl) return [];
 
-        let query = supabase.from('tasks').select(`
+        const selectQuery = `
                 *,
                 created_by_profile:created_by(email),
                 awarded_to_profile:awarded_to(email),
@@ -279,26 +303,35 @@ export const api = {
                 rejections(*, user_profile:user_id(email)),
                 ratings(*),
                 deleted_ratings(*, deleter_profile:deleted_by(email))
-            `);
+            `;
 
-        // If filtering for "Résidence Watteau", also include legacy rows where residence is null
-        if (residence === "Résidence Watteau") {
-            query = query.or(`residence.eq.Résidence Watteau,residence.is.null`);
-        } else {
-            query = query.eq('residence', residence);
-        }
+        try {
+            // Attempt 1: Filter by residence (Requires DB update)
+            let query = supabase.from('tasks').select(selectQuery);
 
-        const { data, error } = await query.order('created_at', { ascending: false });
-        
-        if (error) {
-            console.error(error);
-            return [];
+            if (residence === "Résidence Watteau") {
+                query = query.or(`residence.eq.Résidence Watteau,residence.is.null`);
+            } else {
+                query = query.eq('residence', residence);
+            }
+
+            const { data, error } = await query.order('created_at', { ascending: false });
+            if (error) throw error;
+            return data.map(mapTask);
+        } catch (e) {
+            // Attempt 2: Fallback to Legacy (No residence column)
+            console.warn("Falling back to legacy task fetch (no residence filter)", e);
+            const { data, error } = await supabase.from('tasks').select(selectQuery).order('created_at', { ascending: false });
+            if (error) {
+                console.error("Fetch tasks failed", error);
+                return [];
+            }
+            return data.map(mapTask);
         }
-        return data.map(mapTask);
     },
 
     createTask: async (task: Partial<Task>, userId: string, residence: string): Promise<string> => {
-        const { data, error } = await supabase.from('tasks').insert({
+        const payload: any = {
             title: task.title,
             category: task.category,
             scope: task.scope,
@@ -310,10 +343,22 @@ export const api = {
             created_by: userId,
             residence: residence, // Ensure task is created in user's residence
             photo: task.photo
-        }).select('id').single();
-        
-        if (error) throw error;
-        return data.id;
+        };
+
+        try {
+            const { data, error } = await supabase.from('tasks').insert(payload).select('id').single();
+            if (error) throw error;
+            return data.id;
+        } catch (e: any) {
+             // Fallback: Try without residence if column missing
+             if (e.message?.includes('column') || e.code === '42703') {
+                delete payload.residence;
+                const { data, error } = await supabase.from('tasks').insert(payload).select('id').single();
+                if (error) throw error;
+                return data.id;
+             }
+             throw e;
+        }
     },
 
     updateTaskStatus: async (taskId: string, status: string, extras: any = {}): Promise<void> => {
@@ -389,35 +434,51 @@ export const api = {
     readLedger: async (residence: string): Promise<LedgerEntry[]> => {
         if (!supabaseUrl) return [];
         
-        let query = supabase.from('ledger').select(`
+        const selectQuery = `
                 *,
                 payer_profile:payer_id(email),
                 payee_profile:payee_id(email),
                 tasks(title, created_by_profile:created_by(email))
-            `);
+            `;
 
-        if (residence === "Résidence Watteau") {
-            query = query.or(`residence.eq.Résidence Watteau,residence.is.null`);
-        } else {
-            query = query.eq('residence', residence);
+        try {
+            let query = supabase.from('ledger').select(selectQuery);
+            if (residence === "Résidence Watteau") {
+                query = query.or(`residence.eq.Résidence Watteau,residence.is.null`);
+            } else {
+                query = query.eq('residence', residence);
+            }
+            const { data, error } = await query.order('created_at', { ascending: false });
+            if (error) throw error;
+            return data.map(mapLedger);
+        } catch (e) {
+            console.warn("Ledger residence filter failed, fetching all.", e);
+            const { data, error } = await supabase.from('ledger').select(selectQuery).order('created_at', { ascending: false });
+            if (error) return [];
+            return data.map(mapLedger);
         }
-
-        const { data, error } = await query.order('created_at', { ascending: false });
-
-        if (error) return [];
-        return data.map(mapLedger);
     },
 
     createLedgerEntry: async (entry: any, residence: string): Promise<void> => {
-        const { error } = await supabase.from('ledger').insert({
+        const payload: any = {
             task_id: entry.taskId,
             residence: residence,
             type: entry.type,
             payer_id: entry.payerId,
             payee_id: entry.payeeId,
             amount: entry.amount
-        });
-        if (error) throw error;
+        };
+        
+        try {
+            const { error } = await supabase.from('ledger').insert(payload);
+            if (error) throw error;
+        } catch (e: any) {
+            if (e.message?.includes('column')) {
+                 delete payload.residence;
+                 const { error } = await supabase.from('ledger').insert(payload);
+                 if (error) throw error;
+            } else throw e;
+        }
     },
     
     deleteLedgerEntry: async (id: string): Promise<void> => {
@@ -430,19 +491,20 @@ export const api = {
     getPendingUsers: async (residence: string): Promise<RegisteredUser[]> => {
         if (!supabaseUrl) return [];
         
-        let query = supabase
-            .from('profiles')
-            .select('*')
-            .eq('status', 'pending');
-
-        if (residence === "Résidence Watteau") {
-            query = query.or(`residence.eq.Résidence Watteau,residence.is.null`);
-        } else {
-            query = query.eq('residence', residence);
+        try {
+            let query = supabase.from('profiles').select('*').eq('status', 'pending');
+            if (residence === "Résidence Watteau") {
+                query = query.or(`residence.eq.Résidence Watteau,residence.is.null`);
+            } else {
+                query = query.eq('residence', residence);
+            }
+            const { data, error } = await query;
+            if (error) throw error;
+            return (data || []).map(mapProfile);
+        } catch (e) {
+            const { data } = await supabase.from('profiles').select('*').eq('status', 'pending');
+            return (data || []).map(mapProfile);
         }
-
-        const { data } = await query;
-        return (data || []).map(mapProfile);
     },
     
     approveUser: async (email: string): Promise<void> => {
@@ -532,16 +594,22 @@ export const api = {
 
     getDirectory: async (residence: string): Promise<RegisteredUser[]> => {
         if (!supabaseUrl) return [];
-        let query = supabase.from('profiles').select('*');
-
-        if (residence === "Résidence Watteau") {
-            query = query.or(`residence.eq.Résidence Watteau,residence.is.null`);
-        } else {
-            query = query.eq('residence', residence);
+        
+        try {
+            let query = supabase.from('profiles').select('*');
+            if (residence === "Résidence Watteau") {
+                query = query.or(`residence.eq.Résidence Watteau,residence.is.null`);
+            } else {
+                query = query.eq('residence', residence);
+            }
+            const { data, error } = await query.order('last_name');
+            if (error) throw error;
+            return (data || []).map(mapProfile);
+        } catch (e) {
+            console.warn("Directory fallback", e);
+            const { data } = await supabase.from('profiles').select('*').order('last_name');
+            return (data || []).map(mapProfile);
         }
-
-        const { data } = await query.order('last_name');
-        return (data || []).map(mapProfile);
     },
 
     getAllUsers: async (): Promise<RegisteredUser[]> => {

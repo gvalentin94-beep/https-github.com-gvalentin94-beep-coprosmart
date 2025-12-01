@@ -181,6 +181,42 @@ function CreateTaskModal({
     );
 }
 
+function RejectReasonModal({ isOpen, onClose, onSubmit }: { isOpen: boolean, onClose: () => void, onSubmit: (reason: string) => void }) {
+    const [reason, setReason] = useState("");
+
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+            <Card className="w-full max-w-md bg-slate-900 border-rose-900/50 shadow-2xl">
+                <CardHeader className="bg-rose-900/10 border-b border-rose-900/20">
+                     <CardTitle className="text-rose-100">Refus de validation</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4 pt-4">
+                    <p className="text-sm text-slate-300">Veuillez indiquer pourquoi vous refusez la validation du travail. Ce motif sera visible par l'intervenant.</p>
+                    <Textarea 
+                        value={reason} 
+                        onChange={(e) => setReason(e.target.value)} 
+                        placeholder="Ex: La porte grince encore, il manque une couche de peinture..."
+                        className="min-h-[100px]"
+                        autoFocus
+                    />
+                    <div className="flex gap-2 justify-end">
+                        <Button variant="ghost" onClick={onClose}>Annuler</Button>
+                        <Button 
+                            disabled={!reason.trim()} 
+                            className="bg-rose-600 hover:bg-rose-500 text-white font-bold"
+                            onClick={() => onSubmit(reason)}
+                        >
+                            Confirmer le refus
+                        </Button>
+                    </div>
+                </CardContent>
+            </Card>
+        </div>
+    );
+}
+
 function UserValidationQueue({ pendingUsers, onApprove, onReject }: { pendingUsers: RegisteredUser[], onApprove: (email: string) => void, onReject: (email: string) => void }) {
     const [processing, setProcessing] = useState<string | null>(null);
 
@@ -616,6 +652,10 @@ export default function App() {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
   
+  // Reject Modal State
+  const [rejectModalOpen, setRejectModalOpen] = useState(false);
+  const [taskToReject, setTaskToReject] = useState<Task | null>(null);
+  
   // Create Task Form State
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [newTaskCategory, setNewTaskCategory] = useState<TaskCategory>("ampoule");
@@ -678,7 +718,7 @@ export default function App() {
   const handleCreateTask = async () => {
     if (!user || !selectedResidence) return;
     try {
-        await api.createTask({
+        const newTaskId = await api.createTask({
             title: newTaskTitle,
             category: newTaskCategory,
             scope: newTaskScope,
@@ -691,6 +731,17 @@ export default function App() {
         }, user.id, selectedResidence);
         
         notify("Demande créée", "En attente de validation par le Conseil Syndical.", "success");
+        
+        // AUTO-APPROVE if Council Member
+        if (user.role === 'council' || user.role === 'admin') {
+            try {
+                await api.addApproval(newTaskId, user.id);
+                notify("Auto-validation", "Votre vote a été comptabilisé automatiquement.", "info");
+            } catch (voteErr) {
+                console.warn("Auto-vote failed", voteErr);
+            }
+        }
+
         setPreviewTask(null);
         setShowCreateModal(false);
         // Reset form
@@ -808,19 +859,42 @@ export default function App() {
       } catch (e) { notify("Erreur", "Action impossible", "error"); }
   };
 
-  const handleRejectWork = async (task: Task) => {
+  const handleRejectWork = (task: Task) => {
+      setTaskToReject(task);
+      setRejectModalOpen(true);
+  };
+
+  const submitRejectWork = async (reason: string) => {
+      if (!taskToReject) return;
       try {
-          // Logic: Revert to awarded status? Or keep in verification with a flag?
-          // Simple: Revert to 'awarded' so worker can fix.
-          await api.updateTaskStatus(task.id, 'awarded'); 
-          notify("Refusé", "Le travail a été refusé. L'intervenant doit corriger.", "error");
+          // Append reason to details
+          const timestamp = new Date().toLocaleDateString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+          const newDetails = (taskToReject.details || "") + `\n\n[⛔ REFUS DE VALIDATION le ${timestamp}]\nMotif : ${reason}\n\n`;
+          
+          await api.updateTaskDetails(taskToReject.id, newDetails);
+          await api.updateTaskStatus(taskToReject.id, 'awarded'); // Revert to awarded status
+          
+          notify("Refusé", "Le motif a été ajouté et le statut mis à jour.", "info");
+          setRejectModalOpen(false);
+          setTaskToReject(null);
           refreshData();
-      } catch (e) { notify("Erreur", "Action impossible", "error"); }
+      } catch (e) {
+          notify("Erreur", "Impossible d'enregistrer le refus.", "error");
+      }
   };
 
   const handleComplete = async (task: Task) => {
       if (!user || !selectedResidence) return;
       try {
+          // Safeguard: Ensure we have a Payee ID
+          const payeeId = task.awardedToId || task.bids.find(b => b.by === task.awardedTo)?.userId;
+          if (!payeeId) {
+               throw new Error("Identifiant du bénéficiaire (intervenant) introuvable. Impossible de générer le paiement.");
+          }
+          if (!task.awardedAmount) {
+              throw new Error("Montant de la prestation introuvable.");
+          }
+
           await api.updateTaskStatus(task.id, 'completed', { validatedBy: user.email });
           
           // GENERATE LEDGER ENTRIES
@@ -830,7 +904,7 @@ export default function App() {
                   taskId: task.id,
                   type: 'charge_credit',
                   payerId: null, // System/Copro
-                  payeeId: task.awardedToId || task.bids.find(b => b.by === task.awardedTo)?.userId, // Need UUID
+                  payeeId: payeeId,
                   amount: task.awardedAmount
               }, selectedResidence);
           } else {
@@ -839,15 +913,16 @@ export default function App() {
                   taskId: task.id,
                   type: 'apartment_payment',
                   payerId: task.createdById,
-                  payeeId: task.awardedToId || task.bids.find(b => b.by === task.awardedTo)?.userId,
+                  payeeId: payeeId,
                   amount: task.awardedAmount
               }, selectedResidence);
           }
 
           notify("Terminé !", "Travaux validés et écritures comptables générées.", "success");
           refreshData();
-      } catch (e) {
-          notify("Erreur", "Validation échouée.", "error");
+      } catch (e: any) {
+          console.error(e);
+          notify("Erreur", e.message || "Validation échouée.", "error");
       }
   };
 
@@ -1197,6 +1272,13 @@ export default function App() {
               onCancel={() => setPreviewTask(null)} 
           />
       )}
+      
+      {/* REJECT MODAL */}
+      <RejectReasonModal 
+        isOpen={rejectModalOpen}
+        onClose={() => setRejectModalOpen(false)}
+        onSubmit={submitRejectWork}
+      />
 
       {/* CREATE TASK MODAL */}
       <CreateTaskModal 

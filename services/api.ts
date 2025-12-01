@@ -373,6 +373,11 @@ export const api = {
         if (error) throw error;
     },
 
+    updateTaskDetails: async (taskId: string, details: string): Promise<void> => {
+        const { error } = await supabase.from('tasks').update({ details }).eq('id', taskId);
+        if (error) throw error;
+    },
+
     deleteTask: async (taskId: string): Promise<void> => {
         const { error } = await supabase.from('tasks').delete().eq('id', taskId);
         if (error) throw error;
@@ -464,7 +469,7 @@ export const api = {
             task_id: entry.taskId,
             residence: residence,
             type: entry.type,
-            payer_id: entry.payerId,
+            payer_id: entry.payerId, // Can be null for Copro charges
             payee_id: entry.payeeId,
             amount: entry.amount
         };

@@ -121,9 +121,15 @@ function Countdown({ startedAt }: { startedAt: string }) {
         return () => clearInterval(interval);
     }, [startedAt]);
 
-    if (expired) return <Badge className="bg-rose-900/50 text-rose-300 border-rose-800 animate-pulse text-[10px]">Temps écoulé</Badge>;
+    if (expired) return <div className="bg-rose-900/20 border border-rose-500/50 rounded p-1 text-center mb-2"><span className="text-rose-400 font-bold text-xs uppercase">Temps écoulé - En attente d'attribution</span></div>;
     if (!timeLeft) return null;
-    return <Badge className="bg-indigo-900/50 text-indigo-300 border-indigo-500 animate-pulse text-[10px]">⏱ {timeLeft}</Badge>;
+    
+    return (
+        <div className="bg-gradient-to-r from-indigo-900/50 to-indigo-800/50 border border-indigo-500/30 rounded-lg p-2 text-center mb-2 shadow-inner">
+            <div className="text-indigo-300 text-[10px] font-bold uppercase tracking-wider mb-0.5">Fin des enchères dans</div>
+            <div className="text-white font-mono font-black text-2xl tracking-widest leading-none drop-shadow-md">{timeLeft}</div>
+        </div>
+    );
 }
 
 export interface TaskCardProps {
@@ -163,8 +169,10 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
     const hasApproved = task.approvals?.some(a => a.by === me.email);
     
     // Timer Logic
-    const hasTimer = !!task.biddingStartedAt;
-    const isTimerExpired = task.biddingStartedAt && (new Date().getTime() > new Date(task.biddingStartedAt).getTime() + 24 * 60 * 60 * 1000);
+    // Fallback: If 'biddingStartedAt' is missing (legacy data), use the time of the first bid if it exists.
+    const timerStart = task.biddingStartedAt || (task.bids?.length > 0 ? task.bids[0].at : null);
+    const showTimer = task.status === 'open' && timerStart;
+    const isTimerExpired = timerStart && (new Date().getTime() > new Date(timerStart).getTime() + 24 * 60 * 60 * 1000);
     
     const isAdmin = me.role === 'admin';
     const isCouncil = me.role === 'council';
@@ -173,7 +181,6 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
     const canVerify = isAdmin || isCouncil;
     
     // Can award if: Open AND has bids AND (Creator owner OR Admin) AND (Timer expired OR Admin bypass)
-    // Simplified: Show button if expired, or if admin.
     const canManualAward = task.status === "open" && task.bids?.length > 0 && lowestBid && (isTimerExpired || isAdmin);
     
     // Name helpers
@@ -231,16 +238,19 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
     return (
         <Card className={`bg-slate-800 border-l-[3px] ${style.border} p-0 shadow-none mb-1`}>
             <div className="p-2 flex flex-col gap-1">
+                
                 {/* LINE 1: Title & Price */}
-                <div className="flex justify-between items-center">
+                <div className="flex justify-between items-center mb-1">
                     <h3 className="font-extrabold text-white text-sm leading-none truncate flex items-center gap-2">
                         {task.title}
-                        {hasTimer && task.status === 'open' && <Countdown startedAt={task.biddingStartedAt!} />}
                     </h3>
                     <span className="font-mono font-bold text-white text-sm">{displayPrice}€</span>
                 </div>
 
-                {/* LINE 2: Badges (Ordered: Cat > Scope > Loc > Warranty) */}
+                {/* LINE 2: BIG COUNTDOWN (Conditional) */}
+                {showTimer && <Countdown startedAt={timerStart} />}
+
+                {/* LINE 3: Badges */}
                 <div className="flex flex-wrap gap-1 items-center">
                     {categoryInfo && <Badge className={`${categoryInfo.colorClass} border-none text-[9px] py-0 px-1.5 rounded-sm`}>{categoryInfo.label}</Badge>}
                     {scopeInfo && <Badge className={`${scopeInfo.colorClass} border-none text-[9px] py-0 px-1.5 rounded-sm`}>{scopeInfo.label}</Badge>}
@@ -248,11 +258,11 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                     {warrantyInfo && <Badge className={`${warrantyInfo.colorClass} border-none text-[9px] py-0 px-1.5 rounded-sm`}>{warrantyInfo.label}</Badge>}
                 </div>
 
-                {/* LINE 3: Meta & Actions */}
+                {/* LINE 4: Meta & Actions */}
                 <div className="flex justify-between items-end pt-1 border-t border-slate-700/50 mt-1">
                     <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 text-[9px] text-slate-500 leading-none w-full mr-2">
                         <div className="truncate">📝 Créé: <span className="text-slate-300">{creatorName || '-'}</span></div>
-                        <div className="truncate">👍 Validé: <span className="text-slate-300">{approverNames || 'En attente'}</span></div>
+                        <div className="truncate">👍 Approuvé: <span className="text-slate-300">{approverNames || 'En attente'}</span></div>
                         <div className="truncate">🔨 Attribué: <span className="text-slate-300">{awardedToName || '-'}</span></div>
                         <div className="truncate">🔍 Ctrl: <span className="text-slate-300">{validatorName || '-'}</span></div>
                     </div>

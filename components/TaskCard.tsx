@@ -152,14 +152,25 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
     const isTimerRunning = task.biddingStartedAt && (new Date().getTime() < new Date(task.biddingStartedAt).getTime() + 24 * 60 * 60 * 1000);
     
     const isAdmin = me.role === 'admin';
-    const canVerify = isAdmin || me.role === 'council';
+    const isCouncil = me.role === 'council';
+    const isCouncilOrAdmin = isAdmin || isCouncil;
+
+    const canVerify = isAdmin || isCouncil;
     const canManualAward = task.status === "open" && task.bids?.length > 0 && lowestBid && ((task.createdBy === me?.email && !isTimerRunning) || isAdmin);
     
-    const awardedToName = task.awardedTo && usersMap ? (usersMap[task.awardedTo] || task.awardedTo) : task.awardedTo;
-    const creatorName = task.createdBy && usersMap ? (usersMap[task.createdBy] || task.createdBy) : task.createdBy;
-    const validatorName = task.validatedBy && usersMap ? (usersMap[task.validatedBy] || task.validatedBy) : task.validatedBy;
-    const rejectorName = task.rejections?.length > 0 ? (usersMap?.[task.rejections[task.rejections.length-1].by] || task.rejections[task.rejections.length-1].by) : 'Inconnu';
-    
+    // Name helpers
+    const getName = (email: string | undefined | null) => {
+        if (!email) return null;
+        return usersMap && usersMap[email] ? usersMap[email] : email;
+    };
+
+    const awardedToName = getName(task.awardedTo);
+    const creatorName = getName(task.createdBy);
+    const validatorName = getName(task.validatedBy);
+    const approverNames = task.approvals && task.approvals.length > 0 
+        ? task.approvals.map(a => getName(a.by) || a.by).join(', ')
+        : (task.status === 'pending' ? null : '-');
+
     const hasRated = task.ratings?.some(r => r.byHash === me.id);
     const isAssignee = task.awardedTo === me.email;
 
@@ -184,18 +195,17 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
             </div>
         );
     } else if (task.status === 'pending' && onApprove && onReject) {
-        ActionButton = (
-             <div className="flex gap-1">
-                <Button size="sm" onClick={onApprove} disabled={hasApproved && !isAdmin} className="h-6 px-2 bg-emerald-600 text-[10px]">OK</Button>
-                <Button size="sm" onClick={onReject} variant="destructive" className="h-6 px-2 text-[10px]">Non</Button>
-            </div>
-        );
+        if (isCouncilOrAdmin) {
+            ActionButton = (
+                 <div className="flex gap-1">
+                    <Button size="sm" onClick={onApprove} disabled={hasApproved && !isAdmin} className="h-6 px-2 bg-emerald-600 text-[10px]">OK</Button>
+                    <Button size="sm" onClick={onReject} variant="destructive" className="h-6 px-2 text-[10px]">Non</Button>
+                </div>
+            );
+        } else {
+             ActionButton = <span className="text-[10px] text-amber-500 italic pr-2">Vote en cours</span>;
+        }
     }
-
-    let qualityText = "En attente";
-    if (task.status === 'completed' && validatorName) qualityText = `Validé par ${validatorName}`;
-    else if (task.status === 'rejected') qualityText = `Rejeté par ${rejectorName}`;
-    else if (task.status === 'verification') qualityText = "À vérifier";
 
     return (
         <Card className={`bg-slate-800 border-l-[3px] ${style.border} p-0 shadow-none mb-1`}>
@@ -216,14 +226,15 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                 </div>
 
                 {/* LINE 3: Meta & Actions */}
-                <div className="flex justify-between items-center pt-1 border-t border-slate-700/50">
-                    <div className="text-[9px] text-slate-500 flex gap-2 truncate">
-                        <span>Par {creatorName}</span>
-                        {task.awardedTo && <span>• Attribué à {awardedToName}</span>}
-                        <span>• Ctrl: {qualityText}</span>
+                <div className="flex justify-between items-end pt-1 border-t border-slate-700/50 mt-1">
+                    <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 text-[9px] text-slate-500 leading-none w-full mr-2">
+                        <div className="truncate">📝 Créé: <span className="text-slate-300">{creatorName || '-'}</span></div>
+                        <div className="truncate">👍 Validé: <span className="text-slate-300">{approverNames || 'En attente'}</span></div>
+                        <div className="truncate">🔨 Attribué: <span className="text-slate-300">{awardedToName || '-'}</span></div>
+                        <div className="truncate">🔍 Ctrl: <span className="text-slate-300">{validatorName || '-'}</span></div>
                     </div>
                     
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-2 shrink-0 self-end">
                         {ActionButton}
                         
                         {/* Rating */}

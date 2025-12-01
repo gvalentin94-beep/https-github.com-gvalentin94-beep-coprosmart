@@ -168,7 +168,6 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
     const hasApproved = task.approvals?.some(a => a.by === me.email);
     
     // Timer Logic
-    // Fallback: If 'biddingStartedAt' is missing (legacy data), use the time of the first bid if it exists.
     const timerStart = task.biddingStartedAt || (task.bids?.length > 0 ? task.bids[0].at : null);
     const showTimer = task.status === 'open' && timerStart;
     const isTimerExpired = timerStart && (new Date().getTime() > new Date(timerStart).getTime() + 24 * 60 * 60 * 1000);
@@ -230,7 +229,8 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                 </div>
             );
         } else {
-             ActionButton = <span className="text-[10px] text-amber-500 italic pr-2">Vote en cours</span>;
+             // UPDATED: "Vote en cours" -> "Contrôle qualité en cours"
+             ActionButton = <span className="text-[10px] text-amber-500 italic pr-2">Contrôle qualité en cours</span>;
         }
     }
 
@@ -256,6 +256,20 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                     {/* Inline Countdown */}
                     {showTimer && <Countdown startedAt={timerStart} />}
                 </div>
+                
+                {/* BIDS LIST - Visible for Open tasks with bids */}
+                {task.status === 'open' && task.bids?.length > 0 && (
+                    <div className="my-2 bg-slate-900/30 rounded p-1 space-y-1">
+                        {task.bids.map((b, i) => (
+                            <div key={i} className="flex justify-between items-center text-[10px] text-slate-400 px-1">
+                                <span className="font-medium text-slate-300">
+                                    {b.amount}€ <span className="text-slate-500 font-normal">(par {getName(b.by) || b.by})</span>
+                                </span>
+                                <span>{new Date(b.plannedExecutionDate).toLocaleDateString()}</span>
+                            </div>
+                        ))}
+                    </div>
+                )}
 
                 {/* LINE 3: Meta & Actions */}
                 <div className="flex justify-between items-end pt-1 border-t border-slate-700/50 mt-1">
@@ -265,14 +279,14 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                         
                         {/* Column 1: Creation & Assignment */}
                         <div className="space-y-0.5">
-                            <div className="truncate">📝 Créé: <span className="text-slate-300">{creatorName || '-'}</span></div>
-                            <div className="truncate">🔨 Attribué: <span className="text-slate-300">{awardedToName || '-'}</span></div>
+                            <div className="truncate">📝 Créé par: <span className="text-slate-300">{creatorName || '-'}</span></div>
+                            <div className="truncate">🔨 Attribué à: <span className="text-slate-300">{awardedToName || '-'}</span></div>
                         </div>
 
                         {/* Column 2: Approval & Control */}
                         <div className="space-y-0.5 border-l border-slate-700/50 pl-2">
-                             <div className="truncate">👍 Approuvé: <span className="text-slate-300">{approverNames || 'En attente'}</span></div>
-                             <div className="truncate">🔍 Ctrl: <span className="text-slate-300">{validatorName || '-'}</span></div>
+                             <div className="truncate">👍 Approuvé par: <span className="text-slate-300">{approverNames || 'En attente'}</span></div>
+                             <div className="truncate">🔍 Contrôle qualité par <span className="text-slate-300">{validatorName || '-'}</span></div>
                         </div>
 
                     </div>
@@ -303,7 +317,8 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                         {task.photo && <img src={task.photo} alt="Photo" className="h-auto max-h-96 w-auto max-w-full object-contain mx-auto bg-slate-950/50 rounded border border-slate-700" />}
                         <p className="p-2 bg-slate-900/50 rounded whitespace-pre-wrap text-[11px]">{task.details || "Pas de description."}</p>
                         
-                        {task.status === 'open' && task.bids?.length > 0 && (
+                        {/* Only show bids here if NOT open (since open shows them in main body now) */}
+                        {task.status !== 'open' && task.bids?.length > 0 && (
                              <div>
                                 <p className="font-bold text-slate-500 mb-1 text-[10px]">Offres</p>
                                 {task.bids.map((b, i) => (

@@ -10,9 +10,9 @@ import { LoginCard } from './components/LoginCard';
 // --- Safe Version Access ---
 const APP_VERSION = (() => {
     try {
-        return (import.meta as any)?.env?.PACKAGE_VERSION || '0.2.31';
+        return (import.meta as any)?.env?.PACKAGE_VERSION || '0.2.32';
     } catch {
-        return '0.2.31';
+        return '0.2.32';
     }
 })();
 
@@ -775,19 +775,22 @@ export default function App() {
 
   const handleAward = async (task: Task) => {
       if (!user) return;
-      // Logic: Find lowest bid
       if (!task.bids || task.bids.length === 0) return;
       
       const winningBid = task.bids.reduce((min, b) => b.amount < min.amount ? b : min, task.bids[0]);
       
       try {
           await api.updateTaskStatus(task.id, 'awarded', { 
-              awardedTo: winningBid.userId, // FIX: Use UUID instead of winningBid.by (email)
+              awardedTo: winningBid.userId, 
               awardedAmount: winningBid.amount 
           });
           
-          // Notify Winner
-          await api.inviteUser(winningBid.by, "CoproSmart (Notification)"); // Reusing invite for simple notif
+          // Notify Winner - Non-blocking try/catch
+          try {
+             await api.inviteUser(winningBid.by, "CoproSmart (Notification)"); 
+          } catch (err) {
+             console.warn("Notification failed (non-fatal)", err);
+          }
           
           notify("Attribué !", `Mission confiée à ${usersMap[winningBid.by] || winningBid.by} pour ${winningBid.amount}€.`, "success");
           refreshData();

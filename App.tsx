@@ -88,7 +88,7 @@ function TaskPreviewModal({ task, onConfirm, onCancel }: { task: Partial<Task>; 
                         <div>
                             <span className="text-slate-500 uppercase text-xs font-bold tracking-wider block mb-2">Photo</span>
                             <div className="rounded-xl overflow-hidden border border-slate-700 bg-slate-950">
-                                <img src={task.photo} alt="Aperçu" className="w-full h-64 object-cover" />
+                                <img src={task.photo} alt="Aperçu" className="h-auto max-h-64 w-auto max-w-full object-contain mx-auto" />
                             </div>
                         </div>
                     )}
@@ -102,6 +102,90 @@ function TaskPreviewModal({ task, onConfirm, onCancel }: { task: Partial<Task>; 
                         <Button variant="ghost" onClick={onCancel}>Modifier</Button>
                         <Button onClick={onConfirm} className="bg-emerald-600 hover:bg-emerald-500 text-white px-6">✅ Confirmer et soumettre</Button>
                     </div>
+                </CardContent>
+            </Card>
+        </div>
+    );
+}
+
+function CreateTaskModal({ 
+    isOpen, 
+    onClose, 
+    title, setTitle,
+    category, setCategory,
+    scope, setScope,
+    location, setLocation,
+    details, setDetails,
+    price, setPrice,
+    warranty, setWarranty,
+    onPhotoUpload,
+    onSubmit
+}: any) {
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+            <Card className="w-full max-w-lg bg-slate-900 border-indigo-500/30 shadow-2xl max-h-[90vh] overflow-y-auto">
+                <CardHeader className="bg-indigo-900/20 border-b border-indigo-500/20 sticky top-0 z-10 backdrop-blur-md">
+                    <div className="flex justify-between items-center">
+                        <CardTitle className="text-indigo-100">✨ Nouvelle demande</CardTitle>
+                        <button onClick={onClose} className="text-slate-400 hover:text-white">✕</button>
+                    </div>
+                </CardHeader>
+                <CardContent className="space-y-4 pt-4">
+                    <div className="space-y-1.5">
+                        <Label>Titre court</Label>
+                        <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ex: Ampoule hall entrée" maxLength={40} autoFocus />
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1.5">
+                            <Label>Catégorie</Label>
+                            <Select value={category} onChange={(e) => setCategory(e.target.value as TaskCategory)}>
+                                {CATEGORIES.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
+                            </Select>
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label>Concerne</Label>
+                            <Select value={scope} onChange={(e) => setScope(e.target.value as TaskScope)}>
+                                {SCOPES.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
+                            </Select>
+                        </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                        <Label>Emplacement</Label>
+                        <Select value={location} onChange={(e) => setLocation(e.target.value)}>
+                            {LOCATIONS.map(l => <option key={l} value={l}>{l}</option>)}
+                        </Select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                        <Label>Détails</Label>
+                        <Textarea value={details} onChange={(e) => setDetails(e.target.value)} placeholder="Décrivez le problème..." />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1.5">
+                            <Label>Prix départ (€)</Label>
+                            <Input type="number" value={price} onChange={(e) => setPrice(e.target.value)} max={MAX_TASK_PRICE} />
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label>Garantie souhaitée</Label>
+                            <Select value={warranty} onChange={(e) => setWarranty(e.target.value)}>
+                                {WARRANTY_OPTIONS.map(w => <option key={w.val} value={w.val}>{w.label}</option>)}
+                            </Select>
+                        </div>
+                    </div>
+                    
+                    <div className="space-y-1.5">
+                        <Label>Photo (optionnel)</Label>
+                        <Input type="file" accept="image/*" onChange={onPhotoUpload} className="text-xs file:mr-2 file:py-1 file:px-2 file:rounded-full file:border-0 file:text-xs file:bg-indigo-600 file:text-white hover:file:bg-indigo-500" />
+                    </div>
+
+                    <Button className="w-full mt-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold" onClick={onSubmit}>
+                        Vérifier et Publier
+                    </Button>
                 </CardContent>
             </Card>
         </div>
@@ -539,8 +623,9 @@ export default function App() {
   const [selectedResidence, setSelectedResidence] = useState<string | null>("Résidence Watteau");
   
   // UI State
-  const [tab, setTab] = useState<'dashboard' | 'tasks' | 'directory' | 'ledger'>('dashboard');
+  const [tab, setTab] = useState<'dashboard' | 'directory' | 'ledger'>('dashboard');
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const [showCreateModal, setShowCreateModal] = useState(false);
   
   // Create Task Form State
   const [newTaskTitle, setNewTaskTitle] = useState("");
@@ -618,10 +703,11 @@ export default function App() {
         
         notify("Demande créée", "En attente de validation par le Conseil Syndical.", "success");
         setPreviewTask(null);
+        setShowCreateModal(false);
         // Reset form
         setNewTaskTitle(""); setNewTaskDetails(""); setNewTaskPrice("20"); setNewTaskPhoto(null);
         refreshData();
-        setTab('tasks');
+        setTab('dashboard');
     } catch (e) {
         notify("Erreur", "Impossible de créer la demande.", "error");
     }
@@ -893,7 +979,7 @@ export default function App() {
       {/* HEADER */}
       <header className="sticky top-0 z-40 bg-slate-900/80 backdrop-blur-md border-b border-slate-800 shadow-lg">
         <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-4">
             <h1 className="text-2xl font-black tracking-tighter text-white">CoproSmart<span className="text-indigo-500">.</span></h1>
             {user.role === 'admin' && selectedResidence && (
                  <Select 
@@ -908,6 +994,11 @@ export default function App() {
           </div>
           
           <div className="flex items-center gap-4">
+            {/* NEW REQUEST BUTTON IN HEADER - VISIBLE ON ALL SCREENS */}
+             <Button size="sm" className="flex bg-indigo-600 hover:bg-indigo-500 text-white font-bold shadow-lg shadow-indigo-500/20 text-xs px-3 sm:px-4 sm:text-sm" onClick={() => setShowCreateModal(true)}>
+                + Nouvelle demande
+             </Button>
+
              <div className="text-right hidden sm:block leading-tight">
                  <div className="text-sm font-bold text-white">{user.firstName} {user.lastName}</div>
                  <div className="flex justify-end gap-1 mt-0.5">
@@ -933,9 +1024,7 @@ export default function App() {
         <button onClick={() => setTab('dashboard')} className={`flex flex-col items-center p-2 text-xs ${tab === 'dashboard' ? 'text-indigo-400 font-bold' : 'text-slate-500'}`}>
             <span className="text-lg">🏠</span> Accueil
         </button>
-        <button onClick={() => setTab('tasks')} className={`flex flex-col items-center p-2 text-xs ${tab === 'tasks' ? 'text-indigo-400 font-bold' : 'text-slate-500'}`}>
-            <span className="text-lg">📋</span> Demandes
-        </button>
+        {/* 'Demande' Button REMOVED from here, moved to Header */}
         <button onClick={() => setTab('directory')} className={`flex flex-col items-center p-2 text-xs ${tab === 'directory' ? 'text-indigo-400 font-bold' : 'text-slate-500'}`}>
             <span className="text-lg">👥</span> Annuaire
         </button>
@@ -948,7 +1037,6 @@ export default function App() {
       <div className="hidden md:block bg-slate-900 border-b border-slate-800">
           <div className="max-w-5xl mx-auto px-4 flex gap-8 text-sm">
              <button onClick={() => setTab('dashboard')} className={`py-3 border-b-2 transition-colors ${tab === 'dashboard' ? 'border-indigo-500 text-white font-bold' : 'border-transparent text-slate-400 hover:text-white'}`}>Tableau de bord</button>
-             <button onClick={() => setTab('tasks')} className={`py-3 border-b-2 transition-colors ${tab === 'tasks' ? 'border-indigo-500 text-white font-bold' : 'border-transparent text-slate-400 hover:text-white'}`}>Toutes les demandes</button>
              <button onClick={() => setTab('directory')} className={`py-3 border-b-2 transition-colors ${tab === 'directory' ? 'border-indigo-500 text-white font-bold' : 'border-transparent text-slate-400 hover:text-white'}`}>Annuaire</button>
              <button onClick={() => setTab('ledger')} className={`py-3 border-b-2 transition-colors ${tab === 'ledger' ? 'border-indigo-500 text-white font-bold' : 'border-transparent text-slate-400 hover:text-white'}`}>Comptabilité</button>
           </div>
@@ -960,36 +1048,8 @@ export default function App() {
         {/* DASHBOARD TAB */}
         {tab === 'dashboard' && (
             <>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <Card className="md:col-span-2 bg-gradient-to-br from-indigo-900/50 to-slate-900 border-indigo-500/30">
-                        <CardHeader><CardTitle>👋 Bonjour {user.firstName}</CardTitle></CardHeader>
-                        <CardContent>
-                            <div className="flex gap-4">
-                                <div className="flex-1 bg-slate-900/50 p-3 rounded-lg border border-slate-700">
-                                    <div className="text-2xl font-black text-white">{activeTasks.length}</div>
-                                    <div className="text-xs text-slate-400 uppercase font-bold tracking-wider">En cours</div>
-                                </div>
-                                <div className="flex-1 bg-slate-900/50 p-3 rounded-lg border border-slate-700">
-                                    <div className="text-2xl font-black text-emerald-400">{completedTasks.length}</div>
-                                    <div className="text-xs text-slate-400 uppercase font-bold tracking-wider">Terminées</div>
-                                </div>
-                                {(user.role === 'council' || user.role === 'admin') && (
-                                    <div className={`flex-1 p-3 rounded-lg border ${pendingUsers.length > 0 ? 'bg-amber-900/20 border-amber-500/50 animate-pulse' : 'bg-slate-900/50 border-slate-700'}`}>
-                                        <div className={`text-2xl font-black ${pendingUsers.length > 0 ? 'text-amber-400' : 'text-slate-500'}`}>{pendingUsers.length}</div>
-                                        <div className="text-xs text-slate-400 uppercase font-bold tracking-wider">Inscriptions</div>
-                                    </div>
-                                )}
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    <Card className="bg-slate-800/50 border-slate-700">
-                        <CardHeader><CardTitle>Besoin d'aide ?</CardTitle></CardHeader>
-                        <CardContent>
-                            <p className="text-sm text-slate-400 mb-4">Signalez un problème dans la copropriété. C'est rapide et utile pour tous.</p>
-                            <Button className="w-full bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/20" onClick={() => setTab('tasks')}>+ Nouvelle demande</Button>
-                        </CardContent>
-                    </Card>
+                <div className="flex flex-col gap-4">
+                     <h2 className="text-xl font-bold text-white">👋 Bonjour {user.firstName}</h2>
                 </div>
 
                 {(user.role === 'council' || user.role === 'admin') && (
@@ -1067,111 +1127,6 @@ export default function App() {
             </>
         )}
 
-        {/* TASKS TAB (Create & List All) */}
-        {tab === 'tasks' && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* CREATE FORM */}
-                <div className="lg:col-span-1">
-                    <Card className="bg-slate-900 border-indigo-500/30 sticky top-24">
-                        <CardHeader className="bg-indigo-900/20 border-b border-indigo-500/20">
-                            <CardTitle className="text-indigo-100">✨ Nouvelle demande</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4 pt-4">
-                            <div className="space-y-1.5">
-                                <Label>Titre court</Label>
-                                <Input value={newTaskTitle} onChange={(e) => setNewTaskTitle(e.target.value)} placeholder="Ex: Ampoule hall entrée" maxLength={40} />
-                            </div>
-                            
-                            <div className="grid grid-cols-2 gap-2">
-                                <div className="space-y-1.5">
-                                    <Label>Catégorie</Label>
-                                    <Select value={newTaskCategory} onChange={(e) => setNewTaskCategory(e.target.value as TaskCategory)}>
-                                        {CATEGORIES.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
-                                    </Select>
-                                </div>
-                                <div className="space-y-1.5">
-                                    <Label>Concerne</Label>
-                                    <Select value={newTaskScope} onChange={(e) => setNewTaskScope(e.target.value as TaskScope)}>
-                                        {SCOPES.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
-                                    </Select>
-                                </div>
-                            </div>
-
-                            <div className="space-y-1.5">
-                                <Label>Emplacement</Label>
-                                <Select value={newTaskLocation} onChange={(e) => setNewTaskLocation(e.target.value)}>
-                                    {LOCATIONS.map(l => <option key={l} value={l}>{l}</option>)}
-                                </Select>
-                            </div>
-
-                            <div className="space-y-1.5">
-                                <Label>Détails</Label>
-                                <Textarea value={newTaskDetails} onChange={(e) => setNewTaskDetails(e.target.value)} placeholder="Décrivez le problème..." />
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-2">
-                                <div className="space-y-1.5">
-                                    <Label>Prix départ (€)</Label>
-                                    <Input type="number" value={newTaskPrice} onChange={(e) => setNewTaskPrice(e.target.value)} max={MAX_TASK_PRICE} />
-                                </div>
-                                <div className="space-y-1.5">
-                                    <Label>Garantie souhaitée</Label>
-                                    <Select value={newTaskWarranty} onChange={(e) => setNewTaskWarranty(e.target.value)}>
-                                        {WARRANTY_OPTIONS.map(w => <option key={w.val} value={w.val}>{w.label}</option>)}
-                                    </Select>
-                                </div>
-                            </div>
-                            
-                            <div className="space-y-1.5">
-                                <Label>Photo (optionnel)</Label>
-                                <Input type="file" accept="image/*" onChange={handlePhotoUpload} className="text-xs file:mr-2 file:py-1 file:px-2 file:rounded-full file:border-0 file:text-xs file:bg-indigo-600 file:text-white hover:file:bg-indigo-500" />
-                            </div>
-
-                            <Button className="w-full mt-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold" onClick={() => setPreviewTask({
-                                title: newTaskTitle,
-                                category: newTaskCategory,
-                                scope: newTaskScope,
-                                location: newTaskLocation,
-                                details: newTaskDetails,
-                                startingPrice: Number(newTaskPrice),
-                                warrantyDays: Number(newTaskWarranty),
-                                photo: newTaskPhoto || undefined
-                            })}>
-                                Vérifier et Publier
-                            </Button>
-                        </CardContent>
-                    </Card>
-                </div>
-
-                {/* LIST */}
-                <div className="lg:col-span-2 space-y-8">
-                     <Section title="Toutes les demandes">
-                        <div className="space-y-4">
-                            {tasks.map(t => (
-                                <TaskCard 
-                                    key={t.id} 
-                                    task={t} 
-                                    me={user} 
-                                    usersMap={usersMap}
-                                    onBid={(b) => handleBid(t, b)}
-                                    onAward={() => handleAward(t)}
-                                    onComplete={() => handleComplete(t)}
-                                    onRate={(r) => handleRate(t, r)}
-                                    onDeleteRating={handleDeleteRating}
-                                    onDelete={() => handleDeleteTask(t)}
-                                    canDelete={user.role === 'admin' || t.createdBy === user.email}
-                                    onApprove={() => handleApproveTask(t)}
-                                    onReject={() => handleRejectTask(t)}
-                                    onRequestVerification={() => handleRequestVerification(t)}
-                                    onRejectWork={() => handleRejectWork(t)}
-                                />
-                            ))}
-                        </div>
-                     </Section>
-                </div>
-            </div>
-        )}
-
         {/* DIRECTORY TAB */}
         {tab === 'directory' && (
             <UserDirectory 
@@ -1201,6 +1156,10 @@ export default function App() {
 
       {/* FOOTER */}
       <footer className="mt-20 py-8 text-center text-slate-600 text-xs border-t border-slate-900 bg-slate-950">
+        <div className="flex justify-center gap-6 mb-4">
+             <a href="#" className="hover:text-slate-400 transition-colors">Conditions Générales d'Utilisation</a>
+             <a href="#" className="hover:text-slate-400 transition-colors">Mentions Légales</a>
+        </div>
         <p>CoproSmart v{APP_VERSION} — Simple. Local. Gagnant-Gagnant.</p>
       </footer>
 
@@ -1212,6 +1171,33 @@ export default function App() {
               onCancel={() => setPreviewTask(null)} 
           />
       )}
+
+      {/* CREATE TASK MODAL */}
+      <CreateTaskModal 
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        title={newTaskTitle} setTitle={setNewTaskTitle}
+        category={newTaskCategory} setCategory={setNewTaskCategory}
+        scope={newTaskScope} setScope={setNewTaskScope}
+        location={newTaskLocation} setLocation={setNewTaskLocation}
+        details={newTaskDetails} setDetails={setNewTaskDetails}
+        price={newTaskPrice} setPrice={setNewTaskPrice}
+        warranty={newTaskWarranty} setWarranty={setNewTaskWarranty}
+        onPhotoUpload={handlePhotoUpload}
+        onSubmit={() => {
+            setPreviewTask({
+                title: newTaskTitle,
+                category: newTaskCategory,
+                scope: newTaskScope,
+                location: newTaskLocation,
+                details: newTaskDetails,
+                startingPrice: Number(newTaskPrice),
+                warrantyDays: Number(newTaskWarranty),
+                photo: newTaskPhoto || undefined
+            });
+            setShowCreateModal(false);
+        }}
+      />
     </div>
   );
 }

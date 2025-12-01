@@ -236,7 +236,7 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                         </div>
 
                         <button onClick={() => setShowDetails(!showDetails)} className="text-[10px] text-slate-500 hover:text-white px-1">
-                            {showDetails ? '▼' : '►'}
+                            {showDetails ? '▲' : '▼'}
                         </button>
                     </div>
                 </div>
@@ -246,7 +246,7 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                 
                 {showDetails && (
                     <div className="mt-2 pt-2 border-t border-slate-700 space-y-2 animate-in fade-in duration-200 text-xs text-slate-300">
-                        {task.photo && <img src={task.photo} alt="Photo" className="w-full h-24 object-cover rounded border border-slate-700" />}
+                        {task.photo && <img src={task.photo} alt="Photo" className="h-auto max-h-96 w-auto max-w-full object-contain mx-auto bg-slate-950/50 rounded border border-slate-700" />}
                         <p className="p-2 bg-slate-900/50 rounded whitespace-pre-wrap text-[11px]">{task.details || "Pas de description."}</p>
                         
                         {task.status === 'open' && task.bids?.length > 0 && (

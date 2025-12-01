@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import type { Task, User, Rating, Bid } from '../types';
 import { Button, Card, Input, Label, Badge } from './ui';
@@ -248,7 +249,7 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
         if (isCouncilOrAdmin && onApprove && onReject) {
             PendingActionButtons = (
                  <div className="flex gap-1 items-center">
-                    <Button size="sm" onClick={onApprove} disabled={hasApproved && !isAdmin} className="h-6 px-2 bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold">OUI</Button>
+                    <Button size="sm" onClick={onApprove} disabled={hasApproved} className="h-6 px-2 bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold">OUI</Button>
                     <Button size="sm" onClick={onReject} variant="destructive" className="h-6 px-2 text-[10px] font-bold">NON</Button>
                 </div>
             );

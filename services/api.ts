@@ -319,13 +319,10 @@ export const api = {
             if (error) throw error;
             return data.map(mapTask);
         } catch (e) {
-            // Attempt 2: Fallback to Legacy (No residence column)
-            console.warn("Falling back to legacy task fetch (no residence filter)", e);
+            // Attempt 2: Fallback to Legacy (No residence filter)
+            console.warn("Falling back to legacy task fetch", e);
             const { data, error } = await supabase.from('tasks').select(selectQuery).order('created_at', { ascending: false });
-            if (error) {
-                console.error("Fetch tasks failed", error);
-                return [];
-            }
+            if (error) return [];
             return data.map(mapTask);
         }
     },
@@ -553,6 +550,25 @@ export const api = {
         if (error) throw error;
     },
     
+    // Generic email sender
+    sendNotification: async (to: string, subject: string, html: string): Promise<void> => {
+         const response = await fetch('/api/send-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ to, subject, html })
+        });
+
+        if (!response.ok) {
+             const errData = await response.json().catch(() => ({}));
+             // Specific handling for 404 in dev environment
+             if (response.status === 404) {
+                 console.warn("API route not found (Dev Mode). Email simulated.");
+                 return;
+             }
+             throw new Error(errData.error || `Erreur serveur mail (${response.status})`);
+        }
+    },
+    
     inviteUser: async (email: string, inviterName: string): Promise<void> => {
         const subject = `Invitation de ${inviterName} à rejoindre CoproSmart`;
         const html = `
@@ -579,22 +595,8 @@ export const api = {
             </div>
         `;
         
-        // Remove silent error swallowing so user sees the problem in UI
-        const response = await fetch('/api/send-email', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ to: email, subject, html })
-        });
-
-        if (!response.ok) {
-             const errData = await response.json().catch(() => ({}));
-             // Specific handling for 404 in dev environment where api function might be missing
-             if (response.status === 404) {
-                 console.warn("API route not found. Simulating success for dev environment.");
-                 return;
-             }
-             throw new Error(errData.error || `Erreur serveur mail (${response.status})`);
-        }
+        // Re-use generic sender
+        await api.sendNotification(email, subject, html);
     },
 
     getDirectory: async (residence: string): Promise<RegisteredUser[]> => {

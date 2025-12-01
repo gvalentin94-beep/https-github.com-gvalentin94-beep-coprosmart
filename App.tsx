@@ -874,6 +874,22 @@ export default function App() {
           await api.updateTaskDetails(taskToReject.id, newDetails);
           await api.updateTaskStatus(taskToReject.id, 'awarded'); // Revert to awarded status
           
+          // Notify worker
+          if (taskToReject.awardedTo) {
+             try {
+                 const subject = `❌ Refus de validation - ${taskToReject.title}`;
+                 const html = `
+                    <p>Bonjour,</p>
+                    <p>La validation des travaux pour <strong>${taskToReject.title}</strong> a été refusée pour le motif suivant :</p>
+                    <blockquote style="background:#fff0f0; padding:10px; border-left:3px solid red; color:#555;">${reason}</blockquote>
+                    <p>Merci de corriger le problème et de demander une nouvelle validation.</p>
+                 `;
+                 await api.sendNotification(taskToReject.awardedTo, subject, html);
+             } catch (e) {
+                 console.warn("Could not send rejection email", e);
+             }
+          }
+
           notify("Refusé", "Le motif a été ajouté et le statut mis à jour.", "info");
           setRejectModalOpen(false);
           setTaskToReject(null);
@@ -886,11 +902,32 @@ export default function App() {
   const handleComplete = async (task: Task) => {
       if (!user || !selectedResidence) return;
       try {
-          // Safeguard: Ensure we have a Payee ID
-          const payeeId = task.awardedToId || task.bids.find(b => b.by === task.awardedTo)?.userId;
-          if (!payeeId) {
-               throw new Error("Identifiant du bénéficiaire (intervenant) introuvable. Impossible de générer le paiement.");
+          // --- ROBUST ID LOOKUP ---
+          // 1. Payee (Worker)
+          let payeeId = task.awardedToId;
+          // Try to find via bids
+          if (!payeeId && task.awardedTo) {
+             const winningBid = task.bids?.find(b => b.by === task.awardedTo);
+             payeeId = winningBid?.userId;
           }
+          // Try to find via user directory
+          if (!payeeId && task.awardedTo) {
+              const u = users.find(u => u.email === task.awardedTo);
+              payeeId = u?.id;
+          }
+
+          if (!payeeId) {
+             throw new Error(`Impossible d'identifier l'intervenant (${task.awardedTo}). Le compte a peut-être été supprimé.`);
+          }
+
+          // 2. Payer (Creator) - Needed only for apartment scope
+          let payerId = task.createdById;
+           if (!payerId && task.scope === 'apartment' && task.createdBy) {
+              const u = users.find(u => u.email === task.createdBy);
+              payerId = u?.id;
+              if (!payerId) throw new Error(`Impossible d'identifier le demandeur (${task.createdBy}).`);
+          }
+
           if (!task.awardedAmount) {
               throw new Error("Montant de la prestation introuvable.");
           }
@@ -912,7 +949,7 @@ export default function App() {
                await api.createLedgerEntry({
                   taskId: task.id,
                   type: 'apartment_payment',
-                  payerId: task.createdById,
+                  payerId: payerId,
                   payeeId: payeeId,
                   amount: task.awardedAmount
               }, selectedResidence);
@@ -1212,8 +1249,8 @@ export default function App() {
                                     onBid={() => {}} onAward={() => {}} onComplete={() => {}}
                                     onRate={(r) => handleRate(t, r)}
                                     onDeleteRating={handleDeleteRating}
-                                    onDelete={() => {}}
-                                    canDelete={false} 
+                                    onDelete={() => handleDeleteTask(t)}
+                                    canDelete={user.role === 'admin'} 
                                     />
                             ))
                         ) : (

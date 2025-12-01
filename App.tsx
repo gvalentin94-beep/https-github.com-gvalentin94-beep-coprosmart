@@ -979,8 +979,11 @@ export default function App() {
       {/* HEADER */}
       <header className="sticky top-0 z-40 bg-slate-900/80 backdrop-blur-md border-b border-slate-800 shadow-lg">
         <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
+          
+          {/* LEFT GROUP: Logo + Actions + Nav */}
           <div className="flex items-center gap-4">
             <h1 className="text-2xl font-black tracking-tighter text-white">CoproSmart<span className="text-indigo-500">.</span></h1>
+            
             {user.role === 'admin' && selectedResidence && (
                  <Select 
                     value={selectedResidence} 
@@ -990,15 +993,24 @@ export default function App() {
                     {RESIDENCES.map(r => <option key={r} value={r}>{r}</option>)}
                 </Select>
             )}
+            
             {loading && <span className="animate-spin text-indigo-500">⟳</span>}
-          </div>
-          
-          <div className="flex items-center gap-4">
-            {/* NEW REQUEST BUTTON IN HEADER - VISIBLE ON ALL SCREENS */}
-             <Button size="sm" className="flex bg-indigo-600 hover:bg-indigo-500 text-white font-bold shadow-lg shadow-indigo-500/20 text-xs px-3 sm:px-4 sm:text-sm" onClick={() => setShowCreateModal(true)}>
+
+             {/* NEW REQUEST BUTTON - NOW ON LEFT */}
+             <Button size="sm" className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold shadow-lg shadow-indigo-500/20" onClick={() => setShowCreateModal(true)}>
                 + Nouvelle demande
              </Button>
 
+            {/* DESKTOP NAV - INLINE */}
+            <div className="hidden md:flex items-center gap-6 ml-2 border-l border-slate-700 pl-6 h-8">
+                 <button onClick={() => setTab('dashboard')} className={`text-sm font-bold transition-colors ${tab === 'dashboard' ? 'text-white' : 'text-slate-400 hover:text-white'}`}>Accueil</button>
+                 <button onClick={() => setTab('directory')} className={`text-sm font-bold transition-colors ${tab === 'directory' ? 'text-white' : 'text-slate-400 hover:text-white'}`}>Annuaire</button>
+                 <button onClick={() => setTab('ledger')} className={`text-sm font-bold transition-colors ${tab === 'ledger' ? 'text-white' : 'text-slate-400 hover:text-white'}`}>Journal</button>
+            </div>
+          </div>
+          
+          {/* RIGHT GROUP: Profile */}
+          <div className="flex items-center gap-4">
              <div className="text-right hidden sm:block leading-tight">
                  <div className="text-sm font-bold text-white">{user.firstName} {user.lastName}</div>
                  <div className="flex justify-end gap-1 mt-0.5">
@@ -1024,23 +1036,13 @@ export default function App() {
         <button onClick={() => setTab('dashboard')} className={`flex flex-col items-center p-2 text-xs ${tab === 'dashboard' ? 'text-indigo-400 font-bold' : 'text-slate-500'}`}>
             <span className="text-lg">🏠</span> Accueil
         </button>
-        {/* 'Demande' Button REMOVED from here, moved to Header */}
         <button onClick={() => setTab('directory')} className={`flex flex-col items-center p-2 text-xs ${tab === 'directory' ? 'text-indigo-400 font-bold' : 'text-slate-500'}`}>
             <span className="text-lg">👥</span> Annuaire
         </button>
         <button onClick={() => setTab('ledger')} className={`flex flex-col items-center p-2 text-xs ${tab === 'ledger' ? 'text-indigo-400 font-bold' : 'text-slate-500'}`}>
-            <span className="text-lg">📒</span> Comptes
+            <span className="text-lg">📒</span> Journal
         </button>
       </nav>
-
-      {/* DESKTOP NAV */}
-      <div className="hidden md:block bg-slate-900 border-b border-slate-800">
-          <div className="max-w-5xl mx-auto px-4 flex gap-8 text-sm">
-             <button onClick={() => setTab('dashboard')} className={`py-3 border-b-2 transition-colors ${tab === 'dashboard' ? 'border-indigo-500 text-white font-bold' : 'border-transparent text-slate-400 hover:text-white'}`}>Tableau de bord</button>
-             <button onClick={() => setTab('directory')} className={`py-3 border-b-2 transition-colors ${tab === 'directory' ? 'border-indigo-500 text-white font-bold' : 'border-transparent text-slate-400 hover:text-white'}`}>Annuaire</button>
-             <button onClick={() => setTab('ledger')} className={`py-3 border-b-2 transition-colors ${tab === 'ledger' ? 'border-indigo-500 text-white font-bold' : 'border-transparent text-slate-400 hover:text-white'}`}>Comptabilité</button>
-          </div>
-      </div>
 
       {/* MAIN CONTENT */}
       <main className="max-w-5xl mx-auto p-4 md:p-6 space-y-8 animate-in fade-in duration-500">

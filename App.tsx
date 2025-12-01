@@ -1082,7 +1082,7 @@ export default function App() {
                     
                     {/* --- 1. PENDING VALIDATION (CS) --- */}
                     {tasksPending.length > 0 && (
-                        <Section title="1️⃣ En attente de validation (CS)">
+                        <Section title="1️⃣ En attente de validation">
                             {tasksPending.map(t => (
                                 <TaskCard 
                                     key={t.id} task={t} me={user} usersMap={usersMap}

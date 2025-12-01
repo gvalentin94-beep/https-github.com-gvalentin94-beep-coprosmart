@@ -31,24 +31,24 @@ export const RATING_LEGEND: { [key: number]: string } = {
     5: "Excellent"
 };
 
-// SOLID FLAT COLORS (No icons needed in labels anymore, managed in UI)
+// VIBRANT COLORS FOR BADGES
 export const CATEGORIES = [
-  { id: "ampoule", label: "Ampoule", colorClass: "bg-amber-500 text-slate-900" },
-  { id: "porte", label: "Porte", colorClass: "bg-sky-500 text-white" },
-  { id: "encombrants", label: "Encombrants", colorClass: "bg-rose-500 text-white" },
-  { id: "divers", label: "Divers", colorClass: "bg-fuchsia-500 text-white" },
+  { id: "ampoule", label: "Ampoule", colorClass: "bg-yellow-400 text-black border border-yellow-500 font-bold" },
+  { id: "porte", label: "Porte", colorClass: "bg-cyan-400 text-black border border-cyan-500 font-bold" },
+  { id: "encombrants", label: "Encombrants", colorClass: "bg-red-600 text-white border border-red-700 font-bold" },
+  { id: "divers", label: "Divers", colorClass: "bg-fuchsia-600 text-white border border-fuchsia-700 font-bold" },
 ];
 
 export const SCOPES = [
-  { id: "copro", label: "Parties communes", colorClass: "bg-indigo-600 text-white" },
-  { id: "apartment", label: "Privatif", colorClass: "bg-purple-600 text-white" },
+  { id: "copro", label: "Parties communes", colorClass: "bg-indigo-600 text-white border border-indigo-500" },
+  { id: "apartment", label: "Privatif", colorClass: "bg-pink-600 text-white border border-pink-500" },
 ];
 
 export const WARRANTY_OPTIONS = [
     { val: "0", label: "Sans garantie", colorClass: "bg-slate-600 text-slate-200" },
     { val: "30", label: "1 mois", colorClass: "bg-emerald-600 text-white" },
-    { val: "180", label: "6 mois", colorClass: "bg-sky-600 text-white" },
-    { val: "365", label: "1 an", colorClass: "bg-indigo-600 text-white" },
+    { val: "180", label: "6 mois", colorClass: "bg-teal-600 text-white" },
+    { val: "365", label: "1 an", colorClass: "bg-blue-600 text-white" },
 ];
 
 export const TASK_STATUS_CONFIG: { [key: string]: { label: string; color: string } } = {

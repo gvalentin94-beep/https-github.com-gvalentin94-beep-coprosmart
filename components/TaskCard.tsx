@@ -201,8 +201,10 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
     if (lowestBid) displayPrice = lowestBid.amount;
     if (task.awardedAmount) displayPrice = task.awardedAmount;
 
-    // ACTION BUTTONS
+    // ACTION BUTTONS Logic
     let ActionButton = null;
+    let PendingActionButtons = null; // Specific to Pending status to move them up
+
     if (task.status === 'open') {
         if (canManualAward) {
              ActionButton = <Button size="sm" onClick={onAward} className="h-6 text-[10px] bg-emerald-600 hover:bg-emerald-500 whitespace-nowrap">Attribuer</Button>;
@@ -222,15 +224,14 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
         );
     } else if (task.status === 'pending' && onApprove && onReject) {
         if (isCouncilOrAdmin) {
-            ActionButton = (
-                 <div className="flex gap-1">
-                    <Button size="sm" onClick={onApprove} disabled={hasApproved && !isAdmin} className="h-6 px-2 bg-emerald-600 text-[10px]">OK</Button>
-                    <Button size="sm" onClick={onReject} variant="destructive" className="h-6 px-2 text-[10px]">Non</Button>
+            PendingActionButtons = (
+                 <div className="flex gap-1 ml-auto">
+                    <Button size="sm" onClick={onApprove} disabled={hasApproved && !isAdmin} className="h-6 px-2 bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold">OUI</Button>
+                    <Button size="sm" onClick={onReject} variant="destructive" className="h-6 px-2 text-[10px] font-bold">NON</Button>
                 </div>
             );
         } else {
-             // UPDATED: "Vote en cours" -> "Contrôle qualité en cours"
-             ActionButton = <span className="text-[10px] text-amber-500 italic pr-2">Contrôle qualité en cours</span>;
+             PendingActionButtons = <span className="text-[10px] text-amber-500 italic ml-auto font-bold bg-amber-950/30 px-2 rounded border border-amber-500/20">Contrôle qualité en cours</span>;
         }
     }
 
@@ -239,39 +240,44 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
             <div className="p-2 flex flex-col gap-1">
                 
                 {/* LINE 1: Title & Price */}
-                <div className="flex justify-between items-center mb-1">
+                <div className="flex justify-between items-center mb-0.5">
                     <h3 className="font-extrabold text-white text-sm leading-none truncate flex items-center gap-2">
                         {task.title}
                     </h3>
                     <span className="font-mono font-bold text-white text-sm">{displayPrice}€</span>
                 </div>
 
-                {/* LINE 2: Badges + Countdown (Inline) */}
-                <div className="flex flex-wrap gap-1 items-center w-full min-h-[1.5rem]">
-                    {categoryInfo && <Badge className={`${categoryInfo.colorClass} border-none text-[9px] py-0 px-1.5 rounded-sm`}>{categoryInfo.label}</Badge>}
-                    {scopeInfo && <Badge className={`${scopeInfo.colorClass} border-none text-[9px] py-0 px-1.5 rounded-sm`}>{scopeInfo.label}</Badge>}
-                    <Badge className="bg-slate-700 text-slate-300 border-none text-[9px] py-0 px-1.5 rounded-sm">{task.location}</Badge>
-                    {warrantyInfo && <Badge className={`${warrantyInfo.colorClass} border-none text-[9px] py-0 px-1.5 rounded-sm`}>{warrantyInfo.label}</Badge>}
+                {/* LINE 2: Badges + Countdown + Pending Actions (Inline) */}
+                <div className="flex flex-wrap gap-1.5 items-center w-full min-h-[1.5rem]">
+                    {categoryInfo && <Badge className={`${categoryInfo.colorClass} border-none text-[9px] py-0 px-1.5 rounded-sm shadow-sm`}>{categoryInfo.label}</Badge>}
+                    {scopeInfo && <Badge className={`${scopeInfo.colorClass} border-none text-[9px] py-0 px-1.5 rounded-sm shadow-sm`}>{scopeInfo.label}</Badge>}
+                    <Badge className="bg-slate-700 text-slate-300 border border-slate-600 text-[9px] py-0 px-1.5 rounded-sm">{task.location}</Badge>
+                    {warrantyInfo && <Badge className={`${warrantyInfo.colorClass} border-none text-[9px] py-0 px-1.5 rounded-sm shadow-sm`}>{warrantyInfo.label}</Badge>}
                     
                     {/* Inline Countdown */}
                     {showTimer && <Countdown startedAt={timerStart} />}
+
+                    {/* Pending Actions moved here */}
+                    {task.status === 'pending' && PendingActionButtons}
                 </div>
                 
-                {/* BIDS LIST - Visible for Open tasks with bids */}
+                {/* MIDDLE: BIDS LIST (Compact Grid) - Visible for Open tasks */}
                 {task.status === 'open' && task.bids?.length > 0 && (
-                    <div className="my-2 bg-slate-900/30 rounded p-1 space-y-1">
-                        {task.bids.map((b, i) => (
-                            <div key={i} className="flex justify-between items-center text-[10px] text-slate-400 px-1">
-                                <span className="font-medium text-slate-300">
-                                    {b.amount}€ <span className="text-slate-500 font-normal">(par {getName(b.by) || b.by})</span>
-                                </span>
-                                <span>{new Date(b.plannedExecutionDate).toLocaleDateString()}</span>
-                            </div>
-                        ))}
+                    <div className="my-1.5 bg-slate-950/50 rounded border border-slate-800 p-1">
+                         <div className="grid grid-cols-2 gap-x-2 gap-y-1">
+                            {task.bids.map((b, i) => (
+                                <div key={i} className="flex justify-between items-center text-[10px] text-slate-400 border-b border-slate-800/50 last:border-0 pb-0.5">
+                                    <span className="font-bold text-indigo-200">
+                                        {b.amount}€
+                                    </span>
+                                    <span className="text-[9px] truncate max-w-[80px]">par {getName(b.by) || b.by}</span>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 )}
 
-                {/* LINE 3: Meta & Actions */}
+                {/* LINE 3: Meta & Actions (Footer) */}
                 <div className="flex justify-between items-end pt-1 border-t border-slate-700/50 mt-1">
                     
                     {/* GRID: Grouped Columns (Action vs Control) */}
@@ -292,14 +298,16 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                     </div>
                     
                     <div className="flex items-center gap-2 shrink-0 self-end">
-                        {ActionButton}
+                        {/* Show other action buttons (Award, Verify, etc) but NOT pending buttons (moved up) */}
+                        {task.status !== 'pending' && ActionButton}
                         
                         {/* Rating */}
                         <div className="relative">
                             {task.status === 'completed' && !hasRated && !isAssignee ? (
                                 <RatingBox onSubmit={onRate} />
                             ) : (
-                                <Button size="sm" variant="outline" disabled className="h-6 text-[10px] border-slate-700 text-slate-600 opacity-30 px-2">⭐</Button>
+                                // Placeholder to keep height consistent or show nothing
+                                null
                             )}
                         </div>
 
@@ -317,7 +325,7 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                         {task.photo && <img src={task.photo} alt="Photo" className="h-auto max-h-96 w-auto max-w-full object-contain mx-auto bg-slate-950/50 rounded border border-slate-700" />}
                         <p className="p-2 bg-slate-900/50 rounded whitespace-pre-wrap text-[11px]">{task.details || "Pas de description."}</p>
                         
-                        {/* Only show bids here if NOT open (since open shows them in main body now) */}
+                        {/* Show Bids in details only if NOT open (history) */}
                         {task.status !== 'open' && task.bids?.length > 0 && (
                              <div>
                                 <p className="font-bold text-slate-500 mb-1 text-[10px]">Offres</p>

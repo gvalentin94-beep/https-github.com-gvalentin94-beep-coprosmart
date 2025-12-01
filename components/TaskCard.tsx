@@ -121,14 +121,13 @@ function Countdown({ startedAt }: { startedAt: string }) {
         return () => clearInterval(interval);
     }, [startedAt]);
 
-    if (expired) return <div className="bg-rose-900/20 border border-rose-500/50 rounded p-1 text-center mb-2"><span className="text-rose-400 font-bold text-xs uppercase">Temps écoulé - En attente d'attribution</span></div>;
+    if (expired) return <span className="text-rose-400 font-bold text-[10px] uppercase ml-auto">Temps écoulé</span>;
     if (!timeLeft) return null;
     
     return (
-        <div className="bg-gradient-to-r from-indigo-900/50 to-indigo-800/50 border border-indigo-500/30 rounded-lg p-2 text-center mb-2 shadow-inner">
-            <div className="text-indigo-300 text-[10px] font-bold uppercase tracking-wider mb-0.5">Fin des enchères dans</div>
-            <div className="text-white font-mono font-black text-2xl tracking-widest leading-none drop-shadow-md">{timeLeft}</div>
-        </div>
+        <span className="text-indigo-400 font-bold text-xs font-mono ml-auto animate-pulse flex items-center gap-1">
+             ⏱️ {timeLeft}
+        </span>
     );
 }
 
@@ -247,24 +246,35 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                     <span className="font-mono font-bold text-white text-sm">{displayPrice}€</span>
                 </div>
 
-                {/* LINE 2: BIG COUNTDOWN (Conditional) */}
-                {showTimer && <Countdown startedAt={timerStart} />}
-
-                {/* LINE 3: Badges */}
-                <div className="flex flex-wrap gap-1 items-center">
+                {/* LINE 2: Badges + Countdown (Inline) */}
+                <div className="flex flex-wrap gap-1 items-center w-full min-h-[1.5rem]">
                     {categoryInfo && <Badge className={`${categoryInfo.colorClass} border-none text-[9px] py-0 px-1.5 rounded-sm`}>{categoryInfo.label}</Badge>}
                     {scopeInfo && <Badge className={`${scopeInfo.colorClass} border-none text-[9px] py-0 px-1.5 rounded-sm`}>{scopeInfo.label}</Badge>}
                     <Badge className="bg-slate-700 text-slate-300 border-none text-[9px] py-0 px-1.5 rounded-sm">{task.location}</Badge>
                     {warrantyInfo && <Badge className={`${warrantyInfo.colorClass} border-none text-[9px] py-0 px-1.5 rounded-sm`}>{warrantyInfo.label}</Badge>}
+                    
+                    {/* Inline Countdown */}
+                    {showTimer && <Countdown startedAt={timerStart} />}
                 </div>
 
-                {/* LINE 4: Meta & Actions */}
+                {/* LINE 3: Meta & Actions */}
                 <div className="flex justify-between items-end pt-1 border-t border-slate-700/50 mt-1">
-                    <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 text-[9px] text-slate-500 leading-none w-full mr-2">
-                        <div className="truncate">📝 Créé: <span className="text-slate-300">{creatorName || '-'}</span></div>
-                        <div className="truncate">👍 Approuvé: <span className="text-slate-300">{approverNames || 'En attente'}</span></div>
-                        <div className="truncate">🔨 Attribué: <span className="text-slate-300">{awardedToName || '-'}</span></div>
-                        <div className="truncate">🔍 Ctrl: <span className="text-slate-300">{validatorName || '-'}</span></div>
+                    
+                    {/* GRID: Grouped Columns (Action vs Control) */}
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-[9px] text-slate-500 leading-none w-full mr-2">
+                        
+                        {/* Column 1: Creation & Assignment */}
+                        <div className="space-y-0.5">
+                            <div className="truncate">📝 Créé: <span className="text-slate-300">{creatorName || '-'}</span></div>
+                            <div className="truncate">🔨 Attribué: <span className="text-slate-300">{awardedToName || '-'}</span></div>
+                        </div>
+
+                        {/* Column 2: Approval & Control */}
+                        <div className="space-y-0.5 border-l border-slate-700/50 pl-2">
+                             <div className="truncate">👍 Approuvé: <span className="text-slate-300">{approverNames || 'En attente'}</span></div>
+                             <div className="truncate">🔍 Ctrl: <span className="text-slate-300">{validatorName || '-'}</span></div>
+                        </div>
+
                     </div>
                     
                     <div className="flex items-center gap-2 shrink-0 self-end">

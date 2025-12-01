@@ -10,9 +10,9 @@ import { LoginCard } from './components/LoginCard';
 // --- Safe Version Access ---
 const APP_VERSION = (() => {
     try {
-        return (import.meta as any)?.env?.PACKAGE_VERSION || '0.2.29';
+        return (import.meta as any)?.env?.PACKAGE_VERSION || '0.2.31';
     } catch {
-        return '0.2.29';
+        return '0.2.31';
     }
 })();
 
@@ -782,7 +782,7 @@ export default function App() {
       
       try {
           await api.updateTaskStatus(task.id, 'awarded', { 
-              awardedTo: winningBid.by, // Storing Email for now as per schema
+              awardedTo: winningBid.userId, // FIX: Use UUID instead of winningBid.by (email)
               awardedAmount: winningBid.amount 
           });
           
@@ -792,6 +792,7 @@ export default function App() {
           notify("Attribué !", `Mission confiée à ${usersMap[winningBid.by] || winningBid.by} pour ${winningBid.amount}€.`, "success");
           refreshData();
       } catch (e) {
+          console.error(e);
           notify("Erreur", "Attribution échouée.", "error");
       }
   };

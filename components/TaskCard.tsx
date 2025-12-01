@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import type { Task, User, Rating, Bid } from '../types';
 import { Button, Card, Input, Label, Badge } from './ui';
@@ -215,7 +214,21 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
         if (canManualAward) {
              ActionButton = <Button size="sm" onClick={onAward} className="h-6 text-[10px] bg-emerald-600 hover:bg-emerald-500 whitespace-nowrap">Attribuer</Button>;
         } else if (canBid) {
-             ActionButton = <Button size="sm" onClick={(e) => { e.stopPropagation(); setShowBidForm(!showBidForm); }} className="h-6 text-[10px] bg-indigo-600 hover:bg-indigo-500 text-white whitespace-nowrap">Faire une offre</Button>;
+             ActionButton = (
+                <Button 
+                    size="sm" 
+                    onClick={(e) => { 
+                        e.stopPropagation(); 
+                        const nextState = !showBidForm;
+                        setShowBidForm(nextState);
+                        // Auto-open details when opening bid form
+                        if (nextState) setShowDetails(true);
+                    }} 
+                    className="h-6 text-[10px] bg-indigo-600 hover:bg-indigo-500 text-white whitespace-nowrap"
+                >
+                    Faire une offre
+                </Button>
+            );
         } else {
              ActionButton = <span className="text-[10px] text-slate-500 italic">Offre envoyée</span>;
         }
@@ -248,7 +261,7 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
         <Card className={`bg-slate-800 border-l-[3px] ${style.border} p-0 shadow-none mb-1`}>
             <div className="p-2 flex flex-col gap-1">
                 
-                {/* LINE 1: Price (Left) - Title (Centered) - Ref (Right) */}
+                {/* LINE 1: Price (Left) - Title (Centered) - Ref Code (Right) */}
                 <div className="relative flex items-center justify-between h-6 mb-1">
                     <span className="font-mono font-bold text-white text-sm w-16">{displayPrice}€</span>
 
@@ -256,10 +269,10 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                         {task.title}
                     </h3>
                     
-                    <span className="text-[9px] font-mono text-slate-500 w-16 text-right">{refId}</span>
+                    <span className="text-[9px] font-mono text-slate-400 w-16 text-right">{refId}</span>
                 </div>
 
-                {/* LINE 2: Badges + Bids (Next to badges) + Pending/Verif Actions */}
+                {/* LINE 2: Badges + Bids (Right) + Pending/Verif Actions */}
                 <div className="flex flex-wrap items-center w-full min-h-[1.5rem] gap-y-1">
                     
                     {/* Left: Badges */}
@@ -272,9 +285,9 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                         {showTimer && <Countdown startedAt={timerStart} />}
                     </div>
 
-                    {/* Middle: Bids List (Open) - Flows right after badges */}
+                    {/* Right: Bids List (Open) - Aligned to right with ml-auto */}
                     {task.status === 'open' && task.bids?.length > 0 && (
-                        <div className="flex flex-wrap gap-x-3 gap-y-1 ml-2 items-center">
+                        <div className="flex flex-wrap gap-x-3 gap-y-1 ml-auto items-center">
                              {task.bids.map((b, i) => (
                                 <div key={i} className="flex items-center text-[10px] text-indigo-200">
                                     <span className="font-bold mr-1">{b.amount}€</span>
@@ -284,10 +297,9 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                         </div>
                     )}
 
-                    {/* Pending/Verification Buttons - Flows after badges/bids or right aligned if preferred. 
-                        User asked for "à côté des badges", so we let it flow naturally or use a small margin. */}
+                    {/* Pending/Verification Buttons - Flows after badges or right aligned if preferred. */}
                     {(task.status === 'pending' || task.status === 'verification') && PendingActionButtons && (
-                        <div className="ml-2">
+                        <div className="ml-auto">
                             {PendingActionButtons}
                         </div>
                     )}

@@ -26,13 +26,8 @@ function BidBox({ task, onBid, onCancel }: BidBoxProps) {
     const [amount, setAmount] = useState(String(Math.floor(currentPrice - 1)));
     const [note, setNote] = useState("");
     
-    const getTomorrow = () => {
-        const d = new Date();
-        d.setDate(d.getDate() + 1);
-        return d.toISOString().split('T')[0];
-    };
-    
-    const [plannedExecutionDate, setPlannedExecutionDate] = useState(getTomorrow());
+    // No default date to force user input
+    const [plannedExecutionDate, setPlannedExecutionDate] = useState("");
 
     useEffect(() => {
         const nextVal = currentPrice > 1 ? Math.floor(currentPrice - 1) : 1;
@@ -44,7 +39,7 @@ function BidBox({ task, onBid, onCancel }: BidBoxProps) {
         if (!Number.isInteger(val)) return alert("Pas de centimes.");
         if (!val || val <= 0) return alert("Montant positif requis.");
         if (val >= currentPrice) return alert(`L'offre doit être inférieure à ${currentPrice} €.`);
-        if (!plannedExecutionDate) return alert("Date requise.");
+        if (!plannedExecutionDate) return alert("Merci d'indiquer la date à laquelle vous comptez réaliser la tâche.");
         onBid({ amount: val, note, plannedExecutionDate });
         setNote("");
         onCancel();
@@ -56,15 +51,20 @@ function BidBox({ task, onBid, onCancel }: BidBoxProps) {
     const maxDateStr = maxDate.toISOString().split('T')[0];
     
     return (
-        <div className="border-t border-slate-700 pt-2 mt-2 space-y-2">
-            <div className="flex gap-2">
+        <div className="border-t border-slate-700 pt-2 mt-2 space-y-2 bg-slate-900/50 p-2 rounded">
+            <div className="flex gap-2 items-end">
                 <div className="w-20">
-                    <Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-7 font-bold text-indigo-600 text-center !bg-white text-xs" placeholder="Prix" />
+                    <Label className="mb-1 text-[9px]">Prix (€)</Label>
+                    <Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-7 font-bold text-indigo-600 text-center !bg-white text-xs" />
                 </div>
                 <div className="flex-1">
+                    <Label className="mb-1 text-[9px] text-indigo-300">Date de réalisation prévue</Label>
                     <Input type="date" value={plannedExecutionDate} onChange={(e) => setPlannedExecutionDate(e.target.value)} min={today} max={maxDateStr} className="h-7 text-xs !bg-white text-slate-900" />
                 </div>
-                <Button size="sm" className="h-7 bg-indigo-600 hover:bg-indigo-500 text-white text-xs" onClick={handleBid}>Valider</Button>
+            </div>
+            <div className="flex justify-end gap-2">
+                 <Button size="sm" variant="ghost" className="h-6 text-[10px]" onClick={onCancel}>Annuler</Button>
+                 <Button size="sm" className="h-6 bg-indigo-600 hover:bg-indigo-500 text-white text-xs" onClick={handleBid}>Valider l'offre</Button>
             </div>
         </div>
     );
@@ -196,14 +196,20 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
 
     const hasRated = task.ratings?.some(r => r.byHash === me.id);
     const isAssignee = task.awardedTo === me.email;
+    
+    // Find Winning Bid Info (for dates)
+    const winningBid = task.awardedTo ? task.bids.find(b => b.userId === task.awardedToId || b.by === task.awardedTo) : null;
 
     let displayPrice = task.startingPrice;
     if (lowestBid) displayPrice = lowestBid.amount;
     if (task.awardedAmount) displayPrice = task.awardedAmount;
 
+    // REF ID (Short UUID)
+    const refId = `#${task.id.slice(0,4).toUpperCase()}`;
+
     // ACTION BUTTONS Logic
     let ActionButton = null;
-    let PendingActionButtons = null; // Specific to Pending status to move them up
+    let PendingActionButtons = null; // Specific to Pending/Verification status to move them up
 
     if (task.status === 'open') {
         if (canManualAward) {
@@ -215,23 +221,26 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
         }
     } else if (task.status === 'awarded' && isAssignee && onRequestVerification) {
         ActionButton = <Button size="sm" onClick={onRequestVerification} className="h-6 text-[10px] bg-fuchsia-600 hover:bg-fuchsia-500 whitespace-nowrap">Terminer</Button>;
-    } else if (task.status === 'verification' && canVerify && onRejectWork) {
-        ActionButton = (
-            <div className="flex gap-1">
-                <Button size="sm" onClick={onComplete} className="h-6 text-[10px] bg-emerald-600 hover:bg-emerald-500 px-2">Valider</Button>
-                <Button size="sm" onClick={onRejectWork} variant="destructive" className="h-6 text-[10px] px-2">Refuser</Button>
+    } else if (task.status === 'verification' && canVerify && onComplete && onRejectWork) {
+        // "En attente de validation (Travail fait)"
+        PendingActionButtons = (
+            <div className="flex gap-1 items-center">
+                <Badge className="bg-fuchsia-600 text-white animate-pulse">Contrôle qualité en cours</Badge>
+                <Button size="sm" onClick={onComplete} className="h-6 text-[10px] bg-emerald-600 hover:bg-emerald-500 px-2 font-bold">Valider</Button>
+                <Button size="sm" onClick={onRejectWork} variant="destructive" className="h-6 text-[10px] px-2 font-bold">Refuser</Button>
             </div>
         );
-    } else if (task.status === 'pending' && onApprove && onReject) {
-        if (isCouncilOrAdmin) {
+    } else if (task.status === 'pending') {
+        // "En attente de validation (Création)"
+        if (isCouncilOrAdmin && onApprove && onReject) {
             PendingActionButtons = (
-                 <div className="flex gap-1 ml-auto">
+                 <div className="flex gap-1 items-center">
                     <Button size="sm" onClick={onApprove} disabled={hasApproved && !isAdmin} className="h-6 px-2 bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold">OUI</Button>
                     <Button size="sm" onClick={onReject} variant="destructive" className="h-6 px-2 text-[10px] font-bold">NON</Button>
                 </div>
             );
         } else {
-             PendingActionButtons = <span className="text-[10px] text-amber-500 italic ml-auto font-bold bg-amber-950/30 px-2 rounded border border-amber-500/20">Contrôle qualité en cours</span>;
+             // Just Badge for simple users (already handled in badges section, or add extra here if needed)
         }
     }
 
@@ -239,41 +248,55 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
         <Card className={`bg-slate-800 border-l-[3px] ${style.border} p-0 shadow-none mb-1`}>
             <div className="p-2 flex flex-col gap-1">
                 
-                {/* LINE 1: Title & Price */}
-                <div className="flex justify-between items-center mb-0.5">
-                    <h3 className="font-extrabold text-white text-sm leading-none truncate flex items-center gap-2">
+                {/* LINE 1: Price (Left) - Title (Centered) - Ref (Right) */}
+                <div className="relative flex items-center justify-between h-6 mb-1">
+                    <span className="font-mono font-bold text-white text-sm w-16">{displayPrice}€</span>
+
+                    <h3 className="absolute left-0 right-0 mx-auto w-fit font-extrabold text-white text-sm leading-none truncate max-w-[60%] text-center">
                         {task.title}
                     </h3>
-                    <span className="font-mono font-bold text-white text-sm">{displayPrice}€</span>
-                </div>
-
-                {/* LINE 2: Badges + Countdown + Pending Actions (Inline) */}
-                <div className="flex flex-wrap gap-1.5 items-center w-full min-h-[1.5rem]">
-                    {categoryInfo && <Badge className={`${categoryInfo.colorClass} border-none text-[9px] py-0 px-1.5 rounded-sm shadow-sm`}>{categoryInfo.label}</Badge>}
-                    {scopeInfo && <Badge className={`${scopeInfo.colorClass} border-none text-[9px] py-0 px-1.5 rounded-sm shadow-sm`}>{scopeInfo.label}</Badge>}
-                    <Badge className="bg-slate-700 text-slate-300 border border-slate-600 text-[9px] py-0 px-1.5 rounded-sm">{task.location}</Badge>
-                    {warrantyInfo && <Badge className={`${warrantyInfo.colorClass} border-none text-[9px] py-0 px-1.5 rounded-sm shadow-sm`}>{warrantyInfo.label}</Badge>}
                     
-                    {/* Inline Countdown */}
-                    {showTimer && <Countdown startedAt={timerStart} />}
-
-                    {/* Pending Actions moved here */}
-                    {task.status === 'pending' && PendingActionButtons}
+                    <span className="text-[9px] font-mono text-slate-500 w-16 text-right">{refId}</span>
                 </div>
-                
-                {/* MIDDLE: BIDS LIST (Compact Grid) - Visible for Open tasks */}
-                {task.status === 'open' && task.bids?.length > 0 && (
-                    <div className="my-1.5 bg-slate-950/50 rounded border border-slate-800 p-1">
-                         <div className="grid grid-cols-2 gap-x-2 gap-y-1">
-                            {task.bids.map((b, i) => (
-                                <div key={i} className="flex justify-between items-center text-[10px] text-slate-400 border-b border-slate-800/50 last:border-0 pb-0.5">
-                                    <span className="font-bold text-indigo-200">
-                                        {b.amount}€
-                                    </span>
-                                    <span className="text-[9px] truncate max-w-[80px]">par {getName(b.by) || b.by}</span>
+
+                {/* LINE 2: Badges + Bids (Next to badges) + Pending/Verif Actions */}
+                <div className="flex flex-wrap items-center w-full min-h-[1.5rem] gap-y-1">
+                    
+                    {/* Left: Badges */}
+                    <div className="flex flex-wrap gap-1.5 items-center">
+                        {task.status === 'pending' && <Badge className="bg-amber-500 text-slate-900 border-amber-600 font-bold">En attente de validation</Badge>}
+                        {categoryInfo && <Badge className={`${categoryInfo.colorClass} border-none text-[9px] py-0 px-1.5 rounded-sm shadow-sm`}>{categoryInfo.label}</Badge>}
+                        {scopeInfo && <Badge className={`${scopeInfo.colorClass} border-none text-[9px] py-0 px-1.5 rounded-sm shadow-sm`}>{scopeInfo.label}</Badge>}
+                        <Badge className="bg-slate-700 text-slate-300 border border-slate-600 text-[9px] py-0 px-1.5 rounded-sm">{task.location}</Badge>
+                        {/* Inline Countdown */}
+                        {showTimer && <Countdown startedAt={timerStart} />}
+                    </div>
+
+                    {/* Middle: Bids List (Open) - Flows right after badges */}
+                    {task.status === 'open' && task.bids?.length > 0 && (
+                        <div className="flex flex-wrap gap-x-3 gap-y-1 ml-2 items-center">
+                             {task.bids.map((b, i) => (
+                                <div key={i} className="flex items-center text-[10px] text-indigo-200">
+                                    <span className="font-bold mr-1">{b.amount}€</span>
+                                    <span className="text-slate-300">par {getName(b.by) || b.by}</span>
                                 </div>
                             ))}
                         </div>
+                    )}
+
+                    {/* Pending/Verification Buttons - Flows after badges/bids or right aligned if preferred. 
+                        User asked for "à côté des badges", so we let it flow naturally or use a small margin. */}
+                    {(task.status === 'pending' || task.status === 'verification') && PendingActionButtons && (
+                        <div className="ml-2">
+                            {PendingActionButtons}
+                        </div>
+                    )}
+                </div>
+                
+                {/* Planning Date for Assigned Tasks */}
+                {(task.status === 'awarded' || task.status === 'verification') && winningBid && winningBid.plannedExecutionDate && (
+                    <div className="mt-1 bg-indigo-900/20 px-2 py-1 rounded border border-indigo-500/20 flex justify-center text-xs text-indigo-200">
+                         📅 Intervention prévue le : <strong className="ml-1 text-white">{new Date(winningBid.plannedExecutionDate).toLocaleDateString()}</strong>
                     </div>
                 )}
 
@@ -282,33 +305,25 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                     
                     {/* GRID: Grouped Columns (Action vs Control) */}
                     <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-[9px] text-slate-500 leading-none w-full mr-2">
-                        
-                        {/* Column 1: Creation & Assignment */}
                         <div className="space-y-0.5">
                             <div className="truncate">📝 Créé par: <span className="text-slate-300">{creatorName || '-'}</span></div>
                             <div className="truncate">🔨 Attribué à: <span className="text-slate-300">{awardedToName || '-'}</span></div>
                         </div>
-
-                        {/* Column 2: Approval & Control */}
                         <div className="space-y-0.5 border-l border-slate-700/50 pl-2">
                              <div className="truncate">👍 Approuvé par: <span className="text-slate-300">{approverNames || 'En attente'}</span></div>
                              <div className="truncate">🔍 Contrôle qualité par <span className="text-slate-300">{validatorName || '-'}</span></div>
                         </div>
-
                     </div>
                     
                     <div className="flex items-center gap-2 shrink-0 self-end">
-                        {/* Show other action buttons (Award, Verify, etc) but NOT pending buttons (moved up) */}
-                        {task.status !== 'pending' && ActionButton}
+                        {/* Show other action buttons (Award, Verify, etc) but NOT pending/verification buttons (moved up) */}
+                        {task.status !== 'pending' && task.status !== 'verification' && ActionButton}
                         
                         {/* Rating */}
                         <div className="relative">
                             {task.status === 'completed' && !hasRated && !isAssignee ? (
                                 <RatingBox onSubmit={onRate} />
-                            ) : (
-                                // Placeholder to keep height consistent or show nothing
-                                null
-                            )}
+                            ) : null}
                         </div>
 
                         <button onClick={() => setShowDetails(!showDetails)} className="text-[10px] text-slate-500 hover:text-white px-1">
@@ -328,11 +343,11 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                         {/* Show Bids in details only if NOT open (history) */}
                         {task.status !== 'open' && task.bids?.length > 0 && (
                              <div>
-                                <p className="font-bold text-slate-500 mb-1 text-[10px]">Offres</p>
+                                <p className="font-bold text-slate-500 mb-1 text-[10px]">Historique des offres</p>
                                 {task.bids.map((b, i) => (
                                     <div key={i} className="flex justify-between p-1 bg-slate-900/30 rounded mb-1 text-[10px]">
                                         <span>{b.amount}€ ({usersMap?.[b.by] || b.by})</span>
-                                        <span className="text-slate-500">{new Date(b.plannedExecutionDate).toLocaleDateString()}</span>
+                                        <span className="text-slate-500">Prévu le {new Date(b.plannedExecutionDate).toLocaleDateString()}</span>
                                     </div>
                                 ))}
                              </div>

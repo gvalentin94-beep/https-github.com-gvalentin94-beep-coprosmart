@@ -98,20 +98,32 @@ function RatingBox({ onSubmit }: RatingBoxProps) {
 
 function Countdown({ startedAt }: { startedAt: string }) {
     const [timeLeft, setTimeLeft] = useState("");
+    const [expired, setExpired] = useState(false);
+
     useEffect(() => {
         const interval = setInterval(() => {
             const endTime = new Date(startedAt).getTime() + 24 * 60 * 60 * 1000;
             const now = new Date().getTime();
             const distance = endTime - now;
-            if (distance < 0) { setTimeLeft(""); clearInterval(interval); return; }
+            
+            if (distance < 0) { 
+                setExpired(true);
+                setTimeLeft(""); 
+                clearInterval(interval); 
+                return; 
+            }
+            
             const h = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
             const m = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-            setTimeLeft(`${h}h ${m}m`);
+            const s = Math.floor((distance % (1000 * 60)) / 1000);
+            setTimeLeft(`${h}h ${m}m ${s}s`);
         }, 1000);
         return () => clearInterval(interval);
     }, [startedAt]);
+
+    if (expired) return <Badge className="bg-rose-900/50 text-rose-300 border-rose-800 animate-pulse text-[10px]">Temps écoulé</Badge>;
     if (!timeLeft) return null;
-    return <span className="text-[10px] font-mono text-indigo-400 ml-2">⏱ {timeLeft}</span>;
+    return <Badge className="bg-indigo-900/50 text-indigo-300 border-indigo-500 animate-pulse text-[10px]">⏱ {timeLeft}</Badge>;
 }
 
 export interface TaskCardProps {
@@ -149,14 +161,20 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
     const canBid = (isFirstBidder && myBidsCount < 2) || (!isFirstBidder && myBidsCount < 1);
     
     const hasApproved = task.approvals?.some(a => a.by === me.email);
-    const isTimerRunning = task.biddingStartedAt && (new Date().getTime() < new Date(task.biddingStartedAt).getTime() + 24 * 60 * 60 * 1000);
+    
+    // Timer Logic
+    const hasTimer = !!task.biddingStartedAt;
+    const isTimerExpired = task.biddingStartedAt && (new Date().getTime() > new Date(task.biddingStartedAt).getTime() + 24 * 60 * 60 * 1000);
     
     const isAdmin = me.role === 'admin';
     const isCouncil = me.role === 'council';
     const isCouncilOrAdmin = isAdmin || isCouncil;
 
     const canVerify = isAdmin || isCouncil;
-    const canManualAward = task.status === "open" && task.bids?.length > 0 && lowestBid && ((task.createdBy === me?.email && !isTimerRunning) || isAdmin);
+    
+    // Can award if: Open AND has bids AND (Creator owner OR Admin) AND (Timer expired OR Admin bypass)
+    // Simplified: Show button if expired, or if admin.
+    const canManualAward = task.status === "open" && task.bids?.length > 0 && lowestBid && (isTimerExpired || isAdmin);
     
     // Name helpers
     const getName = (email: string | undefined | null) => {
@@ -181,10 +199,13 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
     // ACTION BUTTONS
     let ActionButton = null;
     if (task.status === 'open') {
-        if (canBid) ActionButton = <Button size="sm" onClick={(e) => { e.stopPropagation(); setShowBidForm(!showBidForm); }} className="h-6 text-[10px] bg-indigo-600 hover:bg-indigo-500 text-white whitespace-nowrap">Faire une offre</Button>;
-        else ActionButton = <span className="text-[10px] text-slate-500 italic">Offre envoyée</span>;
-    } else if (canManualAward) {
-        ActionButton = <Button size="sm" onClick={onAward} className="h-6 text-[10px] bg-emerald-600 hover:bg-emerald-500 whitespace-nowrap">{isAdmin && isTimerRunning ? '⚡ Attribuer' : 'Attribuer'}</Button>;
+        if (canManualAward) {
+             ActionButton = <Button size="sm" onClick={onAward} className="h-6 text-[10px] bg-emerald-600 hover:bg-emerald-500 whitespace-nowrap">Attribuer</Button>;
+        } else if (canBid) {
+             ActionButton = <Button size="sm" onClick={(e) => { e.stopPropagation(); setShowBidForm(!showBidForm); }} className="h-6 text-[10px] bg-indigo-600 hover:bg-indigo-500 text-white whitespace-nowrap">Faire une offre</Button>;
+        } else {
+             ActionButton = <span className="text-[10px] text-slate-500 italic">Offre envoyée</span>;
+        }
     } else if (task.status === 'awarded' && isAssignee && onRequestVerification) {
         ActionButton = <Button size="sm" onClick={onRequestVerification} className="h-6 text-[10px] bg-fuchsia-600 hover:bg-fuchsia-500 whitespace-nowrap">Terminer</Button>;
     } else if (task.status === 'verification' && canVerify && onRejectWork) {
@@ -212,7 +233,10 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
             <div className="p-2 flex flex-col gap-1">
                 {/* LINE 1: Title & Price */}
                 <div className="flex justify-between items-center">
-                    <h3 className="font-extrabold text-white text-sm leading-none truncate">{task.title}</h3>
+                    <h3 className="font-extrabold text-white text-sm leading-none truncate flex items-center gap-2">
+                        {task.title}
+                        {hasTimer && task.status === 'open' && <Countdown startedAt={task.biddingStartedAt!} />}
+                    </h3>
                     <span className="font-mono font-bold text-white text-sm">{displayPrice}€</span>
                 </div>
 
@@ -222,7 +246,6 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                     {scopeInfo && <Badge className={`${scopeInfo.colorClass} border-none text-[9px] py-0 px-1.5 rounded-sm`}>{scopeInfo.label}</Badge>}
                     <Badge className="bg-slate-700 text-slate-300 border-none text-[9px] py-0 px-1.5 rounded-sm">{task.location}</Badge>
                     {warrantyInfo && <Badge className={`${warrantyInfo.colorClass} border-none text-[9px] py-0 px-1.5 rounded-sm`}>{warrantyInfo.label}</Badge>}
-                    {task.status === 'open' && task.biddingStartedAt && <Countdown startedAt={task.biddingStartedAt} />}
                 </div>
 
                 {/* LINE 3: Meta & Actions */}

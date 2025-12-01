@@ -16,17 +16,6 @@ const APP_VERSION = (() => {
     }
 })();
 
-// --- Constants for Random Messages ---
-const OPEN_EMPTY_MESSAGES = [
-    "Tout va bien dans la copro, rien à signaler ! 🏖️",
-    "Calme plat. Profitez-en pour arroser les plantes ! 🌿",
-    "Pas une seule ampoule grillée à l'horizon. Quel miracle ! 💡",
-    "C'est louche... tout fonctionne parfaitement aujourd'hui. 🤔",
-    "Le Conseil Syndical est au chômage technique (pour le moment). 😎",
-    "Rien à faire ? C'est le moment de dire bonjour à vos voisins ! 👋",
-    "Aucune mission pour nos super-héros du quotidien. 🦸‍♂️"
-];
-
 // --- Toast Notification System ---
 interface Toast {
   id: string;
@@ -729,7 +718,7 @@ export default function App() {
       try {
           // Admin bypass
           if (user.role === 'admin') {
-              await api.updateTaskStatus(task.id, 'open', { biddingStartedAt: new Date().toISOString() });
+              await api.updateTaskStatus(task.id, 'open');
               notify("Validé", "La demande est ouverte aux offres (Admin).", "success");
               refreshData();
               return;
@@ -743,7 +732,7 @@ export default function App() {
           const updatedTask = updatedTasks.find(t => t.id === task.id);
           
           if (updatedTask && updatedTask.approvals.length >= COUNCIL_MIN_APPROVALS) {
-               await api.updateTaskStatus(task.id, 'open', { biddingStartedAt: new Date().toISOString() });
+               await api.updateTaskStatus(task.id, 'open');
                notify("Validé", "La demande est maintenant ouverte aux offres !", "success");
           } else {
                notify("Voté", "Votre validation a été enregistrée.", "success");
@@ -769,7 +758,14 @@ export default function App() {
   const handleBid = async (task: Task, bid: Omit<Bid, 'by' | 'at'>) => {
     if (!user) return;
     try {
+        const isFirstBid = (!task.bids || task.bids.length === 0);
         await api.addBid(task.id, bid, user.id);
+
+        if (isFirstBid) {
+            // Start the 24h countdown on first bid
+            await api.updateTaskStatus(task.id, 'open', { biddingStartedAt: new Date().toISOString() });
+        }
+
         notify("Offre envoyée", `Votre offre de ${bid.amount}€ a été enregistrée.`, "success");
         refreshData();
     } catch (e) {
@@ -968,9 +964,12 @@ export default function App() {
       );
   }
 
-  const activeTasks = tasks.filter(t => ['open', 'awarded', 'verification'].includes(t.status));
-  const completedTasks = tasks.filter(t => t.status === 'completed');
-  const pendingTasks = tasks.filter(t => t.status === 'pending');
+  // --- CATEGORY FILTERING ---
+  const tasksPending = tasks.filter(t => t.status === 'pending');
+  const tasksAwaitingBids = tasks.filter(t => t.status === 'open' && (!t.bids || t.bids.length === 0));
+  const tasksBiddingInProgress = tasks.filter(t => t.status === 'open' && t.bids && t.bids.length > 0);
+  const tasksAssigned = tasks.filter(t => ['awarded', 'verification'].includes(t.status));
+  const tasksCompleted = tasks.filter(t => t.status === 'completed');
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-200 pb-20 md:pb-0 font-sans selection:bg-indigo-500/30">
@@ -1049,7 +1048,7 @@ export default function App() {
         
         {/* DASHBOARD TAB */}
         {tab === 'dashboard' && (
-            <>
+            <div className="space-y-8">
                 <div className="flex flex-col gap-4">
                      <h2 className="text-xl font-bold text-white">👋 Bonjour {user.firstName}</h2>
                 </div>
@@ -1058,75 +1057,92 @@ export default function App() {
                      <UserValidationQueue pendingUsers={pendingUsers} onApprove={handleApproveUser} onReject={handleRejectUser} />
                 )}
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    {/* LEFT COL: TASKS IN PROGRESS */}
-                    <Section title="📌 Ça se passe maintenant">
-                         {activeTasks.length === 0 ? (
-                             <Card className="border-dashed border-slate-800 bg-transparent"><CardContent className="text-center text-slate-500 py-8 italic">{OPEN_EMPTY_MESSAGES[Math.floor(Math.random() * OPEN_EMPTY_MESSAGES.length)]}</CardContent></Card>
-                         ) : (
-                             activeTasks.map(t => (
-                                 <TaskCard 
-                                    key={t.id} 
-                                    task={t} 
-                                    me={user} 
-                                    usersMap={usersMap}
-                                    onBid={(b) => handleBid(t, b)}
-                                    onAward={() => handleAward(t)}
-                                    onComplete={() => handleComplete(t)}
-                                    onRate={(r) => handleRate(t, r)}
-                                    onDelete={() => handleDeleteTask(t)}
-                                    canDelete={user.role === 'admin' || (t.createdBy === user.email && t.status === 'open' && (!t.bids || t.bids.length === 0))}
-                                    onRequestVerification={() => handleRequestVerification(t)}
-                                    onRejectWork={() => handleRejectWork(t)}
-                                 />
-                             ))
-                         )}
+                {/* --- 1. PENDING VALIDATION (CS) --- */}
+                {tasksPending.length > 0 && (
+                    <Section title="1️⃣ En attente de validation (CS)">
+                        {tasksPending.map(t => (
+                            <TaskCard 
+                                key={t.id} task={t} me={user} usersMap={usersMap}
+                                onBid={() => {}} onAward={() => {}} onComplete={() => {}} onRate={() => {}}
+                                onDelete={() => handleDeleteTask(t)}
+                                canDelete={user.role === 'admin' || t.createdBy === user.email}
+                                onApprove={() => handleApproveTask(t)}
+                                onReject={() => handleRejectTask(t)}
+                            />
+                        ))}
                     </Section>
+                )}
 
-                    {/* RIGHT COL: VALIDATION & HISTORY */}
-                    <div className="space-y-8">
-                        {(pendingTasks.length > 0) && (
-                            <Section title={`⚖️ À valider (${pendingTasks.length})`}>
-                                {pendingTasks.map(t => (
-                                    <TaskCard 
-                                        key={t.id} 
-                                        task={t} 
-                                        me={user}
-                                        usersMap={usersMap}
-                                        onBid={() => {}}
-                                        onAward={() => {}}
-                                        onComplete={() => {}}
-                                        onRate={() => {}}
-                                        onDelete={() => handleDeleteTask(t)}
-                                        canDelete={user.role === 'admin' || t.createdBy === user.email}
-                                        onApprove={() => handleApproveTask(t)}
-                                        onReject={() => handleRejectTask(t)}
-                                    />
-                                ))}
-                            </Section>
-                        )}
-                        
-                        <Section title="✅ Récemment terminé">
-                            {completedTasks.slice(0, 3).map(t => (
-                                 <TaskCard 
-                                    key={t.id} 
-                                    task={t} 
-                                    me={user} 
-                                    usersMap={usersMap}
-                                    onBid={() => {}}
-                                    onAward={() => {}}
-                                    onComplete={() => {}}
-                                    onRate={(r) => handleRate(t, r)}
-                                    onDeleteRating={handleDeleteRating}
-                                    onDelete={() => {}} // Completed tasks usually not deleted
-                                    canDelete={false} 
-                                 />
-                            ))}
-                            {completedTasks.length === 0 && <p className="text-slate-500 italic text-sm">Aucun historique récent.</p>}
-                        </Section>
-                    </div>
-                </div>
-            </>
+                {/* --- 2. AWAITING BIDS (Valid, 0 offers) --- */}
+                {tasksAwaitingBids.length > 0 && (
+                    <Section title="2️⃣ En recherche d'intervenant">
+                        {tasksAwaitingBids.map(t => (
+                            <TaskCard 
+                                key={t.id} task={t} me={user} usersMap={usersMap}
+                                onBid={(b) => handleBid(t, b)} onAward={() => {}} onComplete={() => {}} onRate={() => {}}
+                                onDelete={() => handleDeleteTask(t)}
+                                canDelete={user.role === 'admin' || (t.createdBy === user.email)}
+                            />
+                        ))}
+                    </Section>
+                )}
+
+                {/* --- 3. BIDDING IN PROGRESS (Timer Running) --- */}
+                {tasksBiddingInProgress.length > 0 && (
+                    <Section title="3️⃣ Enchères en cours (⏱️ 24h)">
+                        {tasksBiddingInProgress.map(t => (
+                            <TaskCard 
+                                key={t.id} task={t} me={user} usersMap={usersMap}
+                                onBid={(b) => handleBid(t, b)}
+                                onAward={() => handleAward(t)}
+                                onComplete={() => {}} onRate={() => {}}
+                                onDelete={() => handleDeleteTask(t)}
+                                canDelete={user.role === 'admin'}
+                            />
+                        ))}
+                    </Section>
+                )}
+
+                {/* --- 4. ASSIGNED / IN PROGRESS --- */}
+                {tasksAssigned.length > 0 && (
+                     <Section title="4️⃣ Travaux en cours">
+                         {tasksAssigned.map(t => (
+                            <TaskCard 
+                                key={t.id} task={t} me={user} usersMap={usersMap}
+                                onBid={() => {}} onAward={() => {}}
+                                onComplete={() => handleComplete(t)}
+                                onRate={() => {}}
+                                onDelete={() => handleDeleteTask(t)}
+                                canDelete={user.role === 'admin'}
+                                onRequestVerification={() => handleRequestVerification(t)}
+                                onRejectWork={() => handleRejectWork(t)}
+                            />
+                         ))}
+                     </Section>
+                )}
+                
+                {/* --- 5. COMPLETED --- */}
+                <Section title="5️⃣ Terminé">
+                    {tasksCompleted.length > 0 ? (
+                        tasksCompleted.map(t => (
+                                <TaskCard 
+                                key={t.id} task={t} me={user} usersMap={usersMap}
+                                onBid={() => {}} onAward={() => {}} onComplete={() => {}}
+                                onRate={(r) => handleRate(t, r)}
+                                onDeleteRating={handleDeleteRating}
+                                onDelete={() => {}}
+                                canDelete={false} 
+                                />
+                        ))
+                    ) : (
+                        <Card className="border-dashed border-slate-800 bg-transparent">
+                            <CardContent className="text-center text-slate-500 py-6 italic text-sm">
+                                Aucun historique terminé.
+                            </CardContent>
+                        </Card>
+                    )}
+                </Section>
+            </div>
         )}
 
         {/* DIRECTORY TAB */}

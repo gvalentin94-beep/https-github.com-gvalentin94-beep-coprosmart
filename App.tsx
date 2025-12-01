@@ -1057,39 +1057,9 @@ export default function App() {
                      <UserValidationQueue pendingUsers={pendingUsers} onApprove={handleApproveUser} onReject={handleRejectUser} />
                 )}
 
-                {/* --- 1. PENDING VALIDATION (CS) --- */}
-                {tasksPending.length > 0 && (
-                    <Section title="1️⃣ En attente de validation (CS)">
-                        {tasksPending.map(t => (
-                            <TaskCard 
-                                key={t.id} task={t} me={user} usersMap={usersMap}
-                                onBid={() => {}} onAward={() => {}} onComplete={() => {}} onRate={() => {}}
-                                onDelete={() => handleDeleteTask(t)}
-                                canDelete={user.role === 'admin' || t.createdBy === user.email}
-                                onApprove={() => handleApproveTask(t)}
-                                onReject={() => handleRejectTask(t)}
-                            />
-                        ))}
-                    </Section>
-                )}
-
-                {/* --- 2. AWAITING BIDS (Valid, 0 offers) --- */}
-                {tasksAwaitingBids.length > 0 && (
-                    <Section title="2️⃣ En recherche d'intervenant">
-                        {tasksAwaitingBids.map(t => (
-                            <TaskCard 
-                                key={t.id} task={t} me={user} usersMap={usersMap}
-                                onBid={(b) => handleBid(t, b)} onAward={() => {}} onComplete={() => {}} onRate={() => {}}
-                                onDelete={() => handleDeleteTask(t)}
-                                canDelete={user.role === 'admin' || (t.createdBy === user.email)}
-                            />
-                        ))}
-                    </Section>
-                )}
-
-                {/* --- 3. BIDDING IN PROGRESS (Timer Running) --- */}
+                {/* --- TOP: BIDDING IN PROGRESS (Timer Running) - Full Width --- */}
                 {tasksBiddingInProgress.length > 0 && (
-                    <Section title="3️⃣ Enchères en cours (⏱️ 24h)">
+                    <Section title="🔥 Enchères en cours (⏱️ 24h)">
                         {tasksBiddingInProgress.map(t => (
                             <TaskCard 
                                 key={t.id} task={t} me={user} usersMap={usersMap}
@@ -1103,45 +1073,79 @@ export default function App() {
                     </Section>
                 )}
 
-                {/* --- 4. ASSIGNED / IN PROGRESS --- */}
-                {tasksAssigned.length > 0 && (
-                     <Section title="4️⃣ Travaux en cours">
-                         {tasksAssigned.map(t => (
-                            <TaskCard 
-                                key={t.id} task={t} me={user} usersMap={usersMap}
-                                onBid={() => {}} onAward={() => {}}
-                                onComplete={() => handleComplete(t)}
-                                onRate={() => {}}
-                                onDelete={() => handleDeleteTask(t)}
-                                canDelete={user.role === 'admin'}
-                                onRequestVerification={() => handleRequestVerification(t)}
-                                onRejectWork={() => handleRejectWork(t)}
-                            />
-                         ))}
-                     </Section>
-                )}
-                
-                {/* --- 5. COMPLETED --- */}
-                <Section title="5️⃣ Terminé">
-                    {tasksCompleted.length > 0 ? (
-                        tasksCompleted.map(t => (
+                {/* --- GRID: ALL OTHER TASKS (2 Columns) --- */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                    
+                    {/* --- 1. PENDING VALIDATION (CS) --- */}
+                    {tasksPending.length > 0 && (
+                        <Section title="1️⃣ En attente de validation (CS)">
+                            {tasksPending.map(t => (
                                 <TaskCard 
-                                key={t.id} task={t} me={user} usersMap={usersMap}
-                                onBid={() => {}} onAward={() => {}} onComplete={() => {}}
-                                onRate={(r) => handleRate(t, r)}
-                                onDeleteRating={handleDeleteRating}
-                                onDelete={() => {}}
-                                canDelete={false} 
+                                    key={t.id} task={t} me={user} usersMap={usersMap}
+                                    onBid={() => {}} onAward={() => {}} onComplete={() => {}} onRate={() => {}}
+                                    onDelete={() => handleDeleteTask(t)}
+                                    canDelete={user.role === 'admin' || t.createdBy === user.email}
+                                    onApprove={() => handleApproveTask(t)}
+                                    onReject={() => handleRejectTask(t)}
                                 />
-                        ))
-                    ) : (
-                        <Card className="border-dashed border-slate-800 bg-transparent">
-                            <CardContent className="text-center text-slate-500 py-6 italic text-sm">
-                                Aucun historique terminé.
-                            </CardContent>
-                        </Card>
+                            ))}
+                        </Section>
                     )}
-                </Section>
+
+                    {/* --- 2. AWAITING BIDS (Valid, 0 offers) --- */}
+                    {tasksAwaitingBids.length > 0 && (
+                        <Section title="2️⃣ En recherche d'intervenant">
+                            {tasksAwaitingBids.map(t => (
+                                <TaskCard 
+                                    key={t.id} task={t} me={user} usersMap={usersMap}
+                                    onBid={(b) => handleBid(t, b)} onAward={() => {}} onComplete={() => {}} onRate={() => {}}
+                                    onDelete={() => handleDeleteTask(t)}
+                                    canDelete={user.role === 'admin' || (t.createdBy === user.email)}
+                                />
+                            ))}
+                        </Section>
+                    )}
+
+                    {/* --- 3. ASSIGNED / IN PROGRESS --- */}
+                    {tasksAssigned.length > 0 && (
+                         <Section title="3️⃣ Travaux en cours">
+                             {tasksAssigned.map(t => (
+                                <TaskCard 
+                                    key={t.id} task={t} me={user} usersMap={usersMap}
+                                    onBid={() => {}} onAward={() => {}}
+                                    onComplete={() => handleComplete(t)}
+                                    onRate={() => {}}
+                                    onDelete={() => handleDeleteTask(t)}
+                                    canDelete={user.role === 'admin'}
+                                    onRequestVerification={() => handleRequestVerification(t)}
+                                    onRejectWork={() => handleRejectWork(t)}
+                                />
+                             ))}
+                         </Section>
+                    )}
+                    
+                    {/* --- 4. COMPLETED --- */}
+                    <Section title="4️⃣ Terminé">
+                        {tasksCompleted.length > 0 ? (
+                            tasksCompleted.map(t => (
+                                    <TaskCard 
+                                    key={t.id} task={t} me={user} usersMap={usersMap}
+                                    onBid={() => {}} onAward={() => {}} onComplete={() => {}}
+                                    onRate={(r) => handleRate(t, r)}
+                                    onDeleteRating={handleDeleteRating}
+                                    onDelete={() => {}}
+                                    canDelete={false} 
+                                    />
+                            ))
+                        ) : (
+                            <Card className="border-dashed border-slate-800 bg-transparent">
+                                <CardContent className="text-center text-slate-500 py-6 italic text-sm">
+                                    Aucun historique terminé.
+                                </CardContent>
+                            </Card>
+                        )}
+                    </Section>
+                </div>
             </div>
         )}
 

@@ -10,9 +10,9 @@ import { LoginCard } from './components/LoginCard';
 // --- Safe Version Access ---
 const APP_VERSION = (() => {
     try {
-        return (import.meta as any)?.env?.PACKAGE_VERSION || '0.2.32';
+        return (import.meta as any)?.env?.PACKAGE_VERSION || '0.2.33';
     } catch {
-        return '0.2.32';
+        return '0.2.33';
     }
 })();
 
@@ -206,7 +206,10 @@ function RejectReasonModal({ isOpen, onClose, onSubmit }: { isOpen: boolean, onC
                         <Button 
                             disabled={!reason.trim()} 
                             className="bg-rose-600 hover:bg-rose-500 text-white font-bold"
-                            onClick={() => onSubmit(reason)}
+                            onClick={() => {
+                                onSubmit(reason);
+                                setReason(""); // Clear after submit
+                            }}
                         >
                             Confirmer le refus
                         </Button>
@@ -736,6 +739,10 @@ export default function App() {
         if (user.role === 'council' || user.role === 'admin') {
             try {
                 await api.addApproval(newTaskId, user.id);
+                // Immediately refresh to show it's approved
+                // If it was the 2nd approval, status might flip to open in backend? 
+                // Currently only handleApproveTask checks threshold, 
+                // but since it's just creation, likely just 1 approval.
                 notify("Auto-validation", "Votre vote a été comptabilisé automatiquement.", "info");
             } catch (voteErr) {
                 console.warn("Auto-vote failed", voteErr);
@@ -746,7 +753,9 @@ export default function App() {
         setShowCreateModal(false);
         // Reset form
         setNewTaskTitle(""); setNewTaskDetails(""); setNewTaskPrice("20"); setNewTaskPhoto(null);
-        refreshData();
+        
+        // Force refresh to show the new approval state
+        await refreshData();
         setTab('dashboard');
     } catch (e) {
         notify("Erreur", "Impossible de créer la demande.", "error");
@@ -836,7 +845,7 @@ export default function App() {
               awardedAmount: winningBid.amount 
           });
           
-          // Notify Winner - Non-blocking try/catch
+          // Notify Winner
           try {
              await api.inviteUser(winningBid.by, "CoproSmart (Notification)"); 
           } catch (err) {
@@ -868,7 +877,7 @@ export default function App() {
       if (!taskToReject) return;
       try {
           // Append reason to details
-          const timestamp = new Date().toLocaleDateString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+          const timestamp = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
           const newDetails = (taskToReject.details || "") + `\n\n[⛔ REFUS DE VALIDATION le ${timestamp}]\nMotif : ${reason}\n\n`;
           
           await api.updateTaskDetails(taskToReject.id, newDetails);
@@ -879,14 +888,21 @@ export default function App() {
              try {
                  const subject = `❌ Refus de validation - ${taskToReject.title}`;
                  const html = `
-                    <p>Bonjour,</p>
-                    <p>La validation des travaux pour <strong>${taskToReject.title}</strong> a été refusée pour le motif suivant :</p>
-                    <blockquote style="background:#fff0f0; padding:10px; border-left:3px solid red; color:#555;">${reason}</blockquote>
-                    <p>Merci de corriger le problème et de demander une nouvelle validation.</p>
+                    <div style="font-family: Arial, sans-serif; color: #333;">
+                        <h2 style="color: #e11d48;">Contrôle Qualité : Refusé</h2>
+                        <p>Bonjour,</p>
+                        <p>La validation des travaux pour <strong>${taskToReject.title}</strong> a été refusée pour le motif suivant :</p>
+                        <blockquote style="background:#fff0f0; padding:15px; border-left:4px solid #e11d48; color:#555; font-style: italic;">
+                            ${reason}
+                        </blockquote>
+                        <p>Le statut de la tâche est repassé en "Attribuée". Merci de corriger le problème indiqué, puis de demander une nouvelle validation une fois les travaux terminés.</p>
+                        <p>L'équipe CoproSmart</p>
+                    </div>
                  `;
                  await api.sendNotification(taskToReject.awardedTo, subject, html);
              } catch (e) {
                  console.warn("Could not send rejection email", e);
+                 notify("Info", "Email de notification non envoyé (Erreur serveur).", "error");
              }
           }
 
@@ -905,12 +921,12 @@ export default function App() {
           // --- ROBUST ID LOOKUP ---
           // 1. Payee (Worker)
           let payeeId = task.awardedToId;
-          // Try to find via bids
+          // Try to find via bids (common fallback)
           if (!payeeId && task.awardedTo) {
              const winningBid = task.bids?.find(b => b.by === task.awardedTo);
              payeeId = winningBid?.userId;
           }
-          // Try to find via user directory
+          // Try to find via user directory (Last Resort)
           if (!payeeId && task.awardedTo) {
               const u = users.find(u => u.email === task.awardedTo);
               payeeId = u?.id;
@@ -925,7 +941,10 @@ export default function App() {
            if (!payerId && task.scope === 'apartment' && task.createdBy) {
               const u = users.find(u => u.email === task.createdBy);
               payerId = u?.id;
-              if (!payerId) throw new Error(`Impossible d'identifier le demandeur (${task.createdBy}).`);
+          }
+          
+          if (task.scope === 'apartment' && !payerId) {
+               throw new Error(`Impossible d'identifier le demandeur (${task.createdBy}).`);
           }
 
           if (!task.awardedAmount) {
@@ -954,12 +973,26 @@ export default function App() {
                   amount: task.awardedAmount
               }, selectedResidence);
           }
+          
+          // Send Success Email to Worker
+          try {
+             const subject = `✅ Travaux validés - ${task.title}`;
+             const html = `
+                <div style="font-family: Arial, sans-serif; color: #333;">
+                    <h2 style="color: #10b981;">Félicitations !</h2>
+                    <p>Les travaux pour <strong>${task.title}</strong> ont été validés.</p>
+                    <p>Un montant de <strong>${task.awardedAmount}€</strong> a été crédité sur votre compte CoproSmart.</p>
+                    <p>Merci pour votre contribution !</p>
+                </div>
+             `;
+             await api.sendNotification(task.awardedTo!, subject, html);
+          } catch(e) { console.warn("Email validation fail", e); }
 
           notify("Terminé !", "Travaux validés et écritures comptables générées.", "success");
           refreshData();
       } catch (e: any) {
           console.error(e);
-          notify("Erreur", e.message || "Validation échouée.", "error");
+          notify("Erreur Validation", e.message || "Echec de la validation.", "error");
       }
   };
 

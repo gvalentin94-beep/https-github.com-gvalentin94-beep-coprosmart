@@ -249,7 +249,14 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
         if (isCouncilOrAdmin && onApprove && onReject) {
             PendingActionButtons = (
                  <div className="flex gap-1 items-center">
-                    <Button size="sm" onClick={onApprove} disabled={hasApproved} className="h-6 px-2 bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold">OUI</Button>
+                    <Button 
+                        size="sm" 
+                        onClick={onApprove} 
+                        disabled={hasApproved} 
+                        className={`h-6 px-2 text-[10px] font-bold ${hasApproved ? 'bg-slate-700 text-slate-400 opacity-50 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-500 text-white'}`}
+                    >
+                        {hasApproved ? 'VALIDÉ' : 'OUI'}
+                    </Button>
                     <Button size="sm" onClick={onReject} variant="destructive" className="h-6 px-2 text-[10px] font-bold">NON</Button>
                 </div>
             );
@@ -378,7 +385,7 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                         )}
 
                         {canDelete && (
-                            <Button size="sm" variant="ghost" className="w-full h-5 text-rose-500 hover:text-rose-400 text-[10px]" onClick={onDelete}>Supprimer</Button>
+                            <Button size="sm" variant="ghost" className="w-full h-5 text-rose-500 hover:text-rose-400 text-[10px] bg-rose-950/20 hover:bg-rose-950/40" onClick={onDelete}>Supprimer la tâche</Button>
                         )}
                     </div>
                 )}

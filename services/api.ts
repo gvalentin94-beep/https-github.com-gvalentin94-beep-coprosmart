@@ -563,9 +563,11 @@ export const api = {
              // Specific handling for 404 in dev environment
              if (response.status === 404) {
                  console.warn("API route not found (Dev Mode). Email simulated.");
+                 // In dev mode, we pretend it worked to not block UI flows, unless critical.
                  return;
              }
-             throw new Error(errData.error || `Erreur serveur mail (${response.status})`);
+             // Specific handling for 500
+             throw new Error(errData.error || `Erreur serveur mail (${response.status}).`);
         }
     },
     

@@ -1331,7 +1331,10 @@ export default function App() {
              <a href="#" className="hover:text-slate-400 transition-colors">Conditions Générales d'Utilisation</a>
              <a href="#" className="hover:text-slate-400 transition-colors">Mentions Légales</a>
         </div>
-        <p>CoproSmart v{APP_VERSION} — Simple. Local. Gagnant-Gagnant.</p>
+        <div className="flex items-center justify-center gap-2">
+            <span>CoproSmart v{APP_VERSION} — Simple. Local. Gagnant-Gagnant.</span>
+            {(import.meta as any).env?.VITE_SUPABASE_URL && <span className="ml-2 text-[10px] text-emerald-800 bg-emerald-950 px-2 py-0.5 rounded-full border border-emerald-900/50">☁️ Sauvegardé</span>}
+        </div>
       </footer>
 
       {/* PREVIEW MODAL */}

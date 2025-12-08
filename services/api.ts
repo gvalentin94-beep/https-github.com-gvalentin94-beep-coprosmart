@@ -220,15 +220,15 @@ export const api = {
             .eq('id', data.user.id)
             .single();
             
-        // AUTO-REPAIR: If profile is missing (e.g. RLS failure during signup), create it now
+        // AUTO-REPAIR: If profile is missing (e.g. RLS failure during signup or sync issue), create it now
         if (!profile) {
-            // Default to first residence if unknown during repair
+            console.log("Profile missing for auth user. Attempting auto-repair...");
             const defaultRes = "Résidence Watteau";
             const profilePayload: any = {
                 id: data.user.id,
                 email: email,
-                first_name: '', 
-                last_name: '',
+                first_name: 'Utilisateur', 
+                last_name: '(Incomplet)',
                 role: 'owner',
                 residence: defaultRes,
                 status: 'pending'
@@ -237,7 +237,6 @@ export const api = {
             try {
                 await supabase.from('profiles').insert(profilePayload);
             } catch {
-                // Fallback for missing column
                 delete profilePayload.residence;
                 await supabase.from('profiles').insert(profilePayload);
             }
@@ -552,23 +551,26 @@ export const api = {
     
     // Generic email sender
     sendNotification: async (to: string, subject: string, html: string): Promise<void> => {
-         const response = await fetch('/api/send-email', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ to, subject, html })
-        });
+         try {
+             const response = await fetch('/api/send-email', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ to, subject, html })
+            });
 
-        if (!response.ok) {
-             const errData = await response.json().catch(() => ({}));
-             // Specific handling for 404 in dev environment
-             if (response.status === 404) {
-                 console.warn("API route not found (Dev Mode). Email simulated.");
-                 // In dev mode, we pretend it worked to not block UI flows, unless critical.
-                 return;
-             }
-             // Specific handling for 500
-             throw new Error(errData.error || `Erreur serveur mail (${response.status}).`);
-        }
+            if (!response.ok) {
+                 const errData = await response.json().catch(() => ({}));
+                 // Specific handling for 404 in dev environment
+                 if (response.status === 404) {
+                     console.warn("API route not found (Dev Mode). Email simulated.");
+                     return;
+                 }
+                 throw new Error(errData.error || `Erreur serveur mail (${response.status})`);
+            }
+         } catch (e: any) {
+             console.error("Failed to send email:", e);
+             throw new Error(`Envoi email impossible : ${e.message}`);
+         }
     },
     
     inviteUser: async (email: string, inviterName: string): Promise<void> => {

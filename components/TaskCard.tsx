@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import type { Task, User, Rating, Bid } from '../types';
 import { Button, Card, Input, Label, Badge } from './ui';
-import { CATEGORIES, TASK_STATUS_CONFIG, SCOPES, WARRANTY_OPTIONS, RATING_LEGEND } from '../constants';
+import { CATEGORIES, TASK_STATUS_CONFIG, SCOPES, WARRANTY_OPTIONS, RATING_LEGEND, COUNCIL_MIN_APPROVALS } from '../constants';
 
 const statusClasses: { [key: string]: { border: string; text: string; bg: string } } = {
     amber: { border: 'border-amber-500', text: 'text-amber-500', bg: 'bg-amber-500' },
@@ -235,15 +235,20 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
         }
     } else if (task.status === 'awarded' && isAssignee && onRequestVerification) {
         ActionButton = <Button size="sm" onClick={onRequestVerification} className="h-6 text-[10px] bg-fuchsia-600 hover:bg-fuchsia-500 whitespace-nowrap">Terminer</Button>;
-    } else if (task.status === 'verification' && canVerify && onComplete && onRejectWork) {
-        // "En attente de validation (Travail fait)"
-        PendingActionButtons = (
-            <div className="flex gap-1 items-center">
-                <Badge className="bg-fuchsia-600 text-white animate-pulse">Contrôle qualité en cours</Badge>
-                <Button size="sm" onClick={onComplete} className="h-6 text-[10px] bg-emerald-600 hover:bg-emerald-500 px-2 font-bold">Valider</Button>
-                <Button size="sm" onClick={onRejectWork} variant="destructive" className="h-6 text-[10px] px-2 font-bold">Refuser</Button>
-            </div>
-        );
+    } else if (task.status === 'verification') {
+        if (canVerify && onComplete && onRejectWork) {
+            // "En attente de validation (Travail fait)"
+            PendingActionButtons = (
+                <div className="flex gap-1 items-center">
+                    <Badge className="bg-fuchsia-600 text-white animate-pulse">Contrôle qualité en cours</Badge>
+                    <Button size="sm" onClick={onComplete} className="h-6 text-[10px] bg-emerald-600 hover:bg-emerald-500 px-2 font-bold">Valider</Button>
+                    <Button size="sm" onClick={onRejectWork} variant="destructive" className="h-6 text-[10px] px-2 font-bold">Refuser</Button>
+                </div>
+            );
+        } else if (isAssignee) {
+             // Affichage pour l'intervenant qui attend la validation
+             ActionButton = <Button size="sm" disabled className="h-6 text-[10px] bg-slate-700 text-slate-300 border border-slate-600 opacity-70 cursor-wait">⏳ En attente contrôle qualité</Button>;
+        }
     } else if (task.status === 'pending') {
         // "En attente de validation (Création)"
         if (isCouncilOrAdmin && onApprove && onReject) {
@@ -285,7 +290,7 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                     
                     {/* Left: Badges */}
                     <div className="flex flex-wrap gap-1.5 items-center">
-                        {task.status === 'pending' && <Badge className="bg-amber-500 text-slate-900 border-amber-600 font-bold">En attente de validation</Badge>}
+                        {task.status === 'pending' && <Badge className="bg-amber-500 text-slate-900 border-amber-600 font-bold">Validation ({task.approvals?.length || 0}/{COUNCIL_MIN_APPROVALS})</Badge>}
                         {categoryInfo && <Badge className={`${categoryInfo.colorClass} border-none text-[9px] py-0 px-1.5 rounded-sm shadow-sm`}>{categoryInfo.label}</Badge>}
                         {scopeInfo && <Badge className={`${scopeInfo.colorClass} border-none text-[9px] py-0 px-1.5 rounded-sm shadow-sm`}>{scopeInfo.label}</Badge>}
                         <Badge className="bg-slate-700 text-slate-300 border border-slate-600 text-[9px] py-0 px-1.5 rounded-sm">{task.location}</Badge>
@@ -337,7 +342,7 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                     
                     <div className="flex items-center gap-2 shrink-0 self-end">
                         {/* Show other action buttons (Award, Verify, etc) but NOT pending/verification buttons (moved up) */}
-                        {task.status !== 'pending' && task.status !== 'verification' && ActionButton}
+                        {task.status !== 'pending' && (!PendingActionButtons || task.status !== 'verification') && ActionButton}
                         
                         {/* Rating */}
                         <div className="relative">

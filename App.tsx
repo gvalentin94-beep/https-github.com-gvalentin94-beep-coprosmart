@@ -960,7 +960,8 @@ export default function App() {
               throw new Error("Montant de la prestation introuvable.");
           }
 
-          await api.updateTaskStatus(task.id, 'completed', { validatedBy: user.email });
+          // FIX: Pass user.id (UUID) instead of user.email for validatedBy column
+          await api.updateTaskStatus(task.id, 'completed', { validatedBy: user.id });
           
           // GENERATE LEDGER ENTRIES
           if (task.scope === 'copro') {

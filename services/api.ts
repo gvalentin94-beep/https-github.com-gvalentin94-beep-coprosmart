@@ -15,9 +15,10 @@ const getEnv = () => {
 const env = getEnv();
 const supabaseUrl = env.VITE_SUPABASE_URL;
 const supabaseKey = env.VITE_SUPABASE_ANON_KEY;
+const isPlaceholder = !supabaseUrl || !supabaseKey;
 
 // Create client or fallback to placeholder
-const supabase = (supabaseUrl && supabaseKey)
+const supabase = !isPlaceholder
     ? createClient(supabaseUrl, supabaseKey)
     : createClient('https://placeholder.supabase.co', 'placeholder');
 
@@ -113,8 +114,8 @@ export const useAuth = () => {
     useEffect(() => {
         const checkSession = async () => {
             try {
-                if (supabaseUrl === undefined) {
-                    console.warn("Supabase not configured.");
+                if (isPlaceholder) {
+                    console.warn("Supabase not configured (Placeholder Mode).");
                     setLoading(false);
                     return;
                 }
@@ -164,7 +165,7 @@ export const api = {
     // --- AUTH ---
     
     signUp: async (email: string, password: string, role: UserRole, firstName: string, lastName: string, residence: string): Promise<UserStatus> => {
-        if (!supabaseUrl) throw new Error("La base de données n'est pas connectée.");
+        if (isPlaceholder) throw new Error("La base de données n'est pas connectée.");
         
         // 1. Create Auth User
         const { data, error } = await supabase.auth.signUp({
@@ -209,10 +210,19 @@ export const api = {
     },
 
     login: async (email: string, password: string): Promise<User> => {
-        if (!supabaseUrl) throw new Error("La base de données n'est pas connectée.");
+        if (isPlaceholder) throw new Error("La base de données n'est pas connectée (Vérifiez les variables d'environnement).");
 
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error || !data.user) throw new Error("Identifiants incorrects.");
+        
+        // --- IMPROVED ERROR HANDLING ---
+        if (error) {
+            console.error("Login Auth Error:", error);
+            if (error.message === "Invalid login credentials") throw new Error("Email ou mot de passe incorrect.");
+            if (error.message.includes("Email not confirmed")) throw new Error("Veuillez confirmer votre email avant de vous connecter.");
+            throw new Error(error.message); // Show the real error
+        }
+
+        if (!data.user) throw new Error("Erreur d'authentification (Utilisateur introuvable).");
 
         let { data: profile, error: profileError } = await supabase
             .from('profiles')
@@ -271,7 +281,7 @@ export const api = {
     },
 
     requestPasswordReset: async (email: string): Promise<string> => {
-        if (!supabaseUrl) return "SIMULATED";
+        if (isPlaceholder) return "SIMULATED";
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
             redirectTo: window.location.origin,
         });
@@ -290,7 +300,7 @@ export const api = {
     // --- DATA ---
 
     readTasks: async (residence: string): Promise<Task[]> => {
-        if (!supabaseUrl) return [];
+        if (isPlaceholder) return [];
 
         const selectQuery = `
                 *,
@@ -433,7 +443,7 @@ export const api = {
 
     // --- LEDGER ---
     readLedger: async (residence: string): Promise<LedgerEntry[]> => {
-        if (!supabaseUrl) return [];
+        if (isPlaceholder) return [];
         
         const selectQuery = `
                 *,
@@ -490,7 +500,7 @@ export const api = {
     // --- USER MANAGEMENT ---
     
     getPendingUsers: async (residence: string): Promise<RegisteredUser[]> => {
-        if (!supabaseUrl) return [];
+        if (isPlaceholder) return [];
         
         try {
             let query = supabase.from('profiles').select('*').eq('status', 'pending');
@@ -569,7 +579,8 @@ export const api = {
             }
          } catch (e: any) {
              console.error("Failed to send email:", e);
-             throw new Error(`Envoi email impossible : ${e.message}`);
+             // Non-blocking error for UI generally, but we log it.
+             // throw new Error(`Envoi email impossible : ${e.message}`);
          }
     },
     
@@ -604,7 +615,7 @@ export const api = {
     },
 
     getDirectory: async (residence: string): Promise<RegisteredUser[]> => {
-        if (!supabaseUrl) return [];
+        if (isPlaceholder) return [];
         
         try {
             let query = supabase.from('profiles').select('*');
@@ -624,7 +635,7 @@ export const api = {
     },
 
     getAllUsers: async (): Promise<RegisteredUser[]> => {
-        if (!supabaseUrl) return [];
+        if (isPlaceholder) return [];
         const { data } = await supabase.from('profiles').select('*');
         return (data || []).map(mapProfile);
     },

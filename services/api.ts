@@ -15,7 +15,20 @@ const getEnv = () => {
 const env = getEnv();
 const supabaseUrl = env.VITE_SUPABASE_URL;
 const supabaseKey = env.VITE_SUPABASE_ANON_KEY;
-const isPlaceholder = !supabaseUrl || !supabaseKey;
+
+// Robust check for URL validity
+const isValidUrl = (url: string) => {
+    if (!url) return false;
+    if (url.includes("your-project")) return false; // Common template placeholder
+    try {
+        new URL(url);
+        return true;
+    } catch {
+        return false;
+    }
+};
+
+const isPlaceholder = !isValidUrl(supabaseUrl) || !supabaseKey;
 
 // Create client or fallback to placeholder
 const supabase = !isPlaceholder
@@ -160,6 +173,19 @@ export const useAuth = () => {
     return { user, setUser, loading };
 };
 
+// Error Helper
+const handleAuthError = (error: any) => {
+    if (!error) return;
+    console.error("Auth Error:", error);
+    const msg = error.message || error.toString();
+    
+    if (msg === "Invalid login credentials") throw new Error("Email ou mot de passe incorrect.");
+    if (msg.includes("Email not confirmed")) throw new Error("Veuillez confirmer votre email (vérifiez vos spams).");
+    if (msg === "Failed to fetch" || msg.includes("NetworkError")) throw new Error("Impossible de joindre le serveur. Vérifiez votre connexion internet ou vos bloqueurs de publicité.");
+    
+    throw new Error(msg);
+};
+
 export const api = {
     
     // --- AUTH ---
@@ -172,7 +198,7 @@ export const api = {
             email,
             password,
         });
-        if (error) throw error;
+        if (error) handleAuthError(error);
         if (!data.user) throw new Error("Erreur lors de la création du compte.");
 
         // 2. Create Profile linked to Auth ID
@@ -210,18 +236,11 @@ export const api = {
     },
 
     login: async (email: string, password: string): Promise<User> => {
-        if (isPlaceholder) throw new Error("La base de données n'est pas connectée (Vérifiez les variables d'environnement).");
+        if (isPlaceholder) throw new Error("La base de données n'est pas connectée (URL invalide ou manquante).");
 
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) handleAuthError(error);
         
-        // --- IMPROVED ERROR HANDLING ---
-        if (error) {
-            console.error("Login Auth Error:", error);
-            if (error.message === "Invalid login credentials") throw new Error("Email ou mot de passe incorrect.");
-            if (error.message.includes("Email not confirmed")) throw new Error("Veuillez confirmer votre email avant de vous connecter.");
-            throw new Error(error.message); // Show the real error
-        }
-
         if (!data.user) throw new Error("Erreur d'authentification (Utilisateur introuvable).");
 
         let { data: profile, error: profileError } = await supabase

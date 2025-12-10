@@ -49,6 +49,15 @@ function ToastContainer({ toasts, onClose }: { toasts: Toast[]; onClose: (id: st
 
 // --- Helper Components ---
 
+function EmptyState({ icon, message }: { icon: string, message: string }) {
+    return (
+        <div className="border border-dashed border-slate-800 rounded-xl p-6 text-center bg-slate-900/20">
+            <div className="text-2xl mb-2 opacity-50 grayscale">{icon}</div>
+            <p className="text-slate-500 text-sm font-medium">{message}</p>
+        </div>
+    );
+}
+
 function TaskPreviewModal({ task, onConfirm, onCancel }: { task: Partial<Task>; onConfirm: () => void; onCancel: () => void }) {
     const catInfo = CATEGORIES.find((c: any) => c.id === task.category);
     const scopeInfo = SCOPES.find((s: any) => s.id === task.scope);
@@ -1206,9 +1215,9 @@ export default function App() {
                      <UserValidationQueue pendingUsers={pendingUsers} onApprove={handleApproveUser} onReject={handleRejectUser} />
                 )}
 
-                {/* --- TOP: BIDDING IN PROGRESS (Timer Running) - Full Width --- */}
+                {/* --- TOP: BIDDING IN PROGRESS (Only shows if active) --- */}
                 {tasksBiddingInProgress.length > 0 && (
-                    <Section title="🔥 Enchères en cours (⏱️ 24h)">
+                    <Section title={`🔥 Enchères en cours (${tasksBiddingInProgress.length})`}>
                         {tasksBiddingInProgress.map(t => (
                             <TaskCard 
                                 key={t.id} task={t} me={user} usersMap={usersMap}
@@ -1222,13 +1231,13 @@ export default function App() {
                     </Section>
                 )}
 
-                {/* --- GRID: ALL OTHER TASKS (2 Columns) --- */}
+                {/* --- GRID: ALL WORKFLOW COLUMNS (Always Visible) --- */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
                     
                     {/* --- 1. PENDING VALIDATION (CS) --- */}
-                    {tasksPending.length > 0 && (
-                        <Section title="1️⃣ En attente de validation">
-                            {tasksPending.map(t => (
+                    <Section title={`1️⃣ En attente de validation (${tasksPending.length})`}>
+                        {tasksPending.length > 0 ? (
+                            tasksPending.map(t => (
                                 <TaskCard 
                                     key={t.id} task={t} me={user} usersMap={usersMap}
                                     onBid={() => {}} onAward={() => {}} onComplete={() => {}} onRate={() => {}}
@@ -1237,28 +1246,32 @@ export default function App() {
                                     onApprove={() => handleApproveTask(t)}
                                     onReject={() => handleRejectTask(t)}
                                 />
-                            ))}
-                        </Section>
-                    )}
+                            ))
+                        ) : (
+                            <EmptyState icon="⏳" message="Toutes les demandes ont été traitées." />
+                        )}
+                    </Section>
 
                     {/* --- 2. AWAITING BIDS (Valid, 0 offers) --- */}
-                    {tasksAwaitingBids.length > 0 && (
-                        <Section title="2️⃣ En recherche d'intervenant">
-                            {tasksAwaitingBids.map(t => (
+                    <Section title={`2️⃣ Recherche d'intervenant (${tasksAwaitingBids.length})`}>
+                        {tasksAwaitingBids.length > 0 ? (
+                            tasksAwaitingBids.map(t => (
                                 <TaskCard 
                                     key={t.id} task={t} me={user} usersMap={usersMap}
                                     onBid={(b) => handleBid(t, b)} onAward={() => {}} onComplete={() => {}} onRate={() => {}}
                                     onDelete={() => handleDeleteTask(t)}
                                     canDelete={user.role === 'admin' || (t.createdBy === user.email)}
                                 />
-                            ))}
-                        </Section>
-                    )}
+                            ))
+                        ) : (
+                            <EmptyState icon="📢" message="Aucune demande en recherche d'offre." />
+                        )}
+                    </Section>
 
                     {/* --- 3. ASSIGNED / IN PROGRESS --- */}
-                    {tasksAssigned.length > 0 && (
-                         <Section title="3️⃣ Travaux en cours">
-                             {tasksAssigned.map(t => (
+                    <Section title={`3️⃣ Travaux en cours (${tasksAssigned.length})`}>
+                         {tasksAssigned.length > 0 ? (
+                             tasksAssigned.map(t => (
                                 <TaskCard 
                                     key={t.id} task={t} me={user} usersMap={usersMap}
                                     onBid={() => {}} onAward={() => {}}
@@ -1269,12 +1282,14 @@ export default function App() {
                                     onRequestVerification={() => handleRequestVerification(t)}
                                     onRejectWork={() => handleRejectWork(t)}
                                 />
-                             ))}
-                         </Section>
-                    )}
+                             ))
+                         ) : (
+                            <EmptyState icon="🔨" message="Aucun chantier en cours." />
+                         )}
+                    </Section>
                     
                     {/* --- 4. COMPLETED --- */}
-                    <Section title="4️⃣ Terminé">
+                    <Section title={`4️⃣ Terminé (${tasksCompleted.length})`}>
                         {tasksCompleted.length > 0 ? (
                             tasksCompleted.map(t => (
                                     <TaskCard 
@@ -1287,11 +1302,7 @@ export default function App() {
                                     />
                             ))
                         ) : (
-                            <Card className="border-dashed border-slate-800 bg-transparent">
-                                <CardContent className="text-center text-slate-500 py-6 italic text-sm">
-                                    Aucun historique terminé.
-                                </CardContent>
-                            </Card>
+                            <EmptyState icon="✅" message="Aucun historique terminé." />
                         )}
                     </Section>
                 </div>

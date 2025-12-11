@@ -112,11 +112,12 @@ const mapLedger = (l: any): LedgerEntry => ({
     taskId: l.task_id,
     residence: l.residence || "Résidence Watteau",
     type: l.type,
-    payer: l.payer_profile?.email || (l.type === 'charge_credit' ? 'Copro' : 'Unknown'),
-    payee: l.payee_profile?.email || 'Unknown',
+    // Try to get email from joined profile, otherwise fallback to ID (so App.tsx can map it), otherwise Unknown
+    payer: l.payer_profile?.email || (l.type === 'charge_credit' ? 'Copro' : (l.payer_id || 'Unknown')),
+    payee: l.payee_profile?.email || (l.payee_id || 'Unknown'),
     amount: l.amount,
     at: l.created_at,
-    taskTitle: l.tasks?.title,
+    taskTitle: l.tasks?.title || 'Tâche (Info manquante)',
     taskCreator: l.tasks?.created_by_profile?.email
 });
 
@@ -507,11 +508,10 @@ export const api = {
 
     readLedger: async (residence: string): Promise<LedgerEntry[]> => {
         if (!isConfigured) return [];
-        // Fix: Use simple select and map manually if joins are problematic due to nulls (e.g. Copro Payer)
-        // But let's try to keep join for efficiency but be robust.
-        // We use inner joins by default in Supabase unless !inner is omitted? No, simple syntax is usually Left Join.
-        // HOWEVER, if the foreign key (payer_id) is NULL, the joined object `payer_profile` will be null, but the row SHOULD exist.
+        
+        // Complex query: Join profiles to get emails directly
         const selectQuery = `*, payer_profile:payer_id(email), payee_profile:payee_id(email), tasks(title, created_by_profile:created_by(email))`;
+
         try {
             let query = supabase.from('ledger').select(selectQuery);
             if (residence === "Résidence Watteau") query = query.or(`residence.eq.Résidence Watteau,residence.is.null`);
@@ -519,10 +519,21 @@ export const api = {
             const { data, error } = await query.order('created_at', { ascending: false });
             if (error) throw error;
             return data.map(mapLedger);
-        } catch {
-            // Fallback for robustness
-            const { data } = await supabase.from('ledger').select(selectQuery).order('created_at', { ascending: false });
-            return (data || []).map(mapLedger);
+        } catch (e) {
+            console.warn("Complex Ledger Fetch Failed (Joins/RLS issue), trying simple fetch...", e);
+            
+            // Fallback: Simple fetch (No joins). Map function will handle missing profiles by using IDs.
+            try {
+                let query = supabase.from('ledger').select('*');
+                if (residence === "Résidence Watteau") query = query.or(`residence.eq.Résidence Watteau,residence.is.null`);
+                else query = query.eq('residence', residence);
+                
+                const { data } = await query.order('created_at', { ascending: false });
+                return (data || []).map(mapLedger);
+            } catch (err2) {
+                console.error("Critical: Ledger fetch failed completely", err2);
+                return [];
+            }
         }
     },
 
@@ -535,8 +546,19 @@ export const api = {
             payee_id: entry.payeeId,
             amount: entry.amount
         };
-        try { await supabase.from('ledger').insert(payload); } catch (e: any) {
-            if (e.message?.includes('column')) { delete payload.residence; await supabase.from('ledger').insert(payload); } else throw e;
+        try { 
+            const { error } = await supabase.from('ledger').insert(payload); 
+            if (error) {
+                console.error("Ledger Insert Failed", error);
+                throw error;
+            }
+        } catch (e: any) {
+            if (e.message?.includes('column')) { 
+                delete payload.residence; 
+                await supabase.from('ledger').insert(payload); 
+            } else {
+                throw e;
+            }
         }
     },
     

@@ -10,9 +10,9 @@ import { LoginCard } from './components/LoginCard';
 // --- Safe Version Access ---
 const APP_VERSION = (() => {
     try {
-        return (import.meta as any)?.env?.PACKAGE_VERSION || '0.2.33';
+        return (import.meta as any)?.env?.PACKAGE_VERSION || '0.2.34';
     } catch {
-        return '0.2.33';
+        return '0.2.34';
     }
 })();
 
@@ -309,6 +309,7 @@ function Ledger({ entries, usersMap, onDelete, isAdmin }: { entries: LedgerEntry
                         <div className="font-medium text-white">{e.taskTitle}</div>
                         <div className="text-xs text-slate-500">par {usersMap[e.taskCreator || ''] || e.taskCreator}</div>
                     </td>
+                    {/* Fallback to simple name if map fails */}
                     <td className="px-4 py-3">{e.payer === 'Copro' ? '🏢 Copropriété' : (usersMap[e.payer] || e.payer)}</td>
                     <td className="px-4 py-3">{usersMap[e.payee] || e.payee}</td>
                     <td className="px-4 py-3 text-right font-mono text-white font-bold text-base">{e.amount} €</td>
@@ -681,8 +682,13 @@ export default function App() {
   const [previewTask, setPreviewTask] = useState<Partial<Task> | null>(null);
 
   // Derived State
+  // Updated to include BOTH Email and ID as keys, to handle fallback scenario where ledger only returns IDs
   const usersMap = useMemo(() => {
-    return users.reduce((acc, u) => ({ ...acc, [u.email]: `${u.firstName} ${u.lastName}` }), {} as Record<string, string>);
+    return users.reduce((acc, u) => ({ 
+        ...acc, 
+        [u.email]: `${u.firstName} ${u.lastName}`,
+        [u.id]: `${u.firstName} ${u.lastName}` 
+    }), {} as Record<string, string>);
   }, [users]);
 
   const notify = (title: string, message: string, type: 'success' | 'error' | 'info' = 'info') => {

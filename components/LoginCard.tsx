@@ -291,8 +291,8 @@ export function LoginCard({ onLogin }: LoginCardProps) {
             <span className="font-black tracking-tighter text-white block mt-2 text-base">simple. local. gagnant-gagnant.</span>
             </p>
             <div className="flex justify-center gap-6 text-xs text-slate-600 mt-6">
-                <button className="hover:text-slate-400 transition-colors">Conditions Générales d'Utilisation</button>
-                <button className="hover:text-slate-400 transition-colors">Mentions Légales</button>
+                <button onClick={() => alert("Page en cours de construction")} className="hover:text-slate-400 transition-colors">Conditions Générales d'Utilisation</button>
+                <button onClick={() => alert("Page en cours de construction")} className="hover:text-slate-400 transition-colors">Mentions Légales</button>
             </div>
         </div>
     </div>

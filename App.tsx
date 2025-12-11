@@ -1346,8 +1346,8 @@ export default function App() {
       {/* FOOTER */}
       <footer className="mt-20 py-8 text-center text-slate-600 text-xs border-t border-slate-900 bg-slate-950">
         <div className="flex justify-center gap-6 mb-4">
-             <a href="#" className="hover:text-slate-400 transition-colors">Conditions Générales d'Utilisation</a>
-             <a href="#" className="hover:text-slate-400 transition-colors">Mentions Légales</a>
+             <button onClick={() => alert("Page en cours de construction")} className="hover:text-slate-400 transition-colors">Conditions Générales d'Utilisation</button>
+             <button onClick={() => alert("Page en cours de construction")} className="hover:text-slate-400 transition-colors">Mentions Légales</button>
         </div>
         <div className="flex items-center justify-center gap-2">
             <span>CoproSmart v{APP_VERSION} — Simple. Local. Gagnant-Gagnant.</span>

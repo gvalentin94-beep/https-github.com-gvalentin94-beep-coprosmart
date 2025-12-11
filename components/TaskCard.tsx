@@ -45,6 +45,10 @@ function BidBox({ task, onBid, onCancel }: BidBoxProps) {
         onCancel();
     };
 
+    const handleTodayClick = () => {
+        setPlannedExecutionDate(new Date().toISOString().split('T')[0]);
+    };
+
     const today = new Date().toISOString().split('T')[0];
     const maxDate = new Date();
     maxDate.setDate(maxDate.getDate() + 30);
@@ -58,7 +62,15 @@ function BidBox({ task, onBid, onCancel }: BidBoxProps) {
                     <Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-7 font-bold text-indigo-600 text-center !bg-white text-xs" />
                 </div>
                 <div className="flex-1">
-                    <Label className="mb-1 text-[9px] text-indigo-300">Date de réalisation prévue</Label>
+                    <div className="flex justify-between items-center mb-1">
+                        <Label className="text-[9px] text-indigo-300">Date de réalisation</Label>
+                        <button 
+                            onClick={handleTodayClick}
+                            className="text-[9px] text-indigo-400 hover:text-indigo-200 underline cursor-pointer bg-transparent border-none p-0"
+                        >
+                            Aujourd'hui
+                        </button>
+                    </div>
                     <Input type="date" value={plannedExecutionDate} onChange={(e) => setPlannedExecutionDate(e.target.value)} min={today} max={maxDateStr} className="h-7 text-xs !bg-white text-slate-900" />
                 </div>
             </div>
@@ -270,6 +282,11 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
         }
     }
 
+    // Validation Count Logic
+    const currentApprovals = task.approvals?.length || 0;
+    const missingApprovals = Math.max(0, COUNCIL_MIN_APPROVALS - currentApprovals);
+    const validationLabel = `Validation (${currentApprovals}/${COUNCIL_MIN_APPROVALS})`;
+
     return (
         <Card className={`bg-slate-800 border-l-[3px] ${style.border} p-0 shadow-none mb-1`}>
             <div className="p-2 flex flex-col gap-1">
@@ -290,7 +307,12 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                     
                     {/* Left: Badges */}
                     <div className="flex flex-wrap gap-1.5 items-center">
-                        {task.status === 'pending' && <Badge className="bg-amber-500 text-slate-900 border-amber-600 font-bold">Validation ({task.approvals?.length || 0}/{COUNCIL_MIN_APPROVALS})</Badge>}
+                        {task.status === 'pending' && (
+                            <Badge className="bg-amber-500 text-slate-900 border-amber-600 font-bold flex gap-1">
+                                {validationLabel}
+                                {missingApprovals > 0 && <span className="opacity-70 border-l border-amber-800 pl-1 ml-0.5">Manque {missingApprovals}</span>}
+                            </Badge>
+                        )}
                         {categoryInfo && <Badge className={`${categoryInfo.colorClass} border-none text-[9px] py-0 px-1.5 rounded-sm shadow-sm`}>{categoryInfo.label}</Badge>}
                         {scopeInfo && <Badge className={`${scopeInfo.colorClass} border-none text-[9px] py-0 px-1.5 rounded-sm shadow-sm`}>{scopeInfo.label}</Badge>}
                         <Badge className="bg-slate-700 text-slate-300 border border-slate-600 text-[9px] py-0 px-1.5 rounded-sm">{task.location}</Badge>
@@ -382,7 +404,10 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                             <div>
                                 {task.ratings?.map((r, i) => (
                                     <div key={i} className="flex justify-between items-center bg-slate-900/50 p-1 rounded mb-1 text-[10px]">
-                                        <span className="text-amber-400 tracking-widest">{Array(r.stars).fill('⭐').join('')}</span>
+                                        <div className="flex items-center">
+                                            <span className="text-amber-400 tracking-widest">{Array(r.stars).fill('⭐').join('')}</span>
+                                            <span className="text-slate-400 ml-2 italic text-[9px]">- {RATING_LEGEND[r.stars]}</span>
+                                        </div>
                                         {canDelete && onDeleteRating && <button onClick={() => onDeleteRating(task.id, i)} className="text-rose-500 hover:underline">Suppr</button>}
                                     </div>
                                 ))}

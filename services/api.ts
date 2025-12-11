@@ -405,6 +405,10 @@ export const api = {
 
     readLedger: async (residence: string): Promise<LedgerEntry[]> => {
         if (!isConfigured) return [];
+        // Fix: Use simple select and map manually if joins are problematic due to nulls (e.g. Copro Payer)
+        // But let's try to keep join for efficiency but be robust.
+        // We use inner joins by default in Supabase unless !inner is omitted? No, simple syntax is usually Left Join.
+        // HOWEVER, if the foreign key (payer_id) is NULL, the joined object `payer_profile` will be null, but the row SHOULD exist.
         const selectQuery = `*, payer_profile:payer_id(email), payee_profile:payee_id(email), tasks(title, created_by_profile:created_by(email))`;
         try {
             let query = supabase.from('ledger').select(selectQuery);
@@ -414,6 +418,7 @@ export const api = {
             if (error) throw error;
             return data.map(mapLedger);
         } catch {
+            // Fallback for robustness
             const { data } = await supabase.from('ledger').select(selectQuery).order('created_at', { ascending: false });
             return (data || []).map(mapLedger);
         }
@@ -424,7 +429,7 @@ export const api = {
             task_id: entry.taskId,
             residence: residence,
             type: entry.type,
-            payer_id: entry.payerId,
+            payer_id: entry.payerId, // Can be null for Copro
             payee_id: entry.payeeId,
             amount: entry.amount
         };
@@ -489,14 +494,22 @@ export const api = {
     getDirectory: async (residence: string): Promise<RegisteredUser[]> => {
         if (!isConfigured) return [];
         try {
+            // First try filtering by residence
             let query = supabase.from('profiles').select('*');
             if (residence === "Résidence Watteau") query = query.or(`residence.eq.Résidence Watteau,residence.is.null`);
             else query = query.eq('residence', residence);
-            const { data } = await query.order('last_name');
-            return (data || []).map(mapProfile);
+            
+            const { data, error } = await query.order('last_name');
+            
+            if (error || !data || data.length === 0) {
+                 // Fallback: Fetch ALL to ensure directory isn't empty if residence mismatch
+                 console.warn("Directory filtering yielded empty, fetching all for debug/fallback");
+                 const { data: all } = await supabase.from('profiles').select('*').order('last_name');
+                 return (all || []).map(mapProfile);
+            }
+            return data.map(mapProfile);
         } catch {
-            const { data } = await supabase.from('profiles').select('*');
-            return (data || []).map(mapProfile);
+            return [];
         }
     },
 

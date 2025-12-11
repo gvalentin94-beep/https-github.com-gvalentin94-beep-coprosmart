@@ -57,26 +57,33 @@ function BidBox({ task, onBid, onCancel }: BidBoxProps) {
     return (
         <div className="border-t border-slate-700 pt-2 mt-2 space-y-2 bg-slate-900/50 p-2 rounded">
             <div className="flex gap-2 items-end">
-                <div className="w-20">
+                <div className="w-20 shrink-0">
                     <Label className="mb-1 text-[9px]">Prix (€)</Label>
-                    <Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-7 font-bold text-indigo-600 text-center !bg-white text-xs" />
+                    <Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-8 font-bold text-indigo-600 text-center !bg-white text-xs" />
                 </div>
                 <div className="flex-1">
-                    <div className="flex justify-between items-center mb-1">
-                        <Label className="text-[9px] text-indigo-300">Date de réalisation</Label>
-                        <button 
+                    <Label className="mb-1 text-[9px] text-indigo-300">Date de réalisation</Label>
+                    <div className="flex items-center gap-2">
+                        <Input 
+                            type="date" 
+                            value={plannedExecutionDate} 
+                            onChange={(e) => setPlannedExecutionDate(e.target.value)} 
+                            min={today} max={maxDateStr} 
+                            className="h-8 text-xs !bg-white text-slate-900 w-auto" 
+                        />
+                        <Button 
+                            size="sm" 
                             onClick={handleTodayClick}
-                            className="text-[9px] text-indigo-400 hover:text-indigo-200 underline cursor-pointer bg-transparent border-none p-0"
+                            className="h-8 text-[10px] bg-indigo-600 hover:bg-indigo-500 text-white whitespace-nowrap px-3 shadow-sm border border-indigo-400"
                         >
-                            Aujourd'hui
-                        </button>
+                            ⚡ Aujourd'hui
+                        </Button>
                     </div>
-                    <Input type="date" value={plannedExecutionDate} onChange={(e) => setPlannedExecutionDate(e.target.value)} min={today} max={maxDateStr} className="h-7 text-xs !bg-white text-slate-900" />
                 </div>
             </div>
-            <div className="flex justify-end gap-2">
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-800/50">
                  <Button size="sm" variant="ghost" className="h-6 text-[10px]" onClick={onCancel}>Annuler</Button>
-                 <Button size="sm" className="h-6 bg-indigo-600 hover:bg-indigo-500 text-white text-xs" onClick={handleBid}>Valider l'offre</Button>
+                 <Button size="sm" className="h-6 bg-emerald-600 hover:bg-emerald-500 text-white text-xs" onClick={handleBid}>Valider l'offre</Button>
             </div>
         </div>
     );
@@ -310,7 +317,7 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                         {task.status === 'pending' && (
                             <Badge className="bg-amber-500 text-slate-900 border-amber-600 font-bold flex gap-1">
                                 {validationLabel}
-                                {missingApprovals > 0 && <span className="opacity-70 border-l border-amber-800 pl-1 ml-0.5">Manque {missingApprovals}</span>}
+                                {missingApprovals > 0 && <span className="text-amber-900 border-l border-amber-800 pl-1 ml-0.5 font-extrabold uppercase text-[8px] tracking-tight">Manque {missingApprovals}</span>}
                             </Badge>
                         )}
                         {categoryInfo && <Badge className={`${categoryInfo.colorClass} border-none text-[9px] py-0 px-1.5 rounded-sm shadow-sm`}>{categoryInfo.label}</Badge>}
@@ -406,7 +413,7 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                                     <div key={i} className="flex justify-between items-center bg-slate-900/50 p-1 rounded mb-1 text-[10px]">
                                         <div className="flex items-center">
                                             <span className="text-amber-400 tracking-widest">{Array(r.stars).fill('⭐').join('')}</span>
-                                            <span className="text-slate-400 ml-2 italic text-[9px]">- {RATING_LEGEND[r.stars]}</span>
+                                            <span className="text-slate-400 ml-2 italic text-[9px] font-bold text-amber-200/50">- {RATING_LEGEND[r.stars]}</span>
                                         </div>
                                         {canDelete && onDeleteRating && <button onClick={() => onDeleteRating(task.id, i)} className="text-rose-500 hover:underline">Suppr</button>}
                                     </div>

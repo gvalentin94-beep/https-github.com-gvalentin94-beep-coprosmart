@@ -255,7 +255,8 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
     } else if (task.status === 'awarded' && isAssignee && onRequestVerification) {
         ActionButton = <Button size="sm" onClick={onRequestVerification} className="h-6 text-[10px] bg-fuchsia-600 hover:bg-fuchsia-500 whitespace-nowrap">Terminer</Button>;
     } else if (task.status === 'verification') {
-        if (canVerify && onComplete && onRejectWork) {
+        // Validation Logic: User must have rights (CS/Admin) AND NOT be the person who did the work (assignee)
+        if (canVerify && !isAssignee && onComplete && onRejectWork) {
             // "En attente de validation (Travail fait)"
             PendingActionButtons = (
                 <div className="flex gap-1 items-center">
@@ -265,8 +266,9 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                 </div>
             );
         } else if (isAssignee) {
-             // Affichage pour l'intervenant qui attend la validation
-             ActionButton = <Button size="sm" disabled className="h-6 text-[10px] bg-slate-700 text-slate-300 border border-slate-600 opacity-70 cursor-wait">⏳ En attente contrôle qualité</Button>;
+             // Affichage pour l'intervenant qui attend la validation (même si c'est un CS qui a fait le travail)
+             const waitLabel = canVerify ? "Attente validation (Tiers)" : "⏳ En attente contrôle qualité";
+             ActionButton = <Button size="sm" disabled className="h-6 text-[10px] bg-slate-700 text-slate-300 border border-slate-600 opacity-70 cursor-wait">{waitLabel}</Button>;
         }
     } else if (task.status === 'pending') {
         // "En attente de validation (Création)"

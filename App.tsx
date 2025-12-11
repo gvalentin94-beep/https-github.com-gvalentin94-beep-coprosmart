@@ -926,6 +926,13 @@ export default function App() {
 
   const handleComplete = async (task: Task) => {
       if (!user || !selectedResidence) return;
+      
+      // SECURITY CHECK: Council Member cannot validate their own work
+      if (task.awardedTo === user.email) {
+          notify("Action impossible", "Un membre du Conseil Syndical ne peut pas valider son propre travail. Un autre membre doit le faire.", "error");
+          return;
+      }
+
       try {
           // --- ROBUST ID LOOKUP ---
           // 1. Payee (Worker)

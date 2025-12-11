@@ -187,6 +187,30 @@ const handleAuthError = (error: any) => {
 
 export const api = {
     
+    // --- HELPER EMAIL ---
+    sendNotification: async (to: string, subject: string, html: string): Promise<void> => {
+         try {
+             // In Vercel environment, /api/... routes are automatically handled.
+             // In local Vite dev (without Vercel CLI), this will 404.
+             if (import.meta.env.DEV) {
+                 console.log(`[DEV EMAIL SIMULATION] To: ${to} | Subject: ${subject}`);
+                 return;
+             }
+             
+             await fetch('/api/send-email', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ to, subject, html })
+            });
+         } catch (e) { console.error("Email fail", e); }
+    },
+
+    inviteUser: async (email: string, inviterName: string): Promise<void> => {
+        const link = window.location.origin;
+        await api.sendNotification(email, `Invitation de ${inviterName}`, 
+            `<p>Bonjour,</p><p>${inviterName} vous invite à rejoindre CoproSmart.</p><p><a href="${link}" style="display:inline-block;background:#4f46e5;color:white;padding:10px 20px;text-decoration:none;border-radius:5px;">Rejoindre la copropriété</a></p>`);
+    },
+
     // --- AUTH ---
     
     signUp: async (email: string, password: string, role: UserRole, firstName: string, lastName: string, residence: string): Promise<UserStatus> => {
@@ -197,7 +221,7 @@ export const api = {
         if (!data.user) throw new Error("Erreur lors de la création du compte.");
 
         try {
-            await supabase.from('profiles').insert({
+            const profileData: any = {
                 id: data.user.id,
                 email,
                 first_name: firstName,
@@ -205,21 +229,37 @@ export const api = {
                 role: role,
                 residence: residence,
                 status: 'pending'
-            });
-        } catch (e: any) {
-            // Robust fallback for missing residence column
-            if (e.message?.includes('column') || e.code === '42703') {
-                await supabase.from('profiles').insert({
-                    id: data.user.id,
-                    email,
-                    first_name: firstName,
-                    last_name: lastName,
-                    role: role,
-                    status: 'pending'
-                });
-            } else {
-                throw e;
+            };
+            
+            // Handle fallback if residence column missing
+            try {
+                await supabase.from('profiles').insert(profileData);
+            } catch {
+                delete profileData.residence;
+                await supabase.from('profiles').insert(profileData);
             }
+
+            // ALERT: Notify Admins of new user
+            try {
+                const { data: admins } = await supabase.from('profiles')
+                    .select('email')
+                    .or('role.eq.admin,role.eq.council')
+                    .eq('status', 'active'); 
+                
+                const link = window.location.origin;
+                if (admins && admins.length > 0) {
+                    for (const admin of admins) {
+                        await api.sendNotification(
+                            admin.email, 
+                            "🔔 Nouvelle inscription à valider", 
+                            `<p><strong>${firstName} ${lastName}</strong> (${email}) demande à rejoindre ${residence}.</p><p><a href="${link}">Connectez-vous pour valider ou refuser</a></p>`
+                        );
+                    }
+                }
+            } catch (err) { console.warn("Failed to notify admins", err); }
+
+        } catch (e: any) {
+            throw e;
         }
         return 'pending';
     },
@@ -271,6 +311,7 @@ export const api = {
     },
 
     requestPasswordReset: async (email: string): Promise<string> => {
+        // Uses Supabase's SMTP settings (configured in Dashboard)
         const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin });
         if (error) throw error;
         return "LINK_SENT";
@@ -322,6 +363,26 @@ export const api = {
         try {
             const { data, error } = await supabase.from('tasks').insert(payload).select('id').single();
             if (error) throw error;
+
+            // ALERT: Notify Council
+            try {
+                const { data: council } = await supabase.from('profiles')
+                    .select('email')
+                    .or('role.eq.council,role.eq.admin')
+                    .eq('status', 'active');
+                
+                const link = window.location.origin;
+                if (council && council.length > 0) {
+                    for (const member of council) {
+                        await api.sendNotification(
+                            member.email, 
+                            "🆕 Nouvelle demande de travaux", 
+                            `<p>Une nouvelle demande <strong>"${task.title}"</strong> a été créée.</p><p><a href="${link}">Connectez-vous pour valider sa pertinence</a></p>`
+                        );
+                    }
+                }
+            } catch (err) { console.warn("Failed to notify council", err); }
+
             return data.id;
         } catch (e: any) {
              if (e.message?.includes('column')) {
@@ -343,6 +404,28 @@ export const api = {
         if (status === 'completed') updateData.completion_at = new Date().toISOString();
         const { error } = await supabase.from('tasks').update(updateData).eq('id', taskId);
         if (error) throw error;
+
+        // ALERT: When task requests verification
+        if (status === 'verification') {
+             try {
+                const { data: task } = await supabase.from('tasks').select('title').eq('id', taskId).single();
+                const { data: council } = await supabase.from('profiles')
+                    .select('email')
+                    .or('role.eq.council,role.eq.admin')
+                    .eq('status', 'active');
+                
+                const link = window.location.origin;
+                if (council && task) {
+                    for (const member of council) {
+                        await api.sendNotification(
+                            member.email, 
+                            "🛠️ Travaux terminés - Contrôle requis", 
+                            `<p>L'intervenant a signalé la fin des travaux pour <strong>"${task.title}"</strong>.</p><p><a href="${link}">Merci de procéder au contrôle qualité</a></p>`
+                        );
+                    }
+                }
+             } catch(err) { console.warn("Verification email failed", err); }
+        }
     },
 
     updateTaskDetails: async (taskId: string, details: string): Promise<void> => {
@@ -364,6 +447,25 @@ export const api = {
             planned_date: bid.plannedExecutionDate
         });
         if (error) throw error;
+
+        // ALERT: Notify Task Creator
+        try {
+            // Get Task Title and Creator ID
+            const { data: task } = await supabase.from('tasks').select('title, created_by').eq('id', taskId).single();
+            if (task && task.created_by) {
+                // Get Creator Email
+                const { data: creator } = await supabase.from('profiles').select('email').eq('id', task.created_by).single();
+                
+                const link = window.location.origin;
+                if (creator) {
+                    await api.sendNotification(
+                        creator.email,
+                        `💰 Nouvelle offre sur "${task.title}"`,
+                        `<p>Une offre de <strong>${bid.amount}€</strong> a été déposée pour votre demande (Intervention : ${new Date(bid.plannedExecutionDate).toLocaleDateString()}).</p><p><a href="${link}">Voir les détails</a></p>`
+                    );
+                }
+            }
+        } catch (err) { console.warn("Bid Notification Failed", err); }
     },
 
     addApproval: async (taskId: string, userId: string): Promise<void> => {
@@ -460,6 +562,10 @@ export const api = {
         const { data, error } = await supabase.from('profiles').update({ status: 'active' }).eq('email', email).select();
         if (error) throw error;
         if (!data || data.length === 0) throw new Error("Droit insuffisant.");
+        
+        const link = window.location.origin;
+        await api.sendNotification(email, "Compte validé - CoproSmart", 
+            `<p>Votre compte a été validé par le Conseil Syndical.</p><p><a href="${link}" style="display:inline-block;background:#4f46e5;color:white;padding:10px 20px;text-decoration:none;border-radius:5px;">Se connecter</a></p>`);
     },
     
     rejectUser: async (email: string): Promise<void> => {
@@ -477,20 +583,6 @@ export const api = {
         if (error) throw error;
     },
     
-    sendNotification: async (to: string, subject: string, html: string): Promise<void> => {
-         try {
-             await fetch('/api/send-email', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ to, subject, html })
-            });
-         } catch (e) { console.error(e); }
-    },
-    
-    inviteUser: async (email: string, inviterName: string): Promise<void> => {
-        await api.sendNotification(email, `Invitation de ${inviterName}`, "Bienvenue sur CoproSmart");
-    },
-
     getDirectory: async (residence: string): Promise<RegisteredUser[]> => {
         if (!isConfigured) return [];
         try {

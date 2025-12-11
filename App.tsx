@@ -960,6 +960,12 @@ export default function App() {
               throw new Error("Montant de la prestation introuvable.");
           }
 
+          // AJOUT: Enregistrement de la trace de validation dans les détails
+          const timestamp = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+          const validationNote = `\n\n[✅ VALIDATION EFFECTUÉE le ${timestamp}]\nValidé par : ${user.firstName} ${user.lastName}\nMontant crédité : ${task.awardedAmount}€`;
+          const newDetails = (task.details || "") + validationNote;
+          await api.updateTaskDetails(task.id, newDetails);
+
           // FIX: Pass user.id (UUID) instead of user.email for validatedBy column
           await api.updateTaskStatus(task.id, 'completed', { validatedBy: user.id });
           

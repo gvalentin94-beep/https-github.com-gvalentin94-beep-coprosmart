@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import type { Task, LedgerEntry, User, RegisteredUser, UserRole, TaskCategory, TaskScope, Bid, Rating } from './types';
-import { useAuth, api } from './services/api';
+import { useAuth, api, formatTaskId } from './services/api';
 import { Button, Card, CardContent, CardHeader, CardTitle, Label, Input, Textarea, Select, Badge, Section } from './components/ui';
 import { TaskCard } from './components/TaskCard';
 import { LOCATIONS, CATEGORIES, SCOPES, WARRANTY_OPTIONS, COUNCIL_MIN_APPROVALS, ROLES, MAX_TASK_PRICE, AVATARS, RESIDENCES } from './constants';
@@ -306,7 +306,11 @@ function Ledger({ entries, usersMap, onDelete, isAdmin }: { entries: LedgerEntry
                             : <Badge className="bg-indigo-900/30 text-indigo-300 border-indigo-800">Privatif</Badge>}
                     </td>
                     <td className="px-4 py-3">
-                        <div className="font-medium text-white">{e.taskTitle}</div>
+                        <div className="flex items-center gap-2">
+                             {/* Display ID and Title */}
+                             {e.taskCreatedAt && <span className="text-[9px] font-mono text-slate-500">#{formatTaskId(e.taskCreatedAt)}</span>}
+                             <div className="font-medium text-white">{e.taskTitle}</div>
+                        </div>
                         <div className="text-xs text-slate-500">par {usersMap[e.taskCreator || ''] || e.taskCreator}</div>
                     </td>
                     {/* Fallback to simple name if map fails */}
@@ -983,24 +987,30 @@ export default function App() {
           await api.updateTaskStatus(task.id, 'completed', { validatedBy: user.id });
           
           // GENERATE LEDGER ENTRIES
-          if (task.scope === 'copro') {
-              // 1. Credit the worker (Charge Credit)
-              await api.createLedgerEntry({
-                  taskId: task.id,
-                  type: 'charge_credit',
-                  payerId: null, // System/Copro
-                  payeeId: payeeId,
-                  amount: task.awardedAmount
-              }, selectedResidence);
-          } else {
-              // 1. Private: Payer is Creator, Payee is Worker
-               await api.createLedgerEntry({
-                  taskId: task.id,
-                  type: 'apartment_payment',
-                  payerId: payerId,
-                  payeeId: payeeId,
-                  amount: task.awardedAmount
-              }, selectedResidence);
+          try {
+              if (task.scope === 'copro') {
+                  // 1. Credit the worker (Charge Credit)
+                  await api.createLedgerEntry({
+                      taskId: task.id,
+                      type: 'charge_credit',
+                      payerId: null, // System/Copro
+                      payeeId: payeeId,
+                      amount: task.awardedAmount
+                  }, selectedResidence);
+              } else {
+                  // 1. Private: Payer is Creator, Payee is Worker
+                   await api.createLedgerEntry({
+                      taskId: task.id,
+                      type: 'apartment_payment',
+                      payerId: payerId,
+                      payeeId: payeeId,
+                      amount: task.awardedAmount
+                  }, selectedResidence);
+              }
+              notify("Terminé !", "Travaux validés et écritures comptables générées.", "success");
+          } catch(ledgerErr) {
+              console.error("Ledger creation failed", ledgerErr);
+              notify("Attention", "Statut mis à jour mais ECHEC de création de l'écriture comptable. Utilisez le bouton 'Regénérer' sur la carte.", "error");
           }
           
           // Send Success Email to Worker
@@ -1017,11 +1027,55 @@ export default function App() {
              await api.sendNotification(task.awardedTo!, subject, html);
           } catch(e) { console.warn("Email validation fail", e); }
 
-          notify("Terminé !", "Travaux validés et écritures comptables générées.", "success");
           refreshData();
       } catch (e: any) {
           console.error(e);
           notify("Erreur Validation", e.message || "Echec de la validation.", "error");
+      }
+  };
+
+  const handleRegenerateLedger = async (task: Task) => {
+      if (!user || !selectedResidence) return;
+      try {
+          // Identify IDs again (copied logic from handleComplete)
+          let payeeId = task.awardedToId;
+          if (!payeeId && task.awardedTo) {
+             const winningBid = task.bids?.find(b => b.by === task.awardedTo);
+             payeeId = winningBid?.userId;
+          }
+          if (!payeeId && task.awardedTo) {
+              const u = users.find(u => u.email === task.awardedTo);
+              payeeId = u?.id;
+          }
+          if (!payeeId) throw new Error("Payee ID not found");
+
+          let payerId = task.createdById;
+           if (!payerId && task.scope === 'apartment' && task.createdBy) {
+              const u = users.find(u => u.email === task.createdBy);
+              payerId = u?.id;
+          }
+
+          if (task.scope === 'copro') {
+              await api.createLedgerEntry({
+                  taskId: task.id,
+                  type: 'charge_credit',
+                  payerId: null, 
+                  payeeId: payeeId,
+                  amount: task.awardedAmount
+              }, selectedResidence);
+          } else {
+               await api.createLedgerEntry({
+                  taskId: task.id,
+                  type: 'apartment_payment',
+                  payerId: payerId,
+                  payeeId: payeeId,
+                  amount: task.awardedAmount
+              }, selectedResidence);
+          }
+          notify("Succès", "Écriture comptable régénérée manuellement.", "success");
+          refreshData();
+      } catch (e: any) {
+          notify("Erreur", "Echec régénération: " + e.message, "error");
       }
   };
 
@@ -1319,6 +1373,7 @@ export default function App() {
                                     onDeleteRating={handleDeleteRating}
                                     onDelete={() => handleDeleteTask(t)}
                                     canDelete={user.role === 'admin'} 
+                                    onRegenerateLedger={() => handleRegenerateLedger(t)}
                                     />
                             ))
                         ) : (

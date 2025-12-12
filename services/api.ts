@@ -140,6 +140,7 @@ const mapLedger = (l: any): LedgerEntry => ({
     amount: l.amount,
     at: l.created_at,
     taskTitle: l.tasks?.title || 'Tâche (Info manquante)',
+    taskCreatedAt: l.tasks?.created_at, // IMPORTANT for ID formatting
     taskCreator: l.tasks?.created_by_profile?.email
 });
 
@@ -522,8 +523,8 @@ export const api = {
     readLedger: async (residence: string): Promise<LedgerEntry[]> => {
         if (!isConfigured) return [];
         
-        // Complex query: Join profiles to get emails directly
-        const selectQuery = `*, payer_profile:payer_id(email), payee_profile:payee_id(email), tasks(title, created_by_profile:created_by(email))`;
+        // Complex query: Join profiles to get emails directly AND get task created_at for ID formatting
+        const selectQuery = `*, payer_profile:payer_id(email), payee_profile:payee_id(email), tasks(title, created_at, created_by_profile:created_by(email))`;
 
         try {
             let query = supabase.from('ledger').select(selectQuery);

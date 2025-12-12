@@ -1,3 +1,4 @@
+
 export type UserRole = "owner" | "council" | "admin";
 export type TaskStatus = "pending" | "open" | "awarded" | "verification" | "completed" | "rejected";
 export type TaskScope = "copro" | "apartment";
@@ -100,4 +101,5 @@ export interface LedgerEntry {
   at: string;
   taskTitle?: string;
   taskCreator?: string;
+  taskCreatedAt?: string;
 }

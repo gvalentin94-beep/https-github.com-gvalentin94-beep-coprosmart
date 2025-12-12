@@ -166,11 +166,10 @@ export interface TaskCardProps {
   onReject?: () => void;
   onRequestVerification?: () => void;
   onRejectWork?: () => void;
-  onRegenerateLedger?: () => void;
   key?: React.Key;
 }
 
-export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRate, onDeleteRating, onDelete, canDelete, onApprove, onReject, onRequestVerification, onRejectWork, onRegenerateLedger }: TaskCardProps) {
+export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRate, onDeleteRating, onDelete, canDelete, onApprove, onReject, onRequestVerification, onRejectWork }: TaskCardProps) {
     const [showDetails, setShowDetails] = useState(false);
     const [showBidForm, setShowBidForm] = useState(false);
     
@@ -376,13 +375,6 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                     <div className="flex items-center gap-2 shrink-0 self-end">
                         {/* Show other action buttons (Award, Verify, etc) but NOT pending/verification buttons (moved up) */}
                         {task.status !== 'pending' && (!PendingActionButtons || task.status !== 'verification') && ActionButton}
-                        
-                        {/* Manual Ledger Regeneration for Admins/Council on Completed tasks */}
-                        {task.status === 'completed' && onRegenerateLedger && (isAdmin || isCouncil) && (
-                            <Button size="sm" onClick={onRegenerateLedger} className="h-6 text-[8px] bg-indigo-900 hover:bg-indigo-800 text-indigo-200 border border-indigo-700 px-1.5" title="Générer l'écriture comptable si manquante">
-                                ↺ Générer écriture
-                            </Button>
-                        )}
                         
                         {/* Rating */}
                         <div className="relative">

@@ -1034,51 +1034,6 @@ export default function App() {
       }
   };
 
-  const handleRegenerateLedger = async (task: Task) => {
-      if (!user || !selectedResidence) return;
-      try {
-          // Identify IDs again (copied logic from handleComplete)
-          let payeeId = task.awardedToId;
-          if (!payeeId && task.awardedTo) {
-             const winningBid = task.bids?.find(b => b.by === task.awardedTo);
-             payeeId = winningBid?.userId;
-          }
-          if (!payeeId && task.awardedTo) {
-              const u = users.find(u => u.email === task.awardedTo);
-              payeeId = u?.id;
-          }
-          if (!payeeId) throw new Error("Payee ID not found");
-
-          let payerId = task.createdById;
-           if (!payerId && task.scope === 'apartment' && task.createdBy) {
-              const u = users.find(u => u.email === task.createdBy);
-              payerId = u?.id;
-          }
-
-          if (task.scope === 'copro') {
-              await api.createLedgerEntry({
-                  taskId: task.id,
-                  type: 'charge_credit',
-                  payerId: null, 
-                  payeeId: payeeId,
-                  amount: task.awardedAmount
-              }, selectedResidence);
-          } else {
-               await api.createLedgerEntry({
-                  taskId: task.id,
-                  type: 'apartment_payment',
-                  payerId: payerId,
-                  payeeId: payeeId,
-                  amount: task.awardedAmount
-              }, selectedResidence);
-          }
-          notify("Succès", "Écriture comptable régénérée manuellement.", "success");
-          refreshData();
-      } catch (e: any) {
-          notify("Erreur", "Echec régénération: " + e.message, "error");
-      }
-  };
-
   const handleRate = async (task: Task, rating: Omit<Rating, 'at' | 'byHash'>) => {
       if (!user) return;
       try {
@@ -1373,7 +1328,6 @@ export default function App() {
                                     onDeleteRating={handleDeleteRating}
                                     onDelete={() => handleDeleteTask(t)}
                                     canDelete={user.role === 'admin'} 
-                                    onRegenerateLedger={() => handleRegenerateLedger(t)}
                                     />
                             ))
                         ) : (

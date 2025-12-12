@@ -139,8 +139,8 @@ const mapLedger = (l: any): LedgerEntry => ({
     payee: l.payee_profile?.email || (l.payee_id || 'Unknown'),
     amount: l.amount,
     at: l.created_at,
-    taskTitle: l.tasks?.title || 'Tâche (Info manquante)',
-    taskCreatedAt: l.tasks?.created_at, // IMPORTANT for ID formatting
+    taskTitle: l.tasks?.title || (l.manual_task_title || 'Tâche (Info manquante)'), // Support manual override
+    taskCreatedAt: l.tasks?.created_at || l.manual_task_created_at, // Support manual override
     taskCreator: l.tasks?.created_by_profile?.email
 });
 
@@ -523,7 +523,7 @@ export const api = {
     readLedger: async (residence: string): Promise<LedgerEntry[]> => {
         if (!isConfigured) return [];
         
-        // Complex query: Join profiles to get emails directly AND get task created_at for ID formatting
+        // Complex query: Join profiles to get emails directly AND get task info
         const selectQuery = `*, payer_profile:payer_id(email), payee_profile:payee_id(email), tasks(title, created_at, created_by_profile:created_by(email))`;
 
         try {
@@ -536,18 +536,36 @@ export const api = {
             console.log(`[Ledger] Loaded ${data.length} entries via complex join.`);
             return data.map(mapLedger);
         } catch (e) {
-            console.warn("Complex Ledger Fetch Failed (Joins/RLS issue), trying simple fetch...", e);
+            console.warn("Complex Ledger Fetch Failed (Joins/RLS issue), trying RAW fetch + Stitching...", e);
             
-            // Fallback: Simple fetch (No joins).
+            // Fallback: Fetch RAW Ledger + RAW Tasks to stitch them manually
             try {
                 let query = supabase.from('ledger').select('*');
                 if (residence === "Résidence Watteau") query = query.or(`residence.eq.Résidence Watteau,residence.is.null`);
                 else query = query.eq('residence', residence);
                 
-                const { data, error } = await query.order('created_at', { ascending: false });
-                if (error) throw error;
-                console.log(`[Ledger] Loaded ${data?.length} entries via simple fetch.`);
-                return (data || []).map(mapLedger);
+                const { data: ledgerData, error: ledgerError } = await query.order('created_at', { ascending: false });
+                if (ledgerError) throw ledgerError;
+
+                if (!ledgerData || ledgerData.length === 0) return [];
+
+                // Fetch related tasks for titles/dates
+                const taskIds = [...new Set(ledgerData.map((l: any) => l.task_id))];
+                const { data: tasksData } = await supabase.from('tasks').select('id, title, created_at').in('id', taskIds);
+                
+                // Stitch data
+                const enrichedData = ledgerData.map((l: any) => {
+                    const t = tasksData?.find((task: any) => task.id === l.task_id);
+                    return {
+                        ...l,
+                        manual_task_title: t?.title,
+                        manual_task_created_at: t?.created_at
+                    };
+                });
+
+                console.log(`[Ledger] Loaded ${enrichedData.length} entries via stitching.`);
+                return enrichedData.map(mapLedger);
+
             } catch (err2) {
                 console.error("Critical: Ledger fetch failed completely", err2);
                 return [];

@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import type { Task, User, Rating, Bid } from '../types';
 import { Button, Card, Input, Label, Badge } from './ui';
 import { CATEGORIES, TASK_STATUS_CONFIG, SCOPES, WARRANTY_OPTIONS, RATING_LEGEND, COUNCIL_MIN_APPROVALS } from '../constants';
+import { formatTaskId } from '../services/api';
 
 const statusClasses: { [key: string]: { border: string; text: string; bg: string } } = {
     amber: { border: 'border-amber-500', text: 'text-amber-500', bg: 'bg-amber-500' },
@@ -223,8 +224,8 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
     if (lowestBid) displayPrice = lowestBid.amount;
     if (task.awardedAmount) displayPrice = task.awardedAmount;
 
-    // REF ID (Short UUID)
-    const refId = `#${task.id.slice(0,4).toUpperCase()}`;
+    // USE NEW DATE BASED ID FORMAT
+    const refId = `#${formatTaskId(task.createdAt)}`;
 
     // ACTION BUTTONS Logic
     let ActionButton = null;
@@ -308,7 +309,7 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                         {task.title}
                     </h3>
                     
-                    <span className="text-[9px] font-mono text-slate-400 w-16 text-right">{refId}</span>
+                    <span className="text-[9px] font-mono text-slate-400 min-w-[80px] text-right">{refId}</span>
                 </div>
 
                 {/* LINE 2: Badges + Bids (Right) + Pending/Verif Actions */}

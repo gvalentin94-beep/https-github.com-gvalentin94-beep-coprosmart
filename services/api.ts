@@ -37,6 +37,28 @@ const supabase = isConfigured
 
 // --- Helpers to map DB snake_case to App camelCase ---
 
+// HELPER: Format Date to Task ID (AAAAMMJJ-HHMMSS)
+export const formatTaskId = (dateStr: string | undefined) => {
+    if (!dateStr) return "--------";
+    try {
+        const d = new Date(dateStr);
+        // Safety check for invalid dates
+        if (isNaN(d.getTime())) return "--------";
+        
+        const pad = (n: number) => n.toString().padStart(2, '0');
+        const yyyy = d.getFullYear();
+        const mm = pad(d.getMonth() + 1);
+        const dd = pad(d.getDate());
+        const hh = pad(d.getHours());
+        const min = pad(d.getMinutes());
+        const ss = pad(d.getSeconds());
+        
+        return `${yyyy}${mm}${dd}-${hh}${min}${ss}`;
+    } catch {
+        return "--------";
+    }
+};
+
 const mapProfile = (p: any): RegisteredUser => ({
     id: p.id,
     email: p.email,
@@ -191,8 +213,6 @@ export const api = {
     // --- HELPER EMAIL ---
     sendNotification: async (to: string, subject: string, html: string): Promise<void> => {
          try {
-             // In Vercel environment, /api/... routes are automatically handled.
-             // In local Vite dev (without Vercel CLI), this will 404.
              if (import.meta.env.DEV) {
                  console.log(`[DEV EMAIL SIMULATION] To: ${to} | Subject: ${subject}`);
                  return;
@@ -312,7 +332,6 @@ export const api = {
     },
 
     requestPasswordReset: async (email: string): Promise<string> => {
-        // Uses Supabase's SMTP settings (configured in Dashboard)
         const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin });
         if (error) throw error;
         return "LINK_SENT";
@@ -365,7 +384,6 @@ export const api = {
             const { data, error } = await supabase.from('tasks').insert(payload).select('id').single();
             if (error) throw error;
 
-            // ALERT: Notify Council
             try {
                 const { data: council } = await supabase.from('profiles')
                     .select('email')
@@ -406,7 +424,6 @@ export const api = {
         const { error } = await supabase.from('tasks').update(updateData).eq('id', taskId);
         if (error) throw error;
 
-        // ALERT: When task requests verification
         if (status === 'verification') {
              try {
                 const { data: task } = await supabase.from('tasks').select('title').eq('id', taskId).single();
@@ -449,14 +466,10 @@ export const api = {
         });
         if (error) throw error;
 
-        // ALERT: Notify Task Creator
         try {
-            // Get Task Title and Creator ID
             const { data: task } = await supabase.from('tasks').select('title, created_by').eq('id', taskId).single();
             if (task && task.created_by) {
-                // Get Creator Email
                 const { data: creator } = await supabase.from('profiles').select('email').eq('id', task.created_by).single();
-                
                 const link = window.location.origin;
                 if (creator) {
                     await api.sendNotification(
@@ -516,19 +529,23 @@ export const api = {
             let query = supabase.from('ledger').select(selectQuery);
             if (residence === "Résidence Watteau") query = query.or(`residence.eq.Résidence Watteau,residence.is.null`);
             else query = query.eq('residence', residence);
+            
             const { data, error } = await query.order('created_at', { ascending: false });
             if (error) throw error;
+            console.log(`[Ledger] Loaded ${data.length} entries via complex join.`);
             return data.map(mapLedger);
         } catch (e) {
             console.warn("Complex Ledger Fetch Failed (Joins/RLS issue), trying simple fetch...", e);
             
-            // Fallback: Simple fetch (No joins). Map function will handle missing profiles by using IDs.
+            // Fallback: Simple fetch (No joins).
             try {
                 let query = supabase.from('ledger').select('*');
                 if (residence === "Résidence Watteau") query = query.or(`residence.eq.Résidence Watteau,residence.is.null`);
                 else query = query.eq('residence', residence);
                 
-                const { data } = await query.order('created_at', { ascending: false });
+                const { data, error } = await query.order('created_at', { ascending: false });
+                if (error) throw error;
+                console.log(`[Ledger] Loaded ${data?.length} entries via simple fetch.`);
                 return (data || []).map(mapLedger);
             } catch (err2) {
                 console.error("Critical: Ledger fetch failed completely", err2);
@@ -616,8 +633,6 @@ export const api = {
             const { data, error } = await query.order('last_name');
             
             if (error || !data || data.length === 0) {
-                 // Fallback: Fetch ALL to ensure directory isn't empty if residence mismatch
-                 console.warn("Directory filtering yielded empty, fetching all for debug/fallback");
                  const { data: all } = await supabase.from('profiles').select('*').order('last_name');
                  return (all || []).map(mapProfile);
             }

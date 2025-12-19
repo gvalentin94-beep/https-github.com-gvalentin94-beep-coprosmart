@@ -9,7 +9,7 @@ import { LoginCard } from './components/LoginCard';
 import { LegalModal, CGUContent, MentionsLegalesContent } from './components/LegalModals';
 
 // --- Safe Version Access ---
-const APP_VERSION = '0.2.37';
+const APP_VERSION = '0.2.38';
 
 // --- Toast Notification System ---
 interface Toast {
@@ -206,7 +206,7 @@ export default function App() {
                 </Section>
             </div>
         )}
-        {tab === 'ledger' && <Ledger entries={ledger} usersMap={usersMap} onDelete={(id) => api.deleteLedgerEntry(id).then(refreshData)} isAdmin={user.role === 'admin'} />}
+        {tab === 'ledger' && <Ledger entries={ledger} usersMap={usersMap} onDelete={(id: string) => api.deleteLedgerEntry(id).then(refreshData)} isAdmin={user.role === 'admin'} />}
         {tab === 'directory' && <div className="text-center py-20 text-slate-500">Contenu annuaire... (Chargement des profils)</div>}
       </main>
 
@@ -231,9 +231,26 @@ export default function App() {
   );
 }
 
-function EmptyState({ icon, message }: any) { return <div className="p-10 text-center border border-dashed border-slate-800 rounded-xl bg-slate-900/10"><div className="text-3xl mb-2 opacity-40 grayscale">{icon}</div><p className="text-slate-500 text-sm">{message}</p></div>; }
+interface EmptyStateProps {
+  icon: string;
+  message: string;
+}
 
-function Ledger({ entries, usersMap, onDelete, isAdmin }: any) {
+function EmptyState({ icon, message }: EmptyStateProps) { 
+  return <div className="p-10 text-center border border-dashed border-slate-800 rounded-xl bg-slate-900/10">
+    <div className="text-3xl mb-2 opacity-40 grayscale">{icon}</div>
+    <p className="text-slate-500 text-sm">{message}</p>
+  </div>; 
+}
+
+interface LedgerProps {
+  entries: LedgerEntry[];
+  usersMap: Record<string, string>;
+  onDelete: (id: string) => Promise<void>;
+  isAdmin: boolean;
+}
+
+function Ledger({ entries, usersMap, onDelete, isAdmin }: LedgerProps) {
   return (
     <Card className="bg-slate-900/50 border-slate-800">
       <CardHeader className="bg-slate-950/50"><CardTitle>📒 Journal des écritures</CardTitle></CardHeader>
@@ -247,10 +264,11 @@ function Ledger({ entries, usersMap, onDelete, isAdmin }: any) {
                         <th className="p-4">Nature</th>
                         <th className="p-4">Bénéficiaire</th>
                         <th className="p-4 text-right">Montant</th>
+                        {isAdmin && <th className="p-4 text-center">Action</th>}
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800">
-                    {entries.map((e:any) => (
+                    {entries.map((e: LedgerEntry) => (
                         <tr key={e.id} className="hover:bg-indigo-500/5 transition-colors">
                             <td className="p-4 text-slate-400">{new Date(e.at).toLocaleDateString()}</td>
                             <td className="p-4">
@@ -259,6 +277,16 @@ function Ledger({ entries, usersMap, onDelete, isAdmin }: any) {
                             </td>
                             <td className="p-4 text-indigo-300 font-medium">{usersMap[e.payee] || e.payee}</td>
                             <td className="p-4 text-right font-black text-white text-base">{e.amount} €</td>
+                            {isAdmin && e.id && (
+                                <td className="p-4 text-center">
+                                    <button 
+                                      onClick={() => onDelete(e.id!)} 
+                                      className="text-rose-500 hover:text-rose-400 text-[10px] font-bold uppercase tracking-widest"
+                                    >
+                                      Suppr
+                                    </button>
+                                </td>
+                            )}
                         </tr>
                     ))}
                 </tbody>

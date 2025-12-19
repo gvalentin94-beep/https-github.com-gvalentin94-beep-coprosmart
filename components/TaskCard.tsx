@@ -151,14 +151,15 @@ function Countdown({ startedAt }: { startedAt: string }) {
     );
 }
 
+// Updated props to be optional for multi-context usage
 export interface TaskCardProps {
   task: Task;
   me: User;
   usersMap?: Record<string, string>; 
-  onBid: (bid: Omit<Bid, 'by' | 'at'>) => void;
-  onAward: () => void;
-  onComplete: () => void;
-  onRate: (rating: Omit<Rating, 'at' | 'byHash'>) => void;
+  onBid?: (bid: Omit<Bid, 'by' | 'at'>) => void;
+  onAward?: () => void;
+  onComplete?: () => void;
+  onRate?: (rating: Omit<Rating, 'at' | 'byHash'>) => void;
   onDeleteRating?: (taskId: string, ratingIndex: number) => void;
   onDelete: () => void;
   canDelete: boolean;
@@ -232,9 +233,9 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
     let PendingActionButtons = null; // Specific to Pending/Verification status to move them up
 
     if (task.status === 'open') {
-        if (canManualAward) {
+        if (canManualAward && onAward) {
              ActionButton = <Button size="sm" onClick={onAward} className="h-6 text-[10px] bg-emerald-600 hover:bg-emerald-500 whitespace-nowrap">Attribuer</Button>;
-        } else if (canBid) {
+        } else if (canBid && onBid) {
              ActionButton = (
                 <Button 
                     size="sm" 
@@ -250,6 +251,8 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                     Faire une offre
                 </Button>
             );
+        } else if (canBid && !onBid) {
+             // onBid missing? Log or just don't show
         } else {
              ActionButton = <span className="text-[10px] text-slate-500 italic">Offre envoyée</span>;
         }
@@ -287,8 +290,6 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                     <Button size="sm" onClick={onReject} variant="destructive" className="h-6 px-2 text-[10px] font-bold">NON</Button>
                 </div>
             );
-        } else {
-             // Just Badge for simple users (already handled in badges section, or add extra here if needed)
         }
     }
 
@@ -378,7 +379,7 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                         
                         {/* Rating */}
                         <div className="relative">
-                            {task.status === 'completed' && !hasRated && !isAssignee ? (
+                            {task.status === 'completed' && !hasRated && !isAssignee && onRate ? (
                                 <RatingBox onSubmit={onRate} />
                             ) : null}
                         </div>
@@ -390,7 +391,7 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                 </div>
 
                 {/* INLINE FORMS & DETAILS */}
-                {showBidForm && <BidBox task={task} onBid={onBid} onCancel={() => setShowBidForm(false)} />}
+                {showBidForm && onBid && <BidBox task={task} onBid={onBid} onCancel={() => setShowBidForm(false)} />}
                 
                 {showDetails && (
                     <div className="mt-2 pt-2 border-t border-slate-700 space-y-2 animate-in fade-in duration-200 text-xs text-slate-300">

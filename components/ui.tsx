@@ -9,10 +9,10 @@ type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
 };
 
 export function Button({ children, variant = "primary", size = "md", className = "", ...props }: ButtonProps) {
-  const baseClasses = "inline-flex items-center justify-center rounded-lg text-sm font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed";
+  const baseClasses = "inline-flex items-center justify-center rounded-lg text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed";
   
   const variantClasses = {
-    primary: "bg-indigo-600 text-white hover:bg-indigo-500 focus-visible:ring-indigo-500 shadow-sm shadow-indigo-900/20",
+    primary: "bg-indigo-600 text-white hover:bg-indigo-500 focus-visible:ring-indigo-500 shadow-sm",
     outline: "border border-slate-600 bg-transparent text-slate-200 hover:bg-slate-800 focus-visible:ring-indigo-500",
     destructive: "bg-rose-600 text-white hover:bg-rose-700 focus-visible:ring-rose-500 shadow-sm",
     ghost: "bg-transparent text-slate-300 hover:bg-slate-800 hover:text-white focus-visible:ring-indigo-500",
@@ -37,7 +37,6 @@ interface CardProps {
   children?: React.ReactNode;
   className?: string;
   padding?: 'none' | 'sm' | 'md';
-  key?: React.Key;
 }
 
 export function Card({ children, className = "", padding = 'md' }: CardProps) {
@@ -63,8 +62,7 @@ export function CardHeader({ children, className = "" }: CardChildProps) {
 }
 
 export function CardTitle({ children, className = "" }: CardChildProps) {
-  // Updated to use font-black tracking-tight for consistency
-  return <h2 className={`font-extrabold text-lg text-white tracking-tight ${className}`}>{children}</h2>;
+  return <h2 className={`font-bold text-lg text-white ${className}`}>{children}</h2>;
 }
 
 export function CardDescription({ children, className = "" }: CardChildProps) {
@@ -79,7 +77,7 @@ export function CardContent({ children, className = "" }: CardChildProps) {
 export function Input({ className = "", ...props }: React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input
-      className={`w-full border border-slate-300 rounded-lg px-3 py-2 text-base md:text-sm shadow-sm bg-white text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition font-normal ${className}`}
+      className={`w-full border border-slate-700 rounded-lg px-3 py-2 text-base md:text-sm shadow-sm bg-slate-900 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition font-normal ${className}`}
       {...props}
     />
   );
@@ -88,7 +86,7 @@ export function Input({ className = "", ...props }: React.InputHTMLAttributes<HT
 export function Textarea({ className = "", ...props }: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
   return (
     <textarea
-      className={`w-full border border-slate-300 rounded-lg px-3 py-2 text-base md:text-sm shadow-sm bg-white text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 min-h-[80px] transition font-normal ${className}`}
+      className={`w-full border border-slate-700 rounded-lg px-3 py-2 text-base md:text-sm shadow-sm bg-slate-900 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 min-h-[80px] transition font-normal ${className}`}
       {...props}
     />
   );
@@ -97,7 +95,7 @@ export function Textarea({ className = "", ...props }: React.TextareaHTMLAttribu
 export function Select({ className = "", children, ...props }: React.SelectHTMLAttributes<HTMLSelectElement>) {
   return (
     <select
-      className={`w-full border border-slate-300 rounded-lg px-3 py-2 text-base md:text-sm shadow-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition font-normal ${className}`}
+      className={`w-full border border-slate-700 rounded-lg px-3 py-2 text-base md:text-sm shadow-sm bg-slate-900 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition font-normal ${className}`}
       {...props}
     >
         {children}
@@ -107,7 +105,7 @@ export function Select({ className = "", children, ...props }: React.SelectHTMLA
 
 export function Label({ children, className = "", ...props }: React.LabelHTMLAttributes<HTMLLabelElement>) {
   return (
-    <label className={`text-xs font-bold tracking-wide text-slate-400 block ${className}`} {...props}>
+    <label className={`text-xs font-semibold tracking-wide text-slate-400 block mb-1 ${className}`} {...props}>
       {children}
     </label>
   );
@@ -118,7 +116,7 @@ interface BadgeProps {
   variant?: 'default' | 'secondary' | 'outline' | 'destructive' | 'success';
   children?: React.ReactNode;
   className?: string;
-  color?: string; // For dynamic colors
+  color?: string;
 }
 
 export function Badge({ children, variant, className = "", color }: BadgeProps) {
@@ -126,8 +124,6 @@ export function Badge({ children, variant, className = "", color }: BadgeProps) 
   
   let variantClasses = "";
   if (color) {
-      // Flat Design: Solid Colors are passed directly via className in constants, or mapped here if needed.
-      // Since constants.tsx now passes full classes like "bg-amber-500 text-white", we mostly rely on className overriding.
       const colorMap: { [key: string]: string } = {
           amber: 'bg-amber-500 text-slate-900',
           indigo: 'bg-indigo-600 text-white',
@@ -154,8 +150,7 @@ export function Badge({ children, variant, className = "", color }: BadgeProps) 
 export function Section({ title, children, className = "" }: { title: string; children?: React.ReactNode; className?: string }) {
   return (
     <section className={`space-y-4 ${className}`}>
-        {/* Updated to font-black tracking-tighter */}
-        <h3 className="text-xl font-black text-white tracking-tighter flex items-center gap-2">{title}</h3>
+        <h3 className="text-lg font-bold text-white flex items-center gap-2">{title}</h3>
         <div className="space-y-4">
             {children}
         </div>

@@ -77,14 +77,18 @@ export const useAuth = () => {
 
 export const api = {
     sendNotification: async (to: string, subject: string, html: string): Promise<void> => {
-        const res = await fetch('/api/send-email', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ to, subject, html })
-        });
-        if (!res.ok) {
-            const err = await res.json();
-            throw new Error(err.error || "Email non envoyé");
+        try {
+            const res = await fetch('/api/send-email', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ to, subject, html })
+            });
+            if (!res.ok) {
+                const err = await res.json();
+                console.warn("Email error:", err.error);
+            }
+        } catch (e) {
+            console.error("Failed to call email API", e);
         }
     },
 
@@ -130,7 +134,8 @@ export const api = {
         if (extras.awardedAmount) update.awarded_amount = extras.awardedAmount;
         if (extras.validatedBy) update.validated_by = extras.validatedBy;
         if (status === 'completed') update.completion_at = new Date().toISOString();
-        await supabase.from('tasks').update(update).eq('id', tid);
+        const { error } = await supabase.from('tasks').update(update).eq('id', tid);
+        if (error) throw error;
     },
 
     updateTaskDetails: async (tid: string, details: string) => { await supabase.from('tasks').update({ details }).eq('id', tid); },
@@ -138,7 +143,7 @@ export const api = {
     deleteTask: async (tid: string) => { await supabase.from('tasks').delete().eq('id', tid); },
 
     addBid: async (tid: string, bid: any, uid: string) => {
-        await supabase.from('bids').insert({ task_id: tid, bidder_id: uid, amount: bid.amount, note: bid.note, planned_date: bid.plannedExecutionDate });
+        await supabase.from('bids').insert({ task_id: tid, bidder_id: uid, amount: bid.amount, note: bid.note, planned_date: bid.planned_date });
         await supabase.from('tasks').update({ bidding_started_at: new Date().toISOString() }).eq('id', tid);
     },
 
@@ -146,24 +151,34 @@ export const api = {
 
     readLedger: async (residence: string): Promise<LedgerEntry[]> => {
         try {
-            // Jointure simple
             const { data, error } = await supabase.from('ledger').select(`*, payer_profile:payer_id(email), payee_profile:payee_id(email), tasks(title, created_at)`)
                 .eq('residence', residence).order('created_at', { ascending: false });
-            if (error) throw error;
+            if (error) {
+                console.error("Ledger join error, falling back", error);
+                const { data: fallbackData } = await supabase.from('ledger').select('*').eq('residence', residence).order('created_at', { ascending: false });
+                return (fallbackData || []).map(mapLedger);
+            }
             return (data || []).map(mapLedger);
         } catch (e) {
-            // Fallback sans jointure si RLS bloque
-            const { data } = await supabase.from('ledger').select('*').eq('residence', residence).order('created_at', { ascending: false });
-            return (data || []).map(mapLedger);
+            console.error("Ledger fatal error", e);
+            return [];
         }
     },
 
     createLedgerEntry: async (entry: any, res: string) => {
+        console.log("Creating ledger entry:", entry);
         const { error } = await supabase.from('ledger').insert({
-            task_id: entry.taskId, residence: res, type: entry.type,
-            payer_id: entry.payerId, payee_id: entry.payeeId, amount: entry.amount
+            task_id: entry.taskId, 
+            residence: res, 
+            type: entry.type,
+            payer_id: entry.payerId || null, 
+            payee_id: entry.payeeId, 
+            amount: entry.amount
         });
-        if (error) throw error;
+        if (error) {
+            console.error("Supabase Ledger Insert Error:", error);
+            throw error;
+        }
     },
 
     deleteLedgerEntry: async (id: string) => { await supabase.from('ledger').delete().eq('id', id); },

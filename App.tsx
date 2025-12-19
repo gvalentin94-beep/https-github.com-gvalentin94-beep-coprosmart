@@ -9,7 +9,7 @@ import { LoginCard } from './components/LoginCard';
 import { LegalModal, CGUContent, MentionsLegalesContent } from './components/LegalModals';
 
 // --- Safe Version Access ---
-const APP_VERSION = '0.2.36';
+const APP_VERSION = '0.2.37';
 
 // --- Toast Notification System ---
 interface Toast {
@@ -86,10 +86,10 @@ export default function App() {
             api.getPendingUsers(selectedResidence),
             api.getDirectory(selectedResidence)
         ]);
-        setTasks(t);
-        setLedger(l);
-        setPendingUsers(p);
-        setUsers(u);
+        setTasks(t || []);
+        setLedger(l || []);
+        setPendingUsers(p || []);
+        setUsers(u || []);
     } catch (e) {
         console.error("Refresh fail", e);
     } finally {
@@ -128,9 +128,16 @@ export default function App() {
               payerId = creator?.id;
           }
 
-          if (!payeeId) throw new Error("UUID de l'intervenant introuvable. Demandez-lui de mettre à jour son profil.");
-          if (task.scope === 'apartment' && !payerId) throw new Error("UUID du demandeur introuvable.");
-          if (!task.awardedAmount) throw new Error("Montant de la prestation introuvable.");
+          if (!payeeId) {
+             // Si on n'a toujours pas d'ID, on essaie de le chercher via l'annuaire complet
+             const allUsers = await api.getDirectory(selectedResidence);
+             const worker = allUsers.find(u => u.email === task.awardedTo);
+             payeeId = worker?.id;
+          }
+
+          if (!payeeId) throw new Error("ID de l'intervenant introuvable. L'utilisateur doit être actif dans l'annuaire.");
+          if (task.scope === 'apartment' && !payerId) throw new Error("ID du demandeur introuvable.");
+          if (task.awardedAmount === undefined || task.awardedAmount === null) throw new Error("Montant de la prestation absent.");
 
           // 1. ÉCRITURE COMPTABLE
           await api.createLedgerEntry({
@@ -149,15 +156,14 @@ export default function App() {
 
           notify("Succès !", "Travaux validés et enregistrés au journal.", "success");
           
-          // Notification Email
-          try {
-             await api.sendNotification(task.awardedTo!, `✅ Mission validée - ${task.title}`, 
-             `<p>Félicitations ! Vos travaux sur <strong>${task.title}</strong> ont été approuvés.</p><p>Un crédit de <strong>${task.awardedAmount}€</strong> a été ajouté à votre journal CoproSmart.</p>`);
-          } catch(e) { console.warn("L'email n'a pas pu être envoyé mais l'opération est validée."); }
+          // Notification Email (non bloquant)
+          api.sendNotification(task.awardedTo!, `✅ Mission validée - ${task.title}`, 
+             `<p>Félicitations ! Vos travaux sur <strong>${task.title}</strong> ont été approuvés.</p><p>Un crédit de <strong>${task.awardedAmount}€</strong> a été ajouté à votre journal CoproSmart.</p>`)
+             .catch(e => console.warn("Email notify failed", e));
 
           refreshData();
       } catch (e: any) {
-          console.error(e);
+          console.error("handleComplete error", e);
           notify("Échec", e.message || "Erreur lors de la validation.", "error");
       }
   };
@@ -195,7 +201,7 @@ export default function App() {
                 </Section>
                 <Section title="2️⃣ Travaux en cours">
                     {tasks.filter(t => ['open', 'awarded', 'verification'].includes(t.status)).length > 0 ?
-                        tasks.filter(t => ['open', 'awarded', 'verification'].includes(t.status)).map(t => <TaskCard key={t.id} task={t} me={user} usersMap={usersMap} onBid={(b) => api.addBid(t.id, b, user.id).then(refreshData)} onAward={() => api.updateTaskStatus(t.id, 'awarded', { awardedTo: t.bids[0].userId, awardedAmount: t.bids[0].amount }).then(refreshData)} onComplete={() => handleComplete(t)} onRate={() => {}} onDelete={() => api.deleteTask(t.id).then(refreshData)} canDelete={user.role==='admin'} />)
+                        tasks.filter(t => ['open', 'awarded', 'verification'].includes(t.status)).map(t => <TaskCard key={t.id} task={t} me={user} usersMap={usersMap} onBid={(b) => api.addBid(t.id, b, user.id).then(refreshData)} onAward={() => api.updateTaskStatus(t.id, 'awarded', { awardedTo: t.bids[0].userId, awardedAmount: t.bids[0].amount }).then(refreshData)} onComplete={() => handleComplete(t)} onDelete={() => api.deleteTask(t.id).then(refreshData)} canDelete={user.role==='admin'} />)
                         : <EmptyState icon="🔨" message="Pas de chantiers actifs." />}
                 </Section>
             </div>
@@ -204,7 +210,7 @@ export default function App() {
         {tab === 'directory' && <div className="text-center py-20 text-slate-500">Contenu annuaire... (Chargement des profils)</div>}
       </main>
 
-      {/* FOOTER RÉELLEMENT FONCTIONNEL */}
+      {/* FOOTER */}
       <footer className="mt-20 py-12 text-center text-slate-600 text-xs border-t border-slate-900 bg-slate-950">
         <div className="flex justify-center gap-8 mb-6">
              <button onClick={() => setShowCGU(true)} className="hover:text-indigo-400 underline decoration-slate-800 underline-offset-4">Conditions d'Utilisation</button>

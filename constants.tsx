@@ -5,8 +5,7 @@ export const COUNCIL_MIN_APPROVALS = 2;
 export const MAX_TASK_PRICE = 100;
 
 export const RESIDENCES = [
-    "Résidence Watteau",
-    "Résidence TEST"
+    "Résidence Watteau"
 ];
 
 export const ROLES = [

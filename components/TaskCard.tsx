@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import type { Task, User, Rating, Bid } from '../types';
+import type { Task, User, Rating, Bid, RegisteredUser } from '../types';
 import { Button, Card, Input, Label, Badge } from './ui';
 import { CATEGORIES, TASK_STATUS_CONFIG, SCOPES, WARRANTY_OPTIONS, RATING_LEGEND, COUNCIL_MIN_APPROVALS } from '../constants';
 import { formatTaskId } from '../services/api';
@@ -156,6 +156,7 @@ export interface TaskCardProps {
   task: Task;
   me: User;
   usersMap?: Record<string, string>; 
+  users?: RegisteredUser[];
   onBid?: (bid: Omit<Bid, 'by' | 'at'>) => void;
   onAward?: () => void;
   onComplete?: () => void;
@@ -170,7 +171,7 @@ export interface TaskCardProps {
   key?: React.Key;
 }
 
-export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRate, onDeleteRating, onDelete, canDelete, onApprove, onReject, onRequestVerification, onRejectWork }: TaskCardProps) {
+export function TaskCard({ task, me, usersMap, users, onBid, onAward, onComplete, onRate, onDeleteRating, onDelete, canDelete, onApprove, onReject, onRequestVerification, onRejectWork }: TaskCardProps) {
     const [showDetails, setShowDetails] = useState(false);
     const [showBidForm, setShowBidForm] = useState(false);
     
@@ -186,6 +187,7 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
     const isFirstBidder = task.bids.length > 0 && task.bids[0].by === me.email;
     const canBid = (isFirstBidder && myBidsCount < 2) || (!isFirstBidder && myBidsCount < 1);
     
+    const isCreator = task.createdBy?.toLowerCase() === me.email?.toLowerCase() || task.createdById === me.id;
     const hasApproved = task.approvals?.some(a => a.by === me.email);
     
     // Timer Logic
@@ -202,11 +204,44 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
     // Can award if: Open AND has bids AND (Creator owner OR Admin) AND (Timer expired OR Admin bypass)
     const canManualAward = task.status === "open" && task.bids?.length > 0 && lowestBid && (isTimerExpired || isAdmin);
     
-    // Name helpers
+    // User and badge helpers
+    const getUserObj = (emailOrId: string | undefined | null) => {
+        if (!emailOrId || !users) return null;
+        return users.find(u => u.email.toLowerCase() === emailOrId.toLowerCase() || u.id === emailOrId) || null;
+    };
+
+    const renderRoleBadges = (role: string | undefined) => {
+        if (!role) return null;
+        switch (role) {
+            case 'admin':
+                return (
+                    <span className="inline-flex items-center gap-0.5">
+                        <Badge className="bg-purple-600 text-white border-purple-500 text-[8px] py-0 px-1 font-bold">👑 Admin</Badge>
+                        <Badge className="bg-indigo-600/90 text-white border-indigo-500 text-[8px] py-0 px-1 font-bold">🛡️ CS</Badge>
+                        <Badge className="bg-sky-700 text-sky-100 border-sky-600 text-[8px] py-0 px-1 font-medium">👤 Copro</Badge>
+                    </span>
+                );
+            case 'council':
+                return (
+                    <span className="inline-flex items-center gap-0.5">
+                        <Badge className="bg-indigo-600 text-white border-indigo-500 text-[8px] py-0 px-1 font-bold">🛡️ CS</Badge>
+                        <Badge className="bg-sky-700 text-sky-100 border-sky-600 text-[8px] py-0 px-1 font-medium">👤 Copro</Badge>
+                    </span>
+                );
+            case 'owner':
+            default:
+                return <Badge className="bg-sky-700 text-sky-100 border-sky-600 text-[8px] py-0 px-1 font-medium">👤 Copro</Badge>;
+        }
+    };
+
     const getName = (email: string | undefined | null) => {
         if (!email) return null;
         return usersMap && usersMap[email] ? usersMap[email] : email;
     };
+
+    const creatorUser = getUserObj(task.createdBy) || getUserObj(task.createdById);
+    const awardedUser = getUserObj(task.awardedTo) || getUserObj(task.awardedToId);
+    const validatorUser = getUserObj(task.validatedBy);
 
     const awardedToName = getName(task.awardedTo);
     const creatorName = getName(task.createdBy);
@@ -259,8 +294,8 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
     } else if (task.status === 'awarded' && isAssignee && onRequestVerification) {
         ActionButton = <Button size="sm" onClick={onRequestVerification} className="h-6 text-[10px] bg-fuchsia-600 hover:bg-fuchsia-500 whitespace-nowrap">Terminer</Button>;
     } else if (task.status === 'verification') {
-        // Validation Logic: User must have rights (CS/Admin) AND NOT be the person who did the work (assignee)
-        if (canVerify && !isAssignee && onComplete && onRejectWork) {
+        // Validation Logic: User must have rights (CS/Admin) AND (NOT be the person who did the work OR be Admin)
+        if (canVerify && (!isAssignee || isAdmin) && onComplete && onRejectWork) {
             // "En attente de validation (Travail fait)"
             PendingActionButtons = (
                 <div className="flex gap-1 items-center">
@@ -277,15 +312,21 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
     } else if (task.status === 'pending') {
         // "En attente de validation (Création)"
         if (isCouncilOrAdmin && onApprove && onReject) {
+            const cannotApproveOwn = isCreator;
+            const approveDisabled = hasApproved || cannotApproveOwn;
+            const approveButtonText = hasApproved ? 'VALIDÉ' : cannotApproveOwn ? 'CRÉATEUR' : 'OUI';
+            const approveTitle = cannotApproveOwn ? 'Un chantier ne peut pas être approuvé par celui qui l\'a créé' : undefined;
+
             PendingActionButtons = (
                  <div className="flex gap-1 items-center">
                     <Button 
                         size="sm" 
                         onClick={onApprove} 
-                        disabled={hasApproved} 
-                        className={`h-6 px-2 text-[10px] font-bold ${hasApproved ? 'bg-slate-700 text-slate-400 opacity-50 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-500 text-white'}`}
+                        disabled={approveDisabled}
+                        title={approveTitle}
+                        className={`h-6 px-2 text-[10px] font-bold ${approveDisabled ? 'bg-slate-700 text-slate-400 opacity-50 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-500 text-white'}`}
                     >
-                        {hasApproved ? 'VALIDÉ' : 'OUI'}
+                        {approveButtonText}
                     </Button>
                     <Button size="sm" onClick={onReject} variant="destructive" className="h-6 px-2 text-[10px] font-bold">NON</Button>
                 </div>
@@ -302,15 +343,26 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
         <Card className={`bg-slate-800 border-l-[3px] ${style.border} p-0 shadow-none mb-1`}>
             <div className="p-2 flex flex-col gap-1">
                 
-                {/* LINE 1: Price (Left) - Title (Centered) - Ref Code (Right) */}
+                {/* LINE 1: Price (Left) - Title (Centered) - Ref Code & Quick Delete (Right) */}
                 <div className="relative flex items-center justify-between h-6 mb-1">
                     <span className="font-mono font-bold text-white text-sm w-16">{displayPrice}€</span>
 
-                    <h3 className="absolute left-0 right-0 mx-auto w-fit font-extrabold text-white text-sm leading-none truncate max-w-[60%] text-center">
+                    <h3 className="absolute left-0 right-0 mx-auto w-fit font-extrabold text-white text-sm leading-none truncate max-w-[55%] text-center">
                         {task.title}
                     </h3>
                     
-                    <span className="text-[9px] font-mono text-slate-400 min-w-[80px] text-right">{refId}</span>
+                    <div className="flex items-center gap-1.5 min-w-[90px] justify-end">
+                        <span className="text-[9px] font-mono text-slate-400">{refId}</span>
+                        {(canDelete || isAdmin) && onDelete && (
+                            <button
+                                onClick={onDelete}
+                                title="Supprimer la tâche (Administrateur)"
+                                className="text-slate-500 hover:text-rose-400 p-0.5 rounded transition text-[11px] leading-none"
+                            >
+                                🗑️
+                            </button>
+                        )}
+                    </div>
                 </div>
 
                 {/* LINE 2: Badges + Bids (Right) + Pending/Verif Actions */}
@@ -324,6 +376,7 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                                 {missingApprovals > 0 && <span className="text-amber-900 border-l border-amber-800 pl-1 ml-0.5 font-extrabold uppercase text-[8px] tracking-tight">Manque {missingApprovals}</span>}
                             </Badge>
                         )}
+
                         {categoryInfo && <Badge className={`${categoryInfo.colorClass} border-none text-[9px] py-0 px-1.5 rounded-sm shadow-sm`}>{categoryInfo.label}</Badge>}
                         {scopeInfo && <Badge className={`${scopeInfo.colorClass} border-none text-[9px] py-0 px-1.5 rounded-sm shadow-sm`}>{scopeInfo.label}</Badge>}
                         <Badge className="bg-slate-700 text-slate-300 border border-slate-600 text-[9px] py-0 px-1.5 rounded-sm">{task.location}</Badge>
@@ -364,12 +417,27 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                     {/* GRID: Grouped Columns (Action vs Control) */}
                     <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-[9px] text-slate-500 leading-none w-full mr-2">
                         <div className="space-y-0.5">
-                            <div className="truncate">📝 Créé par: <span className="text-slate-300">{creatorName || '-'}</span></div>
-                            <div className="truncate">🔨 Attribué à: <span className="text-slate-300">{awardedToName || '-'}</span></div>
+                            <div className="truncate flex items-center gap-1">
+                                <span>📝 Créé par:</span> 
+                                <span className="text-slate-300">{creatorName || '-'}</span>
+                                {creatorUser && renderRoleBadges(creatorUser.role)}
+                            </div>
+                            <div className="truncate flex items-center gap-1">
+                                <span>🔨 Attribué à:</span> 
+                                <span className="text-slate-300">{awardedToName || '-'}</span>
+                                {awardedUser && renderRoleBadges(awardedUser.role)}
+                            </div>
                         </div>
                         <div className="space-y-0.5 border-l border-slate-700/50 pl-2">
-                             <div className="truncate">👍 Approuvé par: <span className="text-slate-300">{approverNames || 'En attente'}</span></div>
-                             <div className="truncate">🔍 Contrôle qualité par <span className="text-slate-300">{validatorName || '-'}</span></div>
+                             <div className="truncate flex items-center gap-1">
+                                <span>👍 Approuvé par:</span> 
+                                <span className="text-slate-300">{approverNames || 'En attente'}</span>
+                             </div>
+                             <div className="truncate flex items-center gap-1">
+                                <span>🔍 Contrôle qualité par:</span> 
+                                <span className="text-slate-300">{validatorName || '-'}</span>
+                                {validatorUser && renderRoleBadges(validatorUser.role)}
+                             </div>
                         </div>
                     </div>
                     
@@ -425,7 +493,7 @@ export function TaskCard({ task, me, usersMap, onBid, onAward, onComplete, onRat
                             </div>
                         )}
 
-                        {canDelete && (
+                        {(canDelete || isAdmin) && onDelete && (
                             <Button size="sm" variant="ghost" className="w-full h-5 text-rose-500 hover:text-rose-400 text-[10px] bg-rose-950/20 hover:bg-rose-950/40" onClick={onDelete}>Supprimer la tâche</Button>
                         )}
                     </div>

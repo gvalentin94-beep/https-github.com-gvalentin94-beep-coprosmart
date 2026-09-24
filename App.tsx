@@ -1,12 +1,13 @@
-
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import type { Task, LedgerEntry, User, RegisteredUser, UserRole, TaskCategory, TaskScope, Bid, Rating } from './types';
-import { useAuth, api, formatTaskId } from './services/api';
+import { useAuth, api, formatTaskId, isConfigured } from './services/api';
 import { Button, Card, CardContent, CardHeader, CardTitle, Label, Input, Textarea, Select, Badge, Section } from './components/ui';
 import { TaskCard } from './components/TaskCard';
 import { LOCATIONS, CATEGORIES, SCOPES, WARRANTY_OPTIONS, COUNCIL_MIN_APPROVALS, ROLES, MAX_TASK_PRICE, AVATARS, RESIDENCES } from './constants';
 import { LoginCard } from './components/LoginCard';
 import { LegalModal, CGUContent, MentionsLegalesContent } from './components/LegalModals';
+import { CreateTaskModal } from './components/CreateTaskModal';
+import { DirectoryView } from './components/DirectoryView';
 
 // --- Safe Version Access ---
 const APP_VERSION = '0.2.36';
@@ -53,7 +54,7 @@ export default function App() {
   const [users, setUsers] = useState<RegisteredUser[]>([]);
   const [loading, setLoading] = useState(false);
   
-  const [selectedResidence, setSelectedResidence] = useState<string | null>("Résidence Watteau");
+  const [selectedResidence, setSelectedResidence] = useState<string>("Résidence Watteau");
   
   // UI State
   const [tab, setTab] = useState<'dashboard' | 'directory' | 'ledger'>('dashboard');
@@ -107,9 +108,61 @@ export default function App() {
     }
   }, [user, refreshData, selectedResidence]);
 
+  const handleCreateTask = async (taskData: any) => {
+    if (!user || !selectedResidence) return;
+    try {
+      await api.createTask(taskData, user.id, selectedResidence);
+      notify("Demande enregistrée !", "Votre demande de travaux a été publiée avec succès.", "success");
+      refreshData();
+    } catch (e: any) {
+      notify("Erreur", e.message || "Impossible de créer la tâche", "error");
+    }
+  };
+
+  const handleApproveUser = async (email: string) => {
+    try {
+      await api.approveUser(email);
+      notify("Accès validé", `L'utilisateur ${email} a été activé.`, "success");
+      refreshData();
+    } catch (e: any) {
+      notify("Erreur", e.message || "Impossible de valider l'utilisateur", "error");
+    }
+  };
+
+  const handleDeleteUser = async (email: string) => {
+    try {
+      await api.deleteUser(email);
+      notify("Utilisateur supprimé", `Le compte ${email} a été supprimé.`, "success");
+      refreshData();
+    } catch (e: any) {
+      notify("Erreur", e.message || "Impossible de supprimer l'utilisateur", "error");
+    }
+  };
+
+  const handleInviteUser = async (email: string) => {
+    if (!user) return;
+    try {
+      await api.inviteUser(email, `${user.firstName} ${user.lastName}`);
+      notify("Invitation envoyée", `Un message a été adressé à ${email}.`, "success");
+    } catch (e: any) {
+      notify("Information", "L'invitation a été enregistrée.", "info");
+    }
+  };
+
+  const handleRate = async (taskId: string, rating: { stars: number; comment?: string }) => {
+    if (!user) return;
+    try {
+      await api.addRating(taskId, rating, user.id);
+      notify("Avis enregistré !", "Merci pour votre évaluation.", "success");
+      refreshData();
+    } catch (e: any) {
+      notify("Erreur", e.message || "Impossible d'enregistrer la note", "error");
+    }
+  };
+
   const handleComplete = async (task: Task) => {
       if (!user || !selectedResidence) return;
-      if (task.awardedTo === user.email) {
+      if (task.awardedTo === user.email && user.role !== 'admin') {
           notify("Action impossible", "Un membre du Conseil Syndical ne peut pas valider son propre travail.", "error");
           return;
       }
@@ -128,8 +181,8 @@ export default function App() {
               payerId = creator?.id;
           }
 
-          if (!payeeId) throw new Error("UUID de l'intervenant introuvable. Demandez-lui de mettre à jour son profil.");
-          if (task.scope === 'apartment' && !payerId) throw new Error("UUID du demandeur introuvable.");
+          if (!payeeId) throw new Error("Identifiant de l'intervenant introuvable.");
+          if (task.scope === 'apartment' && !payerId) throw new Error("Identifiant du demandeur introuvable.");
           if (!task.awardedAmount) throw new Error("Montant de la prestation introuvable.");
 
           // 1. ÉCRITURE COMPTABLE
@@ -162,53 +215,200 @@ export default function App() {
       }
   };
 
-  if (authLoading) return <div className="h-screen w-full flex items-center justify-center bg-slate-900 text-indigo-500">Chargement...</div>;
+  if (authLoading) return <div className="h-screen w-full flex items-center justify-center bg-slate-950 text-indigo-400 font-bold">Chargement de CoproSmart...</div>;
   if (!user) return <LoginCard onLogin={setUser} />;
 
+  // 4 SECTIONS DEMANDÉES :
+  // 1 : Demande de travaux (en attente de validation)
+  const pendingTasks = tasks.filter(t => t.status === 'pending');
+  // 2 : Travaux à réaliser (approuvés, candidatures ouvertes ou attribués en cours de réalisation)
+  const todoTasks = tasks.filter(t => ['open', 'awarded'].includes(t.status));
+  // 3 : Travaux en attente de contrôle qualité (réalisés, preuve soumise, en attente de vérification)
+  const verificationTasks = tasks.filter(t => t.status === 'verification');
+  // 4 : Travaux terminés (validés et notés / archivés)
+  const completedTasks = tasks.filter(t => t.status === 'completed');
+
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-200 pb-20 md:pb-0 font-sans selection:bg-indigo-500/30">
+    <div className="min-h-screen bg-slate-950 text-slate-200 pb-20 md:pb-12 font-sans selection:bg-indigo-500/30">
       <ToastContainer toasts={toasts} onClose={(id) => setToasts(prev => prev.filter(t => t.id !== id))} />
 
       {/* HEADER */}
-      <header className="sticky top-0 z-40 bg-slate-900/80 backdrop-blur-md border-b border-slate-800 shadow-lg h-16 flex items-center">
-        <div className="max-w-5xl mx-auto px-4 w-full flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <h1 className="text-2xl font-black tracking-tighter text-white">CoproSmart<span className="text-indigo-500">.</span></h1>
-            <Button size="sm" onClick={() => setShowCreateModal(true)}>+ Nouvelle demande</Button>
-            <div className="hidden md:flex gap-6 ml-6 border-l border-slate-700 pl-6">
-                 <button onClick={() => setTab('dashboard')} className={tab === 'dashboard' ? 'text-white font-bold' : 'text-slate-400 hover:text-white'}>Accueil</button>
-                 <button onClick={() => setTab('directory')} className={tab === 'directory' ? 'text-white font-bold' : 'text-slate-400 hover:text-white'}>Annuaire</button>
-                 <button onClick={() => setTab('ledger')} className={tab === 'ledger' ? 'text-white font-bold' : 'text-slate-400 hover:text-white'}>Journal</button>
+      <header className="sticky top-0 z-40 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 shadow-lg min-h-16 py-2 flex items-center">
+        <div className="max-w-5xl mx-auto px-4 w-full flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-4 flex-wrap">
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-black tracking-tighter text-white">CoproSmart<span className="text-indigo-500">.</span></h1>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-indigo-950 text-indigo-300 border border-indigo-800/60 hidden sm:inline-block">
+                {selectedResidence}
+              </span>
+            </div>
+            <Button size="sm" onClick={() => setShowCreateModal(true)} className="bg-indigo-600 hover:bg-indigo-500 font-bold">
+              + Nouvelle demande
+            </Button>
+            <div className="flex gap-4 sm:gap-6 border-l border-slate-800 pl-4">
+                 <button onClick={() => setTab('dashboard')} className={tab === 'dashboard' ? 'text-white font-bold border-b-2 border-indigo-500 pb-0.5' : 'text-slate-400 hover:text-white transition'}>Accueil</button>
+                 <button onClick={() => setTab('directory')} className={tab === 'directory' ? 'text-white font-bold border-b-2 border-indigo-500 pb-0.5' : 'text-slate-400 hover:text-white transition'}>
+                   Annuaire {pendingUsers.length > 0 && <span className="ml-1 px-1.5 py-0.2 bg-amber-500 text-slate-950 text-[10px] rounded-full font-black">{pendingUsers.length}</span>}
+                 </button>
+                 <button onClick={() => setTab('ledger')} className={tab === 'ledger' ? 'text-white font-bold border-b-2 border-indigo-500 pb-0.5' : 'text-slate-400 hover:text-white transition'}>Journal</button>
             </div>
           </div>
-          <Button size="sm" variant="ghost" onClick={() => { api.logout(); setUser(null); }}>Déconnexion</Button>
+          
+          <div className="flex items-center gap-3">
+            <div className="text-right hidden sm:block">
+              <div className="text-xs font-bold text-white">{user.firstName} {user.lastName}</div>
+              <div className="text-[10px] text-indigo-300 font-medium">
+                {user.role === 'admin' 
+                  ? '👑 Admin • 🛡️ CS • 👤 Copro' 
+                  : user.role === 'council' 
+                  ? '🛡️ CS • 👤 Copropriétaire' 
+                  : '👤 Copropriétaire'}
+              </div>
+            </div>
+
+            <Button size="sm" variant="ghost" onClick={() => { api.logout(); setUser(null); }} className="text-slate-400 hover:text-white">
+              Déconnexion
+            </Button>
+          </div>
         </div>
       </header>
 
       <main className="max-w-5xl mx-auto p-4 md:p-6 space-y-8 min-h-[70vh]">
         {tab === 'dashboard' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-                <Section title="1️⃣ À valider par le CS">
-                    {tasks.filter(t => t.status === 'pending').length > 0 ? 
-                        tasks.filter(t => t.status === 'pending').map(t => <TaskCard key={t.id} task={t} me={user} usersMap={usersMap} onApprove={() => api.addApproval(t.id, user.id).then(refreshData)} onReject={() => api.updateTaskStatus(t.id, 'rejected').then(refreshData)} onDelete={() => api.deleteTask(t.id).then(refreshData)} canDelete={user.role==='admin'} />) 
-                        : <EmptyState icon="⏳" message="Aucune validation en attente." />}
-                </Section>
-                <Section title="2️⃣ Travaux en cours">
-                    {tasks.filter(t => ['open', 'awarded', 'verification'].includes(t.status)).length > 0 ?
-                        tasks.filter(t => ['open', 'awarded', 'verification'].includes(t.status)).map(t => <TaskCard key={t.id} task={t} me={user} usersMap={usersMap} onBid={(b) => api.addBid(t.id, b, user.id).then(refreshData)} onAward={() => api.updateTaskStatus(t.id, 'awarded', { awardedTo: t.bids[0].userId, awardedAmount: t.bids[0].amount }).then(refreshData)} onComplete={() => handleComplete(t)} onRate={() => {}} onDelete={() => api.deleteTask(t.id).then(refreshData)} canDelete={user.role==='admin'} />)
-                        : <EmptyState icon="🔨" message="Pas de chantiers actifs." />}
-                </Section>
+            <div className="space-y-8">
+              {/* SECTION 1: Demande de travaux */}
+              <Section title="1️⃣ Demande de travaux">
+                  {pendingTasks.length > 0 ? (
+                      <div className="flex flex-col gap-3">
+                        {pendingTasks.map(t => (
+                          <TaskCard 
+                            key={t.id} 
+                            task={t} 
+                            me={user} 
+                            usersMap={usersMap} 
+                            users={users}
+                            onApprove={() => api.addApproval(t.id, user.id).then(refreshData)} 
+                            onReject={() => api.updateTaskStatus(t.id, 'rejected').then(refreshData)} 
+                            onDelete={() => api.deleteTask(t.id).then(refreshData)} 
+                            canDelete={user.role==='admin'} 
+                          />
+                        ))}
+                      </div>
+                  ) : (
+                      <EmptyState icon="⏳" message="Aucune demande de travaux en attente de validation." />
+                  )}
+              </Section>
+
+              {/* SECTION 2: Travaux à réaliser */}
+              <Section title="2️⃣ Travaux à réaliser">
+                  {todoTasks.length > 0 ? (
+                      <div className="flex flex-col gap-3">
+                        {todoTasks.map(t => (
+                          <TaskCard 
+                            key={t.id} 
+                            task={t} 
+                            me={user} 
+                            usersMap={usersMap} 
+                            users={users}
+                            onBid={(b) => api.addBid(t.id, b, user.id).then(refreshData)} 
+                            onAward={() => api.updateTaskStatus(t.id, 'awarded', { awardedTo: t.bids[0].userId, awardedAmount: t.bids[0].amount }).then(refreshData)} 
+                            onRequestVerification={() => api.updateTaskStatus(t.id, 'verification').then(refreshData)}
+                            onRejectWork={() => api.updateTaskStatus(t.id, 'awarded').then(refreshData)}
+                            onComplete={() => handleComplete(t)} 
+                            onRate={(r) => handleRate(t.id, r)} 
+                            onDelete={() => api.deleteTask(t.id).then(refreshData)} 
+                            canDelete={user.role==='admin'} 
+                          />
+                        ))}
+                      </div>
+                  ) : (
+                      <EmptyState icon="🔨" message="Aucun travail à réaliser actuellement." />
+                  )}
+              </Section>
+
+              {/* SECTION 3: Travaux en attente de contrôle qualité */}
+              <Section title="3️⃣ Travaux en attente de contrôle qualité">
+                  {verificationTasks.length > 0 ? (
+                      <div className="flex flex-col gap-3">
+                        {verificationTasks.map(t => (
+                          <TaskCard 
+                            key={t.id} 
+                            task={t} 
+                            me={user} 
+                            usersMap={usersMap} 
+                            users={users}
+                            onRequestVerification={() => api.updateTaskStatus(t.id, 'verification').then(refreshData)}
+                            onRejectWork={() => api.updateTaskStatus(t.id, 'awarded').then(refreshData)}
+                            onComplete={() => handleComplete(t)} 
+                            onRate={(r) => handleRate(t.id, r)} 
+                            onDelete={() => api.deleteTask(t.id).then(refreshData)} 
+                            canDelete={user.role==='admin'} 
+                          />
+                        ))}
+                      </div>
+                  ) : (
+                      <EmptyState icon="🔍" message="Aucun chantier en attente de contrôle qualité." />
+                  )}
+              </Section>
+
+              {/* SECTION 4: Travaux terminés */}
+              <Section title="4️⃣ Travaux terminés">
+                {completedTasks.length > 0 ? (
+                  <div className="flex flex-col gap-3">
+                    {completedTasks.map(t => (
+                      <TaskCard 
+                        key={t.id} 
+                        task={t} 
+                        me={user} 
+                        usersMap={usersMap} 
+                        users={users}
+                        onRate={(r) => handleRate(t.id, r)} 
+                        onDelete={() => api.deleteTask(t.id).then(refreshData)} 
+                        canDelete={user.role==='admin'} 
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <EmptyState icon="🏆" message="Aucun travail terminé enregistré." />
+                )}
+              </Section>
             </div>
         )}
-        {tab === 'ledger' && <Ledger entries={ledger} usersMap={usersMap} onDelete={(id) => api.deleteLedgerEntry(id).then(refreshData)} isAdmin={user.role === 'admin'} />}
-        {tab === 'directory' && <div className="text-center py-20 text-slate-500">Contenu annuaire... (Chargement des profils)</div>}
+
+        {tab === 'ledger' && (
+          <Ledger 
+            entries={ledger} 
+            usersMap={usersMap} 
+            onDelete={(id: string) => api.deleteLedgerEntry(id).then(refreshData)} 
+            isAdmin={user.role === 'admin'} 
+          />
+        )}
+
+        {tab === 'directory' && (
+          <DirectoryView 
+            users={users} 
+            pendingUsers={pendingUsers} 
+            currentUser={user} 
+            onApproveUser={handleApproveUser} 
+            onInviteUser={handleInviteUser} 
+            onDeleteUser={user.role === 'admin' ? handleDeleteUser : undefined}
+          />
+        )}
       </main>
 
-      {/* FOOTER RÉELLEMENT FONCTIONNEL */}
+      {/* MODAL NOUVELLE DEMANDE */}
+      <CreateTaskModal 
+        isOpen={showCreateModal} 
+        onClose={() => setShowCreateModal(false)} 
+        onSubmit={handleCreateTask} 
+        isAdmin={user.role === 'admin'}
+      />
+
+      {/* FOOTER */}
       <footer className="mt-20 py-12 text-center text-slate-600 text-xs border-t border-slate-900 bg-slate-950">
-        <div className="flex justify-center gap-8 mb-6">
-             <button onClick={() => setShowCGU(true)} className="hover:text-indigo-400 underline decoration-slate-800 underline-offset-4">Conditions d'Utilisation</button>
-             <button onClick={() => setShowMentions(true)} className="hover:text-indigo-400 underline decoration-slate-800 underline-offset-4">Mentions Légales</button>
+        <div className="flex justify-center gap-8 mb-4">
+             <button onClick={() => setShowCGU(true)} className="hover:text-indigo-400 underline decoration-slate-800 underline-offset-4 transition">Conditions d'Utilisation</button>
+             <button onClick={() => setShowMentions(true)} className="hover:text-indigo-400 underline decoration-slate-800 underline-offset-4 transition">Mentions Légales</button>
         </div>
         <p>CoproSmart v{APP_VERSION} — Simple. Local. Gagnant-Gagnant.</p>
       </footer>
@@ -225,41 +425,112 @@ export default function App() {
   );
 }
 
-function EmptyState({ icon, message }: any) { return <div className="p-10 text-center border border-dashed border-slate-800 rounded-xl bg-slate-900/10"><div className="text-3xl mb-2 opacity-40 grayscale">{icon}</div><p className="text-slate-500 text-sm">{message}</p></div>; }
-
-function Ledger({ entries, usersMap, onDelete, isAdmin }: any) {
+function EmptyState({ icon, message }: { icon: string; message: string }) { 
   return (
-    <Card className="bg-slate-900/50 border-slate-800">
-      <CardHeader className="bg-slate-950/50"><CardTitle>📒 Journal des écritures</CardTitle></CardHeader>
-      <CardContent>
-        {entries.length === 0 ? <p className="text-slate-500 italic text-center py-10">Le journal est encore vide pour cette résidence.</p> : (
-          <div className="overflow-x-auto rounded-lg border border-slate-800">
-            <table className="w-full text-xs text-left">
-                <thead className="bg-slate-950 text-slate-500 uppercase font-bold">
-                    <tr>
-                        <th className="p-4">Date</th>
-                        <th className="p-4">Nature</th>
-                        <th className="p-4">Bénéficiaire</th>
-                        <th className="p-4 text-right">Montant</th>
-                    </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800">
-                    {entries.map((e:any) => (
-                        <tr key={e.id} className="hover:bg-indigo-500/5 transition-colors">
-                            <td className="p-4 text-slate-400">{new Date(e.at).toLocaleDateString()}</td>
-                            <td className="p-4">
-                                <div className="font-bold text-slate-200">{e.taskTitle}</div>
-                                <div className="text-[10px] text-slate-500">Ref: #{formatTaskId(e.taskCreatedAt)}</div>
-                            </td>
-                            <td className="p-4 text-indigo-300 font-medium">{usersMap[e.payee] || e.payee}</td>
-                            <td className="p-4 text-right font-black text-white text-base">{e.amount} €</td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
+    <div className="p-8 text-center border border-dashed border-slate-800 rounded-xl bg-slate-900/20">
+      <div className="text-3xl mb-2 opacity-50">{icon}</div>
+      <p className="text-slate-400 text-xs">{message}</p>
+    </div>
+  ); 
+}
+
+interface LedgerProps {
+  entries: LedgerEntry[];
+  usersMap: Record<string, string>;
+  onDelete: (id: string) => void;
+  isAdmin: boolean;
+}
+
+function Ledger({ entries, usersMap, onDelete, isAdmin }: LedgerProps) {
+  const totalAmount = useMemo(() => entries.reduce((acc, e) => acc + (Number(e.amount) || 0), 0), [entries]);
+
+  return (
+    <div className="space-y-6">
+      {/* Summary Stats */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Card className="bg-slate-900/80 border-slate-800 p-4">
+          <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total des économies</div>
+          <div className="text-2xl font-black text-emerald-400 mt-1">{totalAmount} €</div>
+          <div className="text-[10px] text-slate-500 mt-0.5">remisés sur les charges de la copropriété</div>
+        </Card>
+        <Card className="bg-slate-900/80 border-slate-800 p-4">
+          <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">Prestations validées</div>
+          <div className="text-2xl font-black text-white mt-1">{entries.length}</div>
+          <div className="text-[10px] text-slate-500 mt-0.5">missions de maintenance réalisées</div>
+        </Card>
+        <Card className="bg-slate-900/80 border-slate-800 p-4">
+          <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">Économie moyenne</div>
+          <div className="text-2xl font-black text-indigo-400 mt-1">
+            {entries.length > 0 ? Math.round(totalAmount / entries.length) : 0} €
           </div>
-        )}
-      </CardContent>
-    </Card>
+          <div className="text-[10px] text-slate-500 mt-0.5">par intervention de résident</div>
+        </Card>
+      </div>
+
+      <Card className="bg-slate-900/80 border-slate-800 shadow-xl">
+        <CardHeader className="bg-slate-950/60 border-b border-slate-800">
+          <CardTitle className="text-white text-lg flex items-center gap-2">
+            📒 Journal des écritures comptables
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {entries.length === 0 ? (
+            <p className="text-slate-500 italic text-center py-10 text-xs">Le journal est encore vide pour cette résidence.</p>
+          ) : (
+            <div className="overflow-x-auto rounded-lg border border-slate-800">
+              <table className="w-full text-xs text-left">
+                  <thead className="bg-slate-950 text-slate-400 uppercase font-bold text-[10px]">
+                      <tr>
+                          <th className="p-3">Date</th>
+                          <th className="p-3">Prestation</th>
+                          <th className="p-3">Bénéficiaire (Crédité)</th>
+                          <th className="p-3">Débiteur</th>
+                          <th className="p-3 text-right">Crédit</th>
+                          {isAdmin && <th className="p-3 text-center">Action</th>}
+                      </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800">
+                      {entries.map((e) => (
+                          <tr key={e.id} className="hover:bg-indigo-500/5 transition-colors">
+                              <td className="p-3 text-slate-400 font-mono text-[11px] whitespace-nowrap">
+                                {new Date(e.at).toLocaleDateString('fr-FR')}
+                              </td>
+                              <td className="p-3">
+                                  <div className="font-bold text-slate-200">{e.taskTitle}</div>
+                                  <div className="text-[10px] text-slate-500">Ref: #{formatTaskId(e.taskCreatedAt)}</div>
+                              </td>
+                              <td className="p-3 text-indigo-300 font-medium">
+                                {usersMap[e.payee] || e.payee}
+                              </td>
+                              <td className="p-3 text-slate-400">
+                                {e.type === 'charge_credit' ? (
+                                  <Badge className="bg-indigo-950 text-indigo-300 border-indigo-800/50">Copro (Charges)</Badge>
+                                ) : (
+                                  <Badge className="bg-pink-950 text-pink-300 border-pink-800/50">Privatif</Badge>
+                                )}
+                              </td>
+                              <td className="p-3 text-right font-black text-emerald-400 text-sm whitespace-nowrap">
+                                +{e.amount} €
+                              </td>
+                              {isAdmin && (
+                                <td className="p-3 text-center">
+                                  <button
+                                    onClick={() => e.id && onDelete(e.id)}
+                                    className="text-[10px] text-rose-400 hover:text-rose-300 font-bold hover:underline"
+                                    title="Supprimer l'écriture"
+                                  >
+                                    Supprimer
+                                  </button>
+                                </td>
+                              )}
+                          </tr>
+                      ))}
+                  </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 }
